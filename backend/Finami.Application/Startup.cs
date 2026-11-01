@@ -49,6 +49,8 @@ public static class Startup
         services.AddScoped<IBtcQuoteRepository<BtcQuote>, BtcQuoteRepository>();
         services.AddScoped<IGroupRepository<Group>, GroupRepository>();
         services.AddScoped<ILedgerRepository<LedgerEntry>, LedgerRepository>();
+        services.AddScoped<IGroupInvitationRepository<GroupInvitation>, GroupInvitationRepository>();
+        services.AddScoped<INotificationRepository<Notification>, NotificationRepository>();
 
         // AppServices
         services.AddScoped<IGoogleTokenAppService<GoogleUserPayload>, GoogleTokenAppService>();
@@ -70,6 +72,8 @@ public static class Startup
         services.AddScoped<ILedgerService, LedgerService>();
         services.AddScoped<IStatementService, StatementService>();
         services.AddScoped<IBalanceService, BalanceService>();
+        services.AddScoped<IInvitationService, InvitationService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.AddFinamiAuthentication(configuration);
         return services;

@@ -47,6 +47,22 @@ backend/
   conferir o saldo, então o saldo nunca fica negativo.
 - **Grupos**: o responsável inclui/retira membros, controla as carteiras vinculadas ao grupo e
   define a visibilidade do extrato (`ResponsibleOnly`, `AllMembers`, `MembersSummary`).
+- **Adicionar membro e convites** (feature 003, contrato em
+  `specs/003-family-member-invites/contracts/api.md`):
+  - `POST /api/groups/{groupId}/member-lookup` verifica o email (normalizado) e devolve `Available`,
+    `Registered`, `AlreadyMember` ou `PendingInvite`.
+  - `POST /api/groups/{groupId}/members/new` cadastra a pessoa (com ou sem email) e a inclui na
+    família na mesma transação; email já cadastrado → 409.
+  - `POST /api/groups/{groupId}/members` só inclui direto quem foi cadastrado pelo responsável;
+    qualquer outra pessoa precisa de convite (422).
+  - Convites: `POST`/`GET /api/groups/{groupId}/invitations`, `DELETE …/invitations/{invitationId}`,
+    `POST /api/invitations/{invitationId}/accept` e `/decline`. No máximo um convite pendente por
+    pessoa e família (índice único parcial `ix_group_invitations_pending`). Aceitar/recusar/cancelar
+    bloqueiam a linha do convite (`SELECT … FOR UPDATE`); se a família não existe mais ou quem
+    convidou deixou de ser o responsável, o convite vira `Canceled` e a resposta é 409.
+  - Notificações: `GET /api/notifications?beforeId=&limit=` (cursor, 1–50, padrão 20),
+    `GET /api/notifications/unread-count` e `POST /api/notifications/read` (204). A notificação de
+    convite traz o estado **atual** do convite (join), não uma cópia.
 - **Saldos por membro** (somente leitura):
   - `GET /api/groups/{groupId}/balances` — totais por membro das carteiras ativas do grupo. O nível
     de detalhe (`detailLevel`) segue a visibilidade do extrato: o responsável e os membros em
@@ -149,7 +165,7 @@ dotnet ef migrations add <Nome> --project Finami.Infra --startup-project Finami.
 ```
 
 Migrations existentes: `InitialUsers`, `AddWalletsAndLedger` (inclui o seed das contas de sistema),
-`AddBtcQuotes`, `AddGroups`.
+`AddBtcQuotes`, `AddGroups`, `AddInvitationsAndNotifications` (`group_invitations` e `notifications`).
 
 ## Testes
 
@@ -175,7 +191,7 @@ Toda resposta diferente de 2xx (exceto 500) usa o envelope:
 | 401 | Não autenticado ou credenciais inválidas |
 | 403 | Sem permissão sobre o recurso |
 | 404 | Recurso inexistente |
-| 409 | Email já usado, membro duplicado, transação já estornada |
-| 422 | Regra de negócio (saldo insuficiente, carteira inativa, valor pequeno demais para conversão) |
+| 409 | Email já usado, membro duplicado, convite pendente duplicado ou convite que não está mais disponível, transação já estornada |
+| 422 | Regra de negócio (saldo insuficiente, carteira inativa, valor pequeno demais para conversão, inclusão direta de quem precisa ser convidado) |
 | 503 | Cotação do bitcoin indisponível ou desatualizada |
 | 500 | Erro inesperado (corpo com a mensagem da exceção) |
