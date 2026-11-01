@@ -9,6 +9,8 @@ public static class UniqueViolation
     public const string SQLSTATE = "23505";
     public const string USERS_EMAIL_INDEX = "ix_users_email";
     public const string GROUP_INVITATIONS_PENDING_INDEX = "ix_group_invitations_pending";
+    public const string OAUTH_GRANTS_ACTIVE_INDEX = "ix_oauth_grants_active";
+    public const string MCP_IDEMPOTENCY_KEYS_UNIQUE_INDEX = "ix_mcp_idempotency_keys_user_tool_key";
 
     public static bool Is(Exception ex, string indexName)
     {

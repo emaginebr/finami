@@ -78,6 +78,68 @@ backend/
   `JsonNumberHandling.AllowReadingFromString` em `Finami.API/Extensions/JsonOptionsExtensions.cs`.
   As respostas continuam com números e as validações (casas decimais, valor > 0) não mudam.
 
+## Servidor MCP (feature 004)
+
+A API publica um servidor [MCP](https://modelcontextprotocol.io) para assistentes de IA (Claude,
+Claude Code, ChatGPT, MCP Inspector…) consultarem e lançarem dados **em nome da pessoa**, com as
+mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contracts/`.
+
+- **Endereço**: `{Mcp__PublicUrl}/mcp` (dev: `http://localhost:5145/mcp`; prod: `https://<domínio>/mcp`).
+  Transporte Streamable HTTP, sem sessão (SDK `ModelContextProtocol.AspNetCore`).
+- **Autorização**: OAuth 2.1 com PKCE (S256) e registro dinâmico de cliente. O assistente descobre
+  tudo sozinho a partir do `401` em `/mcp` (`WWW-Authenticate: Bearer resource_metadata=…`):
+  `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`,
+  `POST /oauth/register`, `GET /oauth/authorize` (leva à tela `/autorizar` do app), `POST /oauth/token`
+  e `POST /oauth/revoke`. Tokens opacos (`fma_…` acesso, 60 min; `fmr_…` renovação com rotação,
+  30 dias) guardados só como SHA-256; o token do MCP não vale em `/api/*` e o JWT do app não vale em `/mcp`.
+- **Escopos**: `finami:read` (consultas) e `finami:write` (alterações; inclui leitura). Ferramenta de
+  escrita numa conexão só leitura devolve `permissao_insuficiente` sem executar nada.
+- **Conexões**: a pessoa vê e desconecta assistentes em **Conta → Assistentes conectados**
+  (`GET/DELETE /api/oauth/connections`, `GET /api/oauth/mcp-info`); desconectar revoga os tokens na hora.
+
+### Como conectar
+
+- **Claude (claude.ai / app)**: Configurações → Conectores → *Adicionar conector personalizado* →
+  URL `https://<domínio>/mcp` → *Conectar* → entrar no Finami e autorizar.
+- **Claude Code**: `claude mcp add --transport http finami https://<domínio>/mcp` e depois `/mcp`
+  dentro do Claude Code para autenticar no navegador.
+- **MCP Inspector** (dev): `npx @modelcontextprotocol/inspector` → Streamable HTTP →
+  `http://localhost:5145/mcp` → *Quick OAuth Flow*.
+
+### Ferramentas (38), recursos e prompts
+
+| Área | Leitura (`finami:read`) | Escrita (`finami:write`) |
+|---|---|---|
+| Perfil | `obter_perfil` | `atualizar_perfil` |
+| Saldos | `saldo_total`, `saldos_da_familia`, `saldos_da_pessoa`, `cotacao_bitcoin` | — |
+| Carteiras | `listar_carteiras`, `obter_carteira` | `criar_carteira`⟲, `atualizar_carteira`, `mover_carteira_de_familia`, `desativar_carteira`, `excluir_carteira` |
+| Extratos e lançamentos | `extrato_carteira`, `extrato_pessoa`, `extrato_familia`, `obter_lancamento`, `previa_transferencia` | `registrar_receita`⟲, `registrar_despesa`⟲, `registrar_transferencia`⟲, `estornar_lancamento` |
+| Famílias | `listar_familias`, `obter_familia`, `listar_pessoas_criadas_por_mim`, `verificar_email_para_familia`, `listar_convites_da_familia` | `criar_familia`⟲, `renomear_familia`, `criar_pessoa_na_familia`⟲, `retirar_membro`, `convidar_para_familia`⟲, `cancelar_convite`, `aceitar_convite`, `recusar_convite` |
+| Notificações | `listar_notificacoes`, `contar_notificacoes_nao_lidas` | `marcar_notificacoes_como_lidas` |
+
+- Valores em número decimal na moeda da carteira (BRL até 2 casas, BTC até 8); datas `AAAA-MM-DD` no
+  fuso America/Sao_Paulo. Extratos e notificações são paginados (`limite` 1–50, padrão 20, e
+  `cursor` = `proximoCursor` da página anterior).
+- ⟲ = aceita `chave_repeticao` (até 64 caracteres, válida por 24 h): repetir a chamada com a mesma
+  chave devolve o mesmo resultado sem lançar de novo.
+- Resultado: `structuredContent` com o DTO da API (camelCase) + resumo em português. Erro:
+  `isError: true` com `{ codigo, mensagem, erros }` — `validacao`, `nao_encontrado`, `sem_permissao`,
+  `conflito`, `regra_de_negocio`, `cotacao_indisponivel`, `permissao_insuficiente`, `erro_interno`.
+- Recursos: `finami://perfil`, `finami://carteiras`, `finami://familias`,
+  `finami://notificacoes/nao-lidas`. Prompts: `resumo_do_mes`, `registrar_gasto`, `revisar_convites`.
+- Fora do MCP (FR-020): senha, cadastro, login, exclusão de conta e gestão de conexões.
+
+### Proteções
+
+- **Limite de taxa** (RateLimiter nativo, janela fixa, `429` + `Retry-After`): 60 chamadas/min por
+  conexão em `/mcp`, 10 registros/h por IP em `/oauth/register`, 30/min por IP em `/oauth/token`
+  (`Mcp__RateLimitPerMinute`, `Mcp__RegisterRateLimitPerHour`, `Mcp__TokenRateLimitPerMinute`; `0` desliga).
+- **Auditoria**: cada ferramenta de escrita grava em `mcp_audit_logs` pessoa, conexão, ferramenta,
+  resultado e id afetado — nunca argumentos nem tokens.
+- **Limpeza horária** (`OAuthCleanupService`): pedidos vencidos, tokens de acesso vencidos há 1 dia,
+  tokens de renovação vencidos/revogados há 30 dias, chaves de repetição com mais de 24 h, clientes
+  dinâmicos sem uso há 30 dias e auditoria com mais de 1 ano.
+
 ## Variáveis de ambiente
 
 | Variável | Obrigatória | Descrição |
@@ -92,6 +154,11 @@ backend/
 | `BtcQuote__CacheSeconds` / `BtcQuote__StaleAfterSeconds` | Não | Padrão 60 / 300 |
 | `Cors__AllowedOrigins__0` … | Fora de Development | Origens permitidas (em Development qualquer origem) |
 | `Database__MigrateOnStartup` | Não | `true` aplica as migrations pendentes ao iniciar; padrão `false` |
+| `Mcp__PublicUrl` | Para o MCP | URL pública da API (issuer OAuth; recurso = `{url}/mcp`). `https`, ou `http` só em localhost |
+| `App__PublicUrl` | Para o MCP | URL pública do frontend (tela `/autorizar`) |
+| `Mcp__AccessTokenMinutes` / `Mcp__RefreshTokenDays` / `Mcp__CodeMinutes` | Não | Padrão 60 / 30 / 10 |
+| `Mcp__RateLimitPerMinute` / `Mcp__RegisterRateLimitPerHour` / `Mcp__TokenRateLimitPerMinute` | Não | Padrão 60 / 10 / 30 (`0` desliga) |
+| `Mcp__CleanupEnabled` | Não | Limpeza horária do OAuth/MCP; padrão `true` |
 
 As variáveis seguem a convenção padrão do ASP.NET Core (`Secao__Chave`); não há prefixo.
 
@@ -109,8 +176,8 @@ As variáveis seguem a convenção padrão do ASP.NET Core (`Secao__Chave`); nã
 | Logging padrão | `Debug` | `Information` | `Warning` |
 
 Variáveis injetadas pelo compose em homolog/prod: `ConnectionStrings__FinamiContext`, `Jwt__Secret`,
-`Jwt__Issuer`, `Jwt__Audience`, `Google__ClientId`, `Cors__AllowedOrigins__0` e
-`Database__MigrateOnStartup`. Sem `Jwt__Secret` com 32+ bytes a API não sobe.
+`Jwt__Issuer`, `Jwt__Audience`, `Google__ClientId`, `Cors__AllowedOrigins__0`,
+`Database__MigrateOnStartup`, `Mcp__PublicUrl` e `App__PublicUrl`. Sem `Jwt__Secret` com 32+ bytes a API não sobe.
 
 Fora de Development a API lê `X-Forwarded-For`/`X-Forwarded-Proto` (`UseForwardedHeaders`) e confia
 em qualquer proxy, pois só é alcançável pela rede interna do compose — não publique a porta 8080 da
@@ -165,7 +232,8 @@ dotnet ef migrations add <Nome> --project Finami.Infra --startup-project Finami.
 ```
 
 Migrations existentes: `InitialUsers`, `AddWalletsAndLedger` (inclui o seed das contas de sistema),
-`AddBtcQuotes`, `AddGroups`, `AddInvitationsAndNotifications` (`group_invitations` e `notifications`).
+`AddBtcQuotes`, `AddGroups`, `AddInvitationsAndNotifications` (`group_invitations` e `notifications`),
+`AddOAuthAndMcp` (clientes, conexões, pedidos e tokens OAuth, chaves de repetição e auditoria do MCP).
 
 ## Testes
 
@@ -193,5 +261,6 @@ Toda resposta diferente de 2xx (exceto 500) usa o envelope:
 | 404 | Recurso inexistente |
 | 409 | Email já usado, membro duplicado, convite pendente duplicado ou convite que não está mais disponível, transação já estornada |
 | 422 | Regra de negócio (saldo insuficiente, carteira inativa, valor pequeno demais para conversão, inclusão direta de quem precisa ser convidado) |
+| 410 | Pedido de autorização OAuth vencido ou já respondido |
 | 503 | Cotação do bitcoin indisponível ou desatualizada |
 | 500 | Erro inesperado (corpo com a mensagem da exceção) |

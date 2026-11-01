@@ -49,6 +49,9 @@ services:
       Google__ClientId: ${GOOGLE_CLIENT_ID:-}
       Cors__AllowedOrigins__0: http://localhost:${WEB_PORT:-8080}
       Database__MigrateOnStartup: "true"
+      # MCP/OAuth (feature 004): issuer/recurso e tela /autorizar do frontend.
+      Mcp__PublicUrl: ${MCP_PUBLIC_URL:-http://localhost:5145}
+      App__PublicUrl: ${APP_PUBLIC_URL:-http://localhost:8080}
     depends_on:
       db:
         condition: service_healthy

@@ -44,3 +44,9 @@ public class QuoteUnavailableException : DomainException
 {
     public QuoteUnavailableException(string message = "Cotação do bitcoin indisponível no momento.") : base(message) { }
 }
+
+/// <summary>Recurso que existiu mas não vale mais (410), ex.: pedido de autorização vencido ou já respondido.</summary>
+public class GoneException : DomainException
+{
+    public GoneException(string message) : base(message) { }
+}

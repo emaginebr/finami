@@ -10,6 +10,12 @@ public class FinamiContext : DbContext
     /// <summary>Índice único parcial de convites pendentes; a violação vira 409 (research R-04).</summary>
     public const string GROUP_INVITATIONS_PENDING_INDEX = "ix_group_invitations_pending";
 
+    /// <summary>Uma conexão OAuth ativa por pessoa e assistente (feature 004).</summary>
+    public const string OAUTH_GRANTS_ACTIVE_INDEX = "ix_oauth_grants_active";
+
+    /// <summary>Chave de repetição única por pessoa e ferramenta (research R-08).</summary>
+    public const string MCP_IDEMPOTENCY_KEYS_UNIQUE_INDEX = "ix_mcp_idempotency_keys_user_tool_key";
+
     public FinamiContext(DbContextOptions<FinamiContext> options) : base(options)
     {
     }
@@ -23,6 +29,12 @@ public class FinamiContext : DbContext
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OAuthClient> OAuthClients => Set<OAuthClient>();
+    public DbSet<OAuthGrant> OAuthGrants => Set<OAuthGrant>();
+    public DbSet<OAuthAuthorizationRequest> OAuthAuthorizationRequests => Set<OAuthAuthorizationRequest>();
+    public DbSet<OAuthToken> OAuthTokens => Set<OAuthToken>();
+    public DbSet<McpIdempotencyKey> McpIdempotencyKeys => Set<McpIdempotencyKey>();
+    public DbSet<McpAuditLog> McpAuditLogs => Set<McpAuditLog>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -46,6 +58,171 @@ public class FinamiContext : DbContext
         ConfigureGroups(modelBuilder);
         ConfigureGroupInvitations(modelBuilder);
         ConfigureNotifications(modelBuilder);
+        ConfigureOAuth(modelBuilder);
+        ConfigureMcp(modelBuilder);
+    }
+
+    private static void ConfigureOAuth(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<OAuthClient>(entity =>
+        {
+            entity.ToTable("oauth_clients");
+            entity.HasKey(e => e.OAuthClientId).HasName("oauth_clients_pkey");
+            entity.Property(e => e.OAuthClientId).HasColumnName("oauth_client_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.ClientId).HasColumnName("client_id").HasMaxLength(64).IsRequired();
+            entity.Property(e => e.ClientSecretHash).HasColumnName("client_secret_hash").HasMaxLength(64);
+            entity.Property(e => e.ClientName).HasColumnName("client_name").HasMaxLength(120).IsRequired();
+            entity.Property(e => e.RedirectUris).HasColumnName("redirect_uris").HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.AuthMethod).HasColumnName("auth_method").HasConversion<int>();
+            entity.Property(e => e.IsDynamic).HasColumnName("is_dynamic").HasDefaultValue(true).HasSentinel(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Ignore(e => e.RequiresSecret);
+
+            entity.HasIndex(e => e.ClientId).IsUnique().HasDatabaseName("ix_oauth_clients_client_id");
+        });
+
+        modelBuilder.Entity<OAuthGrant>(entity =>
+        {
+            entity.ToTable("oauth_grants");
+            entity.HasKey(e => e.OAuthGrantId).HasName("oauth_grants_pkey");
+            entity.Property(e => e.OAuthGrantId).HasColumnName("oauth_grant_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OAuthClientId).HasColumnName("oauth_client_id");
+            entity.Property(e => e.Scopes).HasColumnName("scopes").HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>()
+                .HasDefaultValue(OAuthGrantStatus.Active).HasSentinel((OAuthGrantStatus)0);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Property(e => e.LastUsedAt).HasColumnName("last_used_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(e => e.RevokeReason).HasColumnName("revoke_reason").HasConversion<int?>();
+            entity.Ignore(e => e.IsActive);
+            entity.Ignore(e => e.ScopeList);
+
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId)
+                .HasConstraintName("fk_user_oauth_grant").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(e => e.Client).WithMany().HasForeignKey(e => e.OAuthClientId)
+                .HasConstraintName("fk_oauth_client_oauth_grant").OnDelete(DeleteBehavior.ClientSetNull);
+
+            // Uma conexão ativa por pessoa e assistente.
+            entity.HasIndex(e => new { e.UserId, e.OAuthClientId }).IsUnique()
+                .HasFilter("status = 1").HasDatabaseName(OAUTH_GRANTS_ACTIVE_INDEX);
+            entity.HasIndex(e => new { e.UserId, e.Status }).HasDatabaseName("ix_oauth_grants_user_id_status");
+            entity.HasIndex(e => e.OAuthClientId).HasDatabaseName("ix_oauth_grants_oauth_client_id");
+        });
+
+        modelBuilder.Entity<OAuthAuthorizationRequest>(entity =>
+        {
+            entity.ToTable("oauth_authorization_requests");
+            entity.HasKey(e => e.OAuthAuthorizationRequestId).HasName("oauth_authorization_requests_pkey");
+            entity.Property(e => e.OAuthAuthorizationRequestId).HasColumnName("oauth_authorization_request_id")
+                .UseIdentityByDefaultColumn();
+            entity.Property(e => e.RequestKey).HasColumnName("request_key").HasMaxLength(64).IsRequired();
+            entity.Property(e => e.OAuthClientId).HasColumnName("oauth_client_id");
+            entity.Property(e => e.RedirectUri).HasColumnName("redirect_uri").HasMaxLength(500).IsRequired();
+            entity.Property(e => e.ScopesRequested).HasColumnName("scopes_requested").HasMaxLength(200).IsRequired();
+            entity.Property(e => e.State).HasColumnName("state").HasMaxLength(500);
+            entity.Property(e => e.CodeChallenge).HasColumnName("code_challenge").HasMaxLength(128).IsRequired();
+            entity.Property(e => e.Resource).HasColumnName("resource").HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>()
+                .HasDefaultValue(OAuthRequestStatus.Pending).HasSentinel((OAuthRequestStatus)0);
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OAuthGrantId).HasColumnName("oauth_grant_id");
+            entity.Property(e => e.CodeHash).HasColumnName("code_hash").HasMaxLength(64);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.RedeemedAt).HasColumnName("redeemed_at");
+            entity.Ignore(e => e.ScopeList);
+
+            entity.HasOne(e => e.Client).WithMany().HasForeignKey(e => e.OAuthClientId)
+                .HasConstraintName("fk_oauth_client_oauth_authorization_request").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId)
+                .HasConstraintName("fk_user_oauth_authorization_request").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne<OAuthGrant>().WithMany().HasForeignKey(e => e.OAuthGrantId)
+                .HasConstraintName("fk_oauth_grant_oauth_authorization_request").OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasIndex(e => e.RequestKey).IsUnique().HasDatabaseName("ix_oauth_authorization_requests_request_key");
+            entity.HasIndex(e => e.CodeHash).IsUnique().HasFilter("code_hash IS NOT NULL")
+                .HasDatabaseName("ix_oauth_authorization_requests_code_hash");
+            entity.HasIndex(e => e.OAuthClientId).HasDatabaseName("ix_oauth_authorization_requests_oauth_client_id");
+            entity.HasIndex(e => e.UserId).HasDatabaseName("ix_oauth_authorization_requests_user_id");
+            entity.HasIndex(e => e.OAuthGrantId).HasDatabaseName("ix_oauth_authorization_requests_oauth_grant_id");
+            entity.HasIndex(e => e.ExpiresAt).HasDatabaseName("ix_oauth_authorization_requests_expires_at");
+        });
+
+        modelBuilder.Entity<OAuthToken>(entity =>
+        {
+            entity.ToTable("oauth_tokens");
+            entity.HasKey(e => e.OAuthTokenId).HasName("oauth_tokens_pkey");
+            entity.Property(e => e.OAuthTokenId).HasColumnName("oauth_token_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.OAuthGrantId).HasColumnName("oauth_grant_id");
+            entity.Property(e => e.TokenType).HasColumnName("token_type").HasConversion<int>();
+            entity.Property(e => e.TokenHash).HasColumnName("token_hash").HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Scopes).HasColumnName("scopes").HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ParentTokenId).HasColumnName("parent_token_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.UsedAt).HasColumnName("used_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Ignore(e => e.IsRevoked);
+            entity.Ignore(e => e.IsUsed);
+
+            entity.HasOne(e => e.Grant).WithMany().HasForeignKey(e => e.OAuthGrantId)
+                .HasConstraintName("fk_oauth_grant_oauth_token").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne<OAuthToken>().WithMany().HasForeignKey(e => e.ParentTokenId)
+                .HasConstraintName("fk_oauth_token_parent").OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasIndex(e => e.TokenHash).IsUnique().HasDatabaseName("ix_oauth_tokens_token_hash");
+            entity.HasIndex(e => e.OAuthGrantId).HasDatabaseName("ix_oauth_tokens_oauth_grant_id");
+            entity.HasIndex(e => e.ParentTokenId).HasDatabaseName("ix_oauth_tokens_parent_token_id");
+            entity.HasIndex(e => e.ExpiresAt).HasDatabaseName("ix_oauth_tokens_expires_at");
+        });
+    }
+
+    private static void ConfigureMcp(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<McpIdempotencyKey>(entity =>
+        {
+            entity.ToTable("mcp_idempotency_keys");
+            entity.HasKey(e => e.McpIdempotencyKeyId).HasName("mcp_idempotency_keys_pkey");
+            entity.Property(e => e.McpIdempotencyKeyId).HasColumnName("mcp_idempotency_key_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ToolName).HasColumnName("tool_name").HasMaxLength(80).IsRequired();
+            entity.Property(e => e.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>()
+                .HasDefaultValue(IdempotencyStatus.InProgress).HasSentinel((IdempotencyStatus)0);
+            entity.Property(e => e.ResultJson).HasColumnName("result_json").HasColumnType("text");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId)
+                .HasConstraintName("fk_user_mcp_idempotency_key").OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasIndex(e => new { e.UserId, e.ToolName, e.IdempotencyKey }).IsUnique()
+                .HasDatabaseName(MCP_IDEMPOTENCY_KEYS_UNIQUE_INDEX);
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("ix_mcp_idempotency_keys_created_at");
+        });
+
+        modelBuilder.Entity<McpAuditLog>(entity =>
+        {
+            entity.ToTable("mcp_audit_logs");
+            entity.HasKey(e => e.McpAuditLogId).HasName("mcp_audit_logs_pkey");
+            entity.Property(e => e.McpAuditLogId).HasColumnName("mcp_audit_log_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OAuthGrantId).HasColumnName("oauth_grant_id");
+            entity.Property(e => e.ToolName).HasColumnName("tool_name").HasMaxLength(80).IsRequired();
+            entity.Property(e => e.Outcome).HasColumnName("outcome").HasMaxLength(40).IsRequired();
+            entity.Property(e => e.TargetId).HasColumnName("target_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId)
+                .HasConstraintName("fk_user_mcp_audit_log").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne<OAuthGrant>().WithMany().HasForeignKey(e => e.OAuthGrantId)
+                .HasConstraintName("fk_oauth_grant_mcp_audit_log").OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt }).IsDescending(false, true)
+                .HasDatabaseName("ix_mcp_audit_logs_user_id_created_at");
+            entity.HasIndex(e => e.OAuthGrantId).HasDatabaseName("ix_mcp_audit_logs_oauth_grant_id");
+        });
     }
 
     private static void ConfigureGroupInvitations(ModelBuilder modelBuilder)

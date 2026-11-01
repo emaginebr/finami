@@ -371,6 +371,112 @@ namespace Finami.Infra.Migrations
                     b.ToTable("ledger_entries", (string)null);
                 });
 
+            modelBuilder.Entity("Finami.Domain.Models.McpAuditLog", b =>
+                {
+                    b.Property<long>("McpAuditLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("mcp_audit_log_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("McpAuditLogId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<long>("OAuthGrantId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_grant_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("outcome");
+
+                    b.Property<long?>("TargetId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("tool_name");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("McpAuditLogId")
+                        .HasName("mcp_audit_logs_pkey");
+
+                    b.HasIndex("OAuthGrantId")
+                        .HasDatabaseName("ix_mcp_audit_logs_oauth_grant_id");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_mcp_audit_logs_user_id_created_at");
+
+                    b.ToTable("mcp_audit_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.McpIdempotencyKey", b =>
+                {
+                    b.Property<long>("McpIdempotencyKeyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("mcp_idempotency_key_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("McpIdempotencyKeyId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("text")
+                        .HasColumnName("result_json");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("tool_name");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("McpIdempotencyKeyId")
+                        .HasName("mcp_idempotency_keys_pkey");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_mcp_idempotency_keys_created_at");
+
+                    b.HasIndex("UserId", "ToolName", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_mcp_idempotency_keys_user_tool_key");
+
+                    b.ToTable("mcp_idempotency_keys", (string)null);
+                });
+
             modelBuilder.Entity("Finami.Domain.Models.Notification", b =>
                 {
                     b.Property<long>("NotificationId")
@@ -431,6 +537,312 @@ namespace Finami.Infra.Migrations
                         .HasDatabaseName("ix_notifications_user_id_notification_id");
 
                     b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthAuthorizationRequest", b =>
+                {
+                    b.Property<long>("OAuthAuthorizationRequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_authorization_request_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("OAuthAuthorizationRequestId"));
+
+                    b.Property<string>("CodeChallenge")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("code_challenge");
+
+                    b.Property<string>("CodeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("OAuthClientId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_client_id");
+
+                    b.Property<long?>("OAuthGrantId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_grant_id");
+
+                    b.Property<DateTime?>("RedeemedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("redeemed_at");
+
+                    b.Property<string>("RedirectUri")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("redirect_uri");
+
+                    b.Property<string>("RequestKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_key");
+
+                    b.Property<string>("Resource")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("resource");
+
+                    b.Property<string>("ScopesRequested")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scopes_requested");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("state");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("OAuthAuthorizationRequestId")
+                        .HasName("oauth_authorization_requests_pkey");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_oauth_authorization_requests_code_hash")
+                        .HasFilter("code_hash IS NOT NULL");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_oauth_authorization_requests_expires_at");
+
+                    b.HasIndex("OAuthClientId")
+                        .HasDatabaseName("ix_oauth_authorization_requests_oauth_client_id");
+
+                    b.HasIndex("OAuthGrantId")
+                        .HasDatabaseName("ix_oauth_authorization_requests_oauth_grant_id");
+
+                    b.HasIndex("RequestKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_oauth_authorization_requests_request_key");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_oauth_authorization_requests_user_id");
+
+                    b.ToTable("oauth_authorization_requests", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthClient", b =>
+                {
+                    b.Property<long>("OAuthClientId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_client_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("OAuthClientId"));
+
+                    b.Property<int>("AuthMethod")
+                        .HasColumnType("integer")
+                        .HasColumnName("auth_method");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_id");
+
+                    b.Property<string>("ClientName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("client_name");
+
+                    b.Property<string>("ClientSecretHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_secret_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<bool>("IsDynamic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_dynamic");
+
+                    b.Property<string>("RedirectUris")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("redirect_uris");
+
+                    b.HasKey("OAuthClientId")
+                        .HasName("oauth_clients_pkey");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_oauth_clients_client_id");
+
+                    b.ToTable("oauth_clients", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthGrant", b =>
+                {
+                    b.Property<long>("OAuthGrantId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_grant_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("OAuthGrantId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<long>("OAuthClientId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_client_id");
+
+                    b.Property<int?>("RevokeReason")
+                        .HasColumnType("integer")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scopes");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("OAuthGrantId")
+                        .HasName("oauth_grants_pkey");
+
+                    b.HasIndex("OAuthClientId")
+                        .HasDatabaseName("ix_oauth_grants_oauth_client_id");
+
+                    b.HasIndex("UserId", "OAuthClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_oauth_grants_active")
+                        .HasFilter("status = 1");
+
+                    b.HasIndex("UserId", "Status")
+                        .HasDatabaseName("ix_oauth_grants_user_id_status");
+
+                    b.ToTable("oauth_grants", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthToken", b =>
+                {
+                    b.Property<long>("OAuthTokenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_token_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("OAuthTokenId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("OAuthGrantId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("oauth_grant_id");
+
+                    b.Property<long?>("ParentTokenId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("parent_token_id");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scopes");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<int>("TokenType")
+                        .HasColumnType("integer")
+                        .HasColumnName("token_type");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("used_at");
+
+                    b.HasKey("OAuthTokenId")
+                        .HasName("oauth_tokens_pkey");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_oauth_tokens_expires_at");
+
+                    b.HasIndex("OAuthGrantId")
+                        .HasDatabaseName("ix_oauth_tokens_oauth_grant_id");
+
+                    b.HasIndex("ParentTokenId")
+                        .HasDatabaseName("ix_oauth_tokens_parent_token_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_oauth_tokens_token_hash");
+
+                    b.ToTable("oauth_tokens", (string)null);
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.Transaction", b =>
@@ -657,6 +1069,30 @@ namespace Finami.Infra.Migrations
                     b.Navigation("Transaction");
                 });
 
+            modelBuilder.Entity("Finami.Domain.Models.McpAuditLog", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.OAuthGrant", null)
+                        .WithMany()
+                        .HasForeignKey("OAuthGrantId")
+                        .IsRequired()
+                        .HasConstraintName("fk_oauth_grant_mcp_audit_log");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .IsRequired()
+                        .HasConstraintName("fk_user_mcp_audit_log");
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.McpIdempotencyKey", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .IsRequired()
+                        .HasConstraintName("fk_user_mcp_idempotency_key");
+                });
+
             modelBuilder.Entity("Finami.Domain.Models.Notification", b =>
                 {
                     b.HasOne("Finami.Domain.Models.User", "Actor")
@@ -685,6 +1121,60 @@ namespace Finami.Infra.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Invitation");
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthAuthorizationRequest", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.OAuthClient", "Client")
+                        .WithMany()
+                        .HasForeignKey("OAuthClientId")
+                        .IsRequired()
+                        .HasConstraintName("fk_oauth_client_oauth_authorization_request");
+
+                    b.HasOne("Finami.Domain.Models.OAuthGrant", null)
+                        .WithMany()
+                        .HasForeignKey("OAuthGrantId")
+                        .HasConstraintName("fk_oauth_grant_oauth_authorization_request");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .HasConstraintName("fk_user_oauth_authorization_request");
+
+                    b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthGrant", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.OAuthClient", "Client")
+                        .WithMany()
+                        .HasForeignKey("OAuthClientId")
+                        .IsRequired()
+                        .HasConstraintName("fk_oauth_client_oauth_grant");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .IsRequired()
+                        .HasConstraintName("fk_user_oauth_grant");
+
+                    b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.OAuthToken", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.OAuthGrant", "Grant")
+                        .WithMany()
+                        .HasForeignKey("OAuthGrantId")
+                        .IsRequired()
+                        .HasConstraintName("fk_oauth_grant_oauth_token");
+
+                    b.HasOne("Finami.Domain.Models.OAuthToken", null)
+                        .WithMany()
+                        .HasForeignKey("ParentTokenId")
+                        .HasConstraintName("fk_oauth_token_parent");
+
+                    b.Navigation("Grant");
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.Transaction", b =>

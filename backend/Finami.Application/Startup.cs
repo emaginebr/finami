@@ -31,6 +31,8 @@ public static class Startup
         services.Configure<BtcQuoteSettings>(configuration.GetSection("BtcQuote"));
         services.Configure<CorsSettings>(configuration.GetSection("Cors"));
         services.Configure<DatabaseSettings>(configuration.GetSection("Database"));
+        services.Configure<McpSettings>(configuration.GetSection("Mcp"));
+        services.Configure<AppSettings>(configuration.GetSection("App"));
 
         // DbContext
         services.AddDbContext<FinamiContext>(options =>
@@ -51,6 +53,13 @@ public static class Startup
         services.AddScoped<ILedgerRepository<LedgerEntry>, LedgerRepository>();
         services.AddScoped<IGroupInvitationRepository<GroupInvitation>, GroupInvitationRepository>();
         services.AddScoped<INotificationRepository<Notification>, NotificationRepository>();
+        services.AddScoped<IOAuthClientRepository<OAuthClient>, OAuthClientRepository>();
+        services.AddScoped<IOAuthGrantRepository<OAuthGrant>, OAuthGrantRepository>();
+        services.AddScoped<IOAuthRequestRepository<OAuthAuthorizationRequest>, OAuthRequestRepository>();
+        services.AddScoped<IOAuthTokenRepository<OAuthToken>, OAuthTokenRepository>();
+        services.AddScoped<IMcpIdempotencyRepository<McpIdempotencyKey>, McpIdempotencyRepository>();
+        services.AddScoped<IMcpAuditRepository<McpAuditLog>, McpAuditRepository>();
+        services.AddScoped<IOAuthCleanupRepository, OAuthCleanupRepository>();
 
         // AppServices
         services.AddScoped<IGoogleTokenAppService<GoogleUserPayload>, GoogleTokenAppService>();
@@ -74,9 +83,28 @@ public static class Startup
         services.AddScoped<IBalanceService, BalanceService>();
         services.AddScoped<IInvitationService, InvitationService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IOAuthService, OAuthService>();
+        services.AddScoped<IOAuthConnectionService, OAuthConnectionService>();
+        services.AddScoped<IMcpIdempotencyService, McpIdempotencyService>();
+        services.AddScoped<IMcpAuditService, McpAuditService>();
+        services.AddScoped<IOAuthMaintenanceService, OAuthMaintenanceService>();
 
         services.AddFinamiAuthentication(configuration);
+        ValidateMcpPublicUrl(configuration);
         return services;
+    }
+
+    /// <summary>FR-026: HTTP só é aceito quando a URL pública do MCP é localhost/loopback.</summary>
+    private static void ValidateMcpPublicUrl(IConfiguration configuration)
+    {
+        var mcp = configuration.GetSection("Mcp").Get<McpSettings>() ?? new McpSettings();
+        if (string.IsNullOrWhiteSpace(mcp.PublicUrl))
+            return;
+        if (!Uri.TryCreate(mcp.PublicUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+            throw new InvalidOperationException(
+                "Mcp:PublicUrl deve ser uma URL https (http só em localhost). Ajuste a variável Mcp__PublicUrl.");
     }
 
     private static void AddFinamiAuthentication(this IServiceCollection services, IConfiguration configuration)

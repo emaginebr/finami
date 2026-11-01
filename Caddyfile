@@ -20,6 +20,21 @@
 		reverse_proxy api:8080
 	}
 
+	# MCP + OAuth (feature 004): servidor MCP, servidor de autorização e metadados de descoberta.
+	# A tela de consentimento /autorizar continua no SPA.
+	handle /mcp* {
+		# Respostas em text/event-stream (Streamable HTTP) saem sem buffer.
+		reverse_proxy api:8080 {
+			flush_interval -1
+		}
+	}
+	handle /oauth/* {
+		reverse_proxy api:8080
+	}
+	handle /.well-known/oauth-* {
+		reverse_proxy api:8080
+	}
+
 	# SPA (nginx no container web)
 	handle {
 		reverse_proxy web:80
