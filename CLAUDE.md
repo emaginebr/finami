@@ -33,4 +33,11 @@ C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado): Follow standard conv
 - 001-finami-backend-core: Added C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado) + ASP.NET Core 8 Web API, EF Core 9.x + Npgsql.EntityFrameworkCore.PostgreSQL 9.x, Swashbuckle 8.x, Microsoft.AspNetCore.Authentication.JwtBearer 8.x, Google.Apis.Auth, Microsoft.Extensions.Identity.Core (PasswordHasher), FluentValidation
 
 <!-- MANUAL ADDITIONS START -->
+## Commits
+
+- Todo commit usa o tipo `fix:` na primeira linha (com escopo opcional), ex.:
+  `fix(groups): adiciona convites para família` — mesmo para funcionalidades novas.
+- Não usar `feat:`, `feat(x)!:`, `major:` ou `breaking:` (no GitVersion eles sobem minor/major);
+  `fix:` sobe só o patch da versão.
+- Commit e push só quando o usuário pedir.
 <!-- MANUAL ADDITIONS END -->
