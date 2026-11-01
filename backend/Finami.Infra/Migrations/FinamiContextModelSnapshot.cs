@@ -238,6 +238,63 @@ namespace Finami.Infra.Migrations
                     b.ToTable("groups", (string)null);
                 });
 
+            modelBuilder.Entity("Finami.Domain.Models.GroupInvitation", b =>
+                {
+                    b.Property<long>("GroupInvitationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_invitation_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("GroupInvitationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<long>("GroupId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_id");
+
+                    b.Property<long>("InvitedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("invited_by_user_id");
+
+                    b.Property<long>("InvitedUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("invited_user_id");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.HasKey("GroupInvitationId")
+                        .HasName("group_invitations_pkey");
+
+                    b.HasIndex("InvitedByUserId")
+                        .HasDatabaseName("ix_group_invitations_invited_by_user_id");
+
+                    b.HasIndex("InvitedUserId")
+                        .HasDatabaseName("ix_group_invitations_invited_user_id");
+
+                    b.HasIndex("GroupId", "InvitedUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_group_invitations_pending")
+                        .HasFilter("status = 1");
+
+                    b.HasIndex("GroupId", "Status")
+                        .HasDatabaseName("ix_group_invitations_group_id_status");
+
+                    b.ToTable("group_invitations", (string)null);
+                });
+
             modelBuilder.Entity("Finami.Domain.Models.GroupMember", b =>
                 {
                     b.Property<long>("GroupMemberId")
@@ -312,6 +369,68 @@ namespace Finami.Infra.Migrations
                         .HasDatabaseName("ix_ledger_entries_account_occurred");
 
                     b.ToTable("ledger_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.Notification", b =>
+                {
+                    b.Property<long>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("notification_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("NotificationId"));
+
+                    b.Property<long?>("ActorUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<long?>("GroupId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_id");
+
+                    b.Property<long?>("GroupInvitationId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_invitation_id");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("NotificationId")
+                        .HasName("notifications_pkey");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("ix_notifications_actor_user_id");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_notifications_group_id");
+
+                    b.HasIndex("GroupInvitationId")
+                        .HasDatabaseName("ix_notifications_group_invitation_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_notifications_unread")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex("UserId", "NotificationId")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_notifications_user_id_notification_id");
+
+                    b.ToTable("notifications", (string)null);
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.Transaction", b =>
@@ -485,6 +604,27 @@ namespace Finami.Infra.Migrations
                         .HasConstraintName("fk_user_group");
                 });
 
+            modelBuilder.Entity("Finami.Domain.Models.GroupInvitation", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .IsRequired()
+                        .HasConstraintName("fk_group_group_invitation");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .IsRequired()
+                        .HasConstraintName("fk_user_group_invitation_inviter");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("InvitedUserId")
+                        .IsRequired()
+                        .HasConstraintName("fk_user_group_invitation_invited");
+                });
+
             modelBuilder.Entity("Finami.Domain.Models.GroupMember", b =>
                 {
                     b.HasOne("Finami.Domain.Models.Group", null)
@@ -515,6 +655,36 @@ namespace Finami.Infra.Migrations
                         .HasConstraintName("fk_transaction_ledger_entry");
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.Notification", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .HasConstraintName("fk_user_notification_actor");
+
+                    b.HasOne("Finami.Domain.Models.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .HasConstraintName("fk_group_notification");
+
+                    b.HasOne("Finami.Domain.Models.GroupInvitation", "Invitation")
+                        .WithMany()
+                        .HasForeignKey("GroupInvitationId")
+                        .HasConstraintName("fk_group_invitation_notification");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .IsRequired()
+                        .HasConstraintName("fk_user_notification");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Invitation");
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.Transaction", b =>

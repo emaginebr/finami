@@ -12,13 +12,25 @@ export interface SelectRowProps {
   options: SelectOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** Id do texto de erro/ajuda (`aria-describedby`) */
+  describedBy?: string;
+  /** Marca o campo como inválido (`aria-invalid`) */
+  invalid?: boolean;
 }
 
 /**
  * Linha de lista com seleção nativa (`<select>` com `<label>`): no iPhone abre o seletor do
  * sistema, acessível por teclado e leitor de tela.
  */
-export const SelectRow = ({ label, value, options, onChange, disabled = false }: SelectRowProps) => {
+export const SelectRow = ({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false,
+  describedBy,
+  invalid = false,
+}: SelectRowProps) => {
   const id = useId();
   return (
     <div className="list-row relative flex min-h-row w-full items-center gap-3 px-4 py-2 focus-within:bg-surface-3">
@@ -29,6 +41,8 @@ export const SelectRow = ({ label, value, options, onChange, disabled = false }:
         id={id}
         value={value}
         disabled={disabled}
+        aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
         onChange={(event) => onChange(event.target.value)}
         className="max-w-[60%] appearance-none truncate rounded-md bg-transparent py-2 pr-7 pl-2 text-right text-body text-text-muted disabled:text-text-disabled"
       >

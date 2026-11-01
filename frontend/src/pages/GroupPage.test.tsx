@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import GroupPage from "./GroupPage";
 import { DetailLevel } from "../types/balance";
 import type { GroupBalancesResult, MemberBalanceInfo } from "../types/balance";
@@ -132,6 +133,52 @@ describe("GroupPage", () => {
     expect(screen.getByRole("link", { name: /^Carlos Souza.*R\$\s300,00/ })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Carteiras da família" })).not.toBeInTheDocument();
     expect(screen.queryByText("Mesada")).not.toBeInTheDocument();
+  });
+
+  it("membro comum não vê \"Adicionar membro\" nem convites pendentes", async () => {
+    renderGroup(DetailLevel.Full);
+
+    expect(await screen.findByRole("region", { name: "Membros" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Adicionar membro" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Convites pendentes" })).not.toBeInTheDocument();
+  });
+
+  it("responsável vê \"Adicionar membro\" na seção Membros e os convites pendentes", async () => {
+    storeSession();
+    const owned = { ...GROUP, isResponsible: true, responsibleUserId: USER_ID };
+    mockFetch({
+      "GET /api/groups/3": { body: owned },
+      "GET /api/groups/3/balances": { body: { ...balances(DetailLevel.Full), isResponsible: true } },
+      "GET /api/groups/3/invitations": {
+        body: [
+          {
+            invitationId: 12,
+            groupId: 3,
+            groupName: "Silva",
+            invitedUser: { userId: 9, firstName: "Bruno", lastName: "Lima" },
+            invitedBy: { userId: USER_ID, firstName: "Ana", lastName: "Silva" },
+            status: "Pending",
+            createdAt: "2026-10-30T15:00:00Z",
+            respondedAt: null,
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<GroupPage />, {
+      path: "/familias/:groupId",
+      initialEntries: ["/familias/3"],
+    });
+
+    const members = await screen.findByRole("region", { name: "Membros" });
+    const add = within(members).getByRole("button", { name: "Adicionar membro" });
+    expect(add).toHaveAttribute("aria-haspopup", "dialog");
+    const pending = await screen.findByRole("region", { name: "Convites pendentes" });
+    expect(within(pending).getByText("Bruno Lima")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+
+    await user.click(add);
+    expect(await screen.findByRole("dialog", { name: "Adicionar membro" })).toBeInTheDocument();
   });
 
   it("Hidden: sem valores, sem links e com a explicação", async () => {

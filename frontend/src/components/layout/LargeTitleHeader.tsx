@@ -16,6 +16,11 @@ export interface LargeTitleHeaderProps {
   actions?: ReactNode;
   /** Elemento à esquerda do título (ex.: avatar na tela do membro) */
   leading?: ReactNode;
+  /**
+   * Elemento à direita do `<h1>`, na mesma linha (ex.: sino de notificações nas abas).
+   * Não cria a linha de navegação de 44 px — components.md §1 (feature 003).
+   */
+  titleAccessory?: ReactNode;
 }
 
 /** Cabeçalho com título grande estilo iOS (components.md §1) */
@@ -27,6 +32,7 @@ export const LargeTitleHeader = ({
   backLabel,
   actions,
   leading,
+  titleAccessory,
 }: LargeTitleHeaderProps) => {
   const { t } = useTranslation();
   const label = backLabel ?? t("nav.back");
@@ -58,15 +64,18 @@ export const LargeTitleHeader = ({
       ) : null}
       <div className={leading ? "mt-1 flex items-center gap-4" : undefined}>
         {leading}
-        <div className="min-w-0">
-          {/* Nomes muito longos: até 3 linhas, nome completo no `title` (REVIEW F-4) */}
-          <h1
-            title={title}
-            className="m-0 mt-1 line-clamp-3 font-display text-large-title break-words hyphens-auto"
-          >
-            {title}
-          </h1>
-          {subtitle ? <p className="m-0 mt-1 text-subhead text-text-muted">{subtitle}</p> : null}
+        <div className={titleAccessory ? "flex min-w-0 flex-1 items-start gap-2" : "min-w-0"}>
+          <div className={titleAccessory ? "min-w-0 flex-1" : undefined}>
+            {/* Nomes muito longos: até 3 linhas, nome completo no `title` (REVIEW F-4) */}
+            <h1
+              title={title}
+              className="m-0 mt-1 line-clamp-3 font-display text-large-title break-words hyphens-auto"
+            >
+              {title}
+            </h1>
+            {subtitle ? <p className="m-0 mt-1 text-subhead text-text-muted">{subtitle}</p> : null}
+          </div>
+          {titleAccessory ? <div className="mt-1 shrink-0">{titleAccessory}</div> : null}
         </div>
       </div>
     </header>

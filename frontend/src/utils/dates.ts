@@ -218,6 +218,38 @@ export const formatLongDate = (now: Date = new Date()): string => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: SAO_PAULO_TIME_ZONE,
+  day: "numeric",
+  month: "short",
+});
+
+/** "30 de out." no fuso de São Paulo (convites e notificações) */
+export const formatShortDate = (value: string | Date): string => {
+  const date = parseApiDate(value);
+  return date ? SHORT_DATE_FORMAT.format(date) : "";
+};
+
+/** Dia de um instante em relação a hoje (fuso de São Paulo) */
+export enum RelativeDay {
+  Today = "today",
+  Yesterday = "yesterday",
+  Other = "other",
+}
+
+/** Hoje, ontem ou outro dia, no fuso de São Paulo */
+export const relativeDayOf = (value: string | Date, now: Date = new Date()): RelativeDay => {
+  const target = parseIsoDate(dayKeyOf(value));
+  const today = parseIsoDate(todayInSaoPaulo(now));
+  if (target === null || today === null) return RelativeDay.Other;
+  if (target === today) return RelativeDay.Today;
+  if (target === today - 1) return RelativeDay.Yesterday;
+  return RelativeDay.Other;
+};
+
+/** Instante em ISO 8601 com fuso (para `<time dateTime>`); vazio se inválido */
+export const toIsoInstant = (value: string | Date): string => parseApiDate(value)?.toISOString() ?? "";
+
 /** `dd/MM/yyyy HH:mm` no fuso de São Paulo */
 export const formatDateTime = (value: string | Date): string => {
   const date = parseApiDate(value);

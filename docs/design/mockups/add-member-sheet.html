@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Adicionar membro — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Adicionar membro <span class="muted" style="font-weight:400">· AddMemberSheet · /familias/:groupId · T001 · US1/US2</span></h1>
+    <p>Máquina de estados de <code>data-model.md</code>: <code>email → (lookup) → available → newPersonForm → submitting → done</code> · <code>registered → inviteConfirm → submitting → done</code> · <code>alreadyMember</code> · <code>pendingInvite</code> · <code>email → "Adicionar sem email" → newPersonForm</code> · erro do servidor no próprio passo, com dados preservados. Aberta pelo botão "Adicionar membro" da seção Membros (só responsável). Título fixo "Adicionar membro" (<code>Dialog.Title</code>); cada passo tem um <code>h3</code> com <code>tabindex="-1"</code> que recebe o foco ao trocar de passo, para o leitor de tela anunciar o resultado. No máximo 3 passos até criar (SC-002). Textos de resultado e toasts: <code>contracts/ui.md</code>.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">1 · email</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="s-email" data-tab="wallets"></div>
+      <figcaption><b>email.</b> Foco inicial no campo (<code>type="email"</code>, <code>inputmode="email"</code>, <code>autocomplete="email"</code>, sem autocapitalizar). "Continuar" sempre habilitado: a validação acontece ao enviar (Enter também envia). Atalho "Adicionar sem email" abaixo do divisor "ou" (linha de 60 px, FR-002). "Cancelar" fecha.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-email-err" data-tab="wallets"></div>
+      <figcaption><b>Formato inválido (US1-7).</b> Borda <code>negative</code> + ícone + texto ligados por <code>aria-describedby</code>, <code>aria-invalid="true"</code>; o foco volta ao campo e o fluxo não avança.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-checking" data-tab="wallets"></div>
+      <figcaption><b>Verificando (lookup).</b> Botão em loading "Verificando…" (bloqueia duplo toque), campo e atalho desabilitados. O email vai normalizado (trim + minúsculas) — <code>" Ana@Exemplo.com "</code> = <code>ana@exemplo.com</code> (US1-6).</figcaption></figure>
+  </div>
+
+  <h2 class="group">2 · resultado do lookup</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="s-available" data-tab="wallets"></div>
+      <figcaption><b>Available → newPersonForm.</b> Email mostrado somente leitura (ícone <code>Mail</code>), "Voltar" retorna ao email para corrigir. Nome e sobrenome obrigatórios (até 120). "Adicionar à família" cria e inclui numa chamada só.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-registered" data-tab="wallets"></div>
+      <figcaption><b>Registered → inviteConfirm (US1-4).</b> Só nome e sobrenome da pessoa (FR-008) — o email exibido é o que a própria responsável digitou. Texto do contrato + aviso de que ela só entra depois de aceitar. Única ação: "Convidar para a família" — <b>não há</b> como cadastrar outra pessoa com o mesmo email (FR-004).</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-already" data-tab="wallets"></div>
+      <figcaption><b>AlreadyMember (US1-8).</b> Aviso <code>role="status"</code> com <code>UserCheck</code>, sem convite. Também vale para o email da própria responsável. "Usar outro email" volta ao passo 1 com o campo selecionado.</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="s-pending" data-tab="wallets"></div>
+      <figcaption><b>PendingInvite (US2-3).</b> Avatar tracejado (pendente), aviso amarelo com <code>Clock</code> + texto do contrato. "Cancelar convite" (<code>ghost destructive</code>, 44 px) abre o ConfirmModal ao lado; ao confirmar, volta ao passo 1 com toast "Convite cancelado.".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-pending-confirm" data-tab="wallets"></div>
+      <figcaption><b>Confirmação do cancelamento (FR-014).</b> ConfirmModal destrutivo sobre a folha; foco inicial em "Manter convite".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-noemail" data-tab="wallets"></div>
+      <figcaption><b>"Adicionar sem email" → newPersonForm (FR-006).</b> Mesmo formulário, sem a linha de email; texto explica que a pessoa não entra no app. "Voltar" retorna ao passo 1.</figcaption></figure>
+  </div>
+
+  <h2 class="group">3 · envio, erro e resultado</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="s-sending" data-tab="wallets"></div>
+      <figcaption><b>submitting.</b> "Enviando convite…" com spinner; "Voltar" desabilitado; folha com <code>dismissible=false</code> (Esc e scrim ignorados até responder) — FR-025.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-error" data-tab="wallets"></div>
+      <figcaption><b>Erro do servidor.</b> Faixa <code>role="alert"</code> no topo do passo; nome e sobrenome preservados; o botão volta ao normal para tentar de novo. 409 de email (corrida, research R-02) não usa esta faixa: o fluxo refaz o lookup e cai em <i>Registered</i>.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-done-created" data-tab="wallets"></div>
+      <figcaption><b>done · criado.</b> Folha fechada, toast do contrato e Pedro já em Membros (lista recarregada). O foco volta ao botão "Adicionar membro".</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="s-done-invited" data-tab="wallets"></div>
+      <figcaption><b>done · convite enviado.</b> Toast "Convite enviado para Marina Costa." e a pessoa aparece em "Convites pendentes" (não em Membros — FR-012).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="s-email" data-tab="wallets" data-bell="2"></div></div>
+      <figcaption><b>≥ 768 px · email.</b> A folha vira modal central de 480 px (sem alça), mesmo conteúdo e mesma ordem.</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="s-registered" data-tab="wallets" data-bell="2"></div></div>
+      <figcaption><b>≥ 768 px · Registered.</b> Botão principal no rodapé da modal, largura total da modal.</figcaption></figure>
+  </div>
+</div>
+
+<template id="s-email">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-email-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="s-email-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <p class="step-lead" id="ae-lead">Comece pelo email. Se a pessoa já tiver conta no Finami, você envia um convite.</p>
+        <div class="field"><label for="ae">Email</label><input id="ae" class="input focus" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="pedro@exemplo.com" placeholder="pessoa@exemplo.com" aria-describedby="ae-lead"></div>
+        <div class="divider" aria-hidden="true">ou</div>
+        <div class="list"><button class="row r2 has-icon action" type="button"><span class="wicon sm"><i data-i="user-plus" data-s="18"></i></span><span class="row-main"><span class="row-title">Adicionar sem email</span><span class="row-sub">Para quem não vai usar o app</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" type="submit">Continuar</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-email-err">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-email-err-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="s-email-err-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <p class="step-lead" id="ae-lead">Comece pelo email. Se a pessoa já tiver conta no Finami, você envia um convite.</p>
+        <div class="field"><label for="ae">Email</label><input id="ae" class="input invalid" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="pedro@exemplo" placeholder="pessoa@exemplo.com" aria-invalid="true" aria-describedby="ae-err"><span class="err" id="ae-err"><i data-i="circle-alert" data-s="16"></i>Informe um email válido.</span></div>
+        <div class="divider" aria-hidden="true">ou</div>
+        <div class="list"><button class="row r2 has-icon action" type="button"><span class="wicon sm"><i data-i="user-plus" data-s="18"></i></span><span class="row-main"><span class="row-title">Adicionar sem email</span><span class="row-sub">Para quem não vai usar o app</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" type="submit">Continuar</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-checking">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-checking-t" aria-busy="true">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="s-checking-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <p class="step-lead" id="ae-lead">Comece pelo email. Se a pessoa já tiver conta no Finami, você envia um convite.</p>
+        <div class="field"><label for="ae">Email</label><input id="ae" class="input " type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value=" Ana@Exemplo.com " placeholder="pessoa@exemplo.com" aria-describedby="ae-lead" disabled></div>
+        <div class="divider" aria-hidden="true">ou</div>
+        <div class="list" style="opacity:.6"><button class="row r2 has-icon action" type="button"><span class="wicon sm"><i data-i="user-plus" data-s="18"></i></span><span class="row-main"><span class="row-title">Adicionar sem email</span><span class="row-sub">Para quem não vai usar o app</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" aria-busy="true" aria-disabled="true"><i data-i="loader" class="spin"></i>Verificando…</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-available">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-available-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="s-available-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <h3 class="step-title" tabindex="-1">Nova pessoa</h3>
+        <p class="step-lead">Esse email ainda não tem conta. A pessoa será cadastrada com ele e já entra na família Silva.</p>
+        <div class="field"><span class="lbl" id="ro-l">Email</span><div class="input readonly input-icon" aria-labelledby="ro-l"><i data-i="mail" data-s="18"></i><span>pedro@exemplo.com</span></div></div>
+        <div class="field" style="margin-top:16px"><label for="fn">Nome</label><input id="fn" class="input focus" autocomplete="off" value="Pedro"></div>
+        <div class="field"><label for="ln">Sobrenome</label><input id="ln" class="input" autocomplete="off" value="Almeida"></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" type="submit">Adicionar à família</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-noemail">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-noemail-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="s-noemail-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <h3 class="step-title" tabindex="-1">Nova pessoa sem email</h3>
+        <p class="step-lead">A pessoa não vai entrar no app. Você poderá criar carteiras para ela, e ela aparece em "Pessoas que cadastrei".</p>
+        <div class="field" style="margin-top:16px"><label for="fn">Nome</label><input id="fn" class="input focus" autocomplete="off" value="Rafael"></div>
+        <div class="field"><label for="ln">Sobrenome</label><input id="ln" class="input" autocomplete="off" value="Silva"></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" type="submit">Adicionar à família</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-registered">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-registered-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="s-registered-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <h3 class="step-title" tabindex="-1">Pessoa encontrada</h3>
+        <div class="person-card"><span class="avatar neutral" aria-hidden="true">MC</span><span class="row-main"><span class="row-title">Marina Costa</span><span class="row-sub">Já tem conta no Finami</span></span></div>
+        <p class="step-lead" style="color:var(--color-text);font-size:var(--text-body);line-height:1.4">Esse email já pertence a Marina Costa. Você pode enviar um convite para a família.</p>
+        <div class="banner info"><i data-i="info" data-s="18"></i><span>A pessoa só entra na família depois de aceitar. O convite aparece nas notificações do app.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" type="button"><i data-i="send" data-s="18"></i>Convidar para a família</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-already">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-already-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="s-already-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <h3 class="step-title" tabindex="-1">Já faz parte</h3>
+        <div class="person-card"><span class="avatar neutral" aria-hidden="true">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span><span class="row-sub">Membro da família Silva</span></span></div>
+        <div class="banner info" role="status"><i data-i="user-check" data-s="18"></i><span>Carlos Souza já é membro desta família.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn secondary block" type="button">Usar outro email</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-pending">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-pending-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="s-pending-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <h3 class="step-title" tabindex="-1">Convite já enviado</h3>
+        <div class="person-card"><span class="avatar pending" aria-hidden="true">BL</span><span class="row-main"><span class="row-title">Bruno Lima</span><span class="row-sub">Enviado em 30 de out.</span></span></div>
+        <div class="banner warn" role="status"><i data-i="clock" data-s="18"></i><span>Já existe um convite pendente para Bruno Lima.</span></div>
+        <button class="btn ghost destructive" type="button" style="margin-top:8px;padding:0 4px"><i data-i="x" data-s="18"></i>Cancelar convite</button>
+      </div>
+      <div class="sheet-foot"><button class="btn secondary block" type="button">Usar outro email</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-sending">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-sending-t" aria-busy="true">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span class="back l" style="color:var(--color-text-disabled)"><i data-i="chevron-left" data-s="24"></i>Voltar</span><h2 class="title" id="s-sending-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <h3 class="step-title" tabindex="-1">Pessoa encontrada</h3>
+        <div class="person-card"><span class="avatar neutral" aria-hidden="true">MC</span><span class="row-main"><span class="row-title">Marina Costa</span><span class="row-sub">Já tem conta no Finami</span></span></div>
+        <p class="step-lead" style="color:var(--color-text);font-size:var(--text-body);line-height:1.4">Esse email já pertence a Marina Costa. Você pode enviar um convite para a família.</p>
+        <div class="banner info"><i data-i="info" data-s="18"></i><span>A pessoa só entra na família depois de aceitar. O convite aparece nas notificações do app.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" aria-busy="true" aria-disabled="true"><i data-i="loader" class="spin"></i>Enviando convite…</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-error">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="s-error-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="s-error-t">Adicionar membro</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="banner err" role="alert" style="margin:8px 0 16px"><i data-i="wifi-off" data-s="18"></i><span><b>Não foi possível conectar</b>Verifique a internet e tente de novo. Os dados foram mantidos.</span></div>
+        <h3 class="step-title" tabindex="-1">Nova pessoa</h3>
+        <div class="field"><span class="lbl" id="ro-l">Email</span><div class="input readonly input-icon" aria-labelledby="ro-l"><i data-i="mail" data-s="18"></i><span>pedro@exemplo.com</span></div></div>
+        <div class="field" style="margin-top:16px"><label for="fn">Nome</label><input id="fn" class="input " autocomplete="off" value="Pedro"></div>
+        <div class="field"><label for="ln">Sobrenome</label><input id="ln" class="input" autocomplete="off" value="Almeida"></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" type="submit">Adicionar à família</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-pending-confirm">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle">4 membros · todos veem os extratos</p>
+  <section class="hero"><p class="label">Total da família</p><p class="value"><span class="cur">R$</span>11.670,15</p></section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="pc1" aria-describedby="pc2">
+      <h2 id="pc1"><i data-i="triangle-alert" data-s="22" style="color:var(--color-negative)"></i>Cancelar o convite de Bruno Lima?</h2>
+      <p id="pc2">Bruno Lima não poderá mais aceitar o convite para a família Silva. Você pode convidar de novo depois.</p>
+      <div class="actions"><button class="btn destructive block">Cancelar convite</button><button class="btn secondary block is-focus">Manter convite</button></div>
+    </div>
+  </div>
+</template>
+<template id="s-done-created">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a><div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle" style="margin-bottom:8px">3 membros · todos veem os extratos</p>
+  <section class="section">
+    <div class="section-head"><h2>Membros</h2><button class="head-action" type="button"><i data-i="user-plus" data-s="18"></i>Adicionar membro</button></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="avatar fam-1">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span></span><span class="row-end"><span class="amount num">R$ 3.150,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="avatar fam-2">PA</span><span class="row-main"><span class="row-title">Pedro Almeida</span><span class="row-sub">sem carteiras</span></span><span class="row-end"><span class="amount num">R$ 0,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Pedro Almeida foi adicionado(a) à família.</span></div></div>
+</template>
+<template id="s-done-invited">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a><div class="right"><span class="icon-btn"><i data-i="pencil"></i></span></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle" style="margin-bottom:8px">2 membros · todos veem os extratos</p>
+  <section class="section">
+    <div class="section-head"><h2>Membros</h2><button class="head-action" type="button"><i data-i="user-plus" data-s="18"></i>Adicionar membro</button></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="avatar fam-1">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span></span><span class="row-end"><span class="amount num">R$ 3.150,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      
+    </div>
+  </section>
+  <section class="section">
+    <div class="section-head"><h2>Convites pendentes</h2></div>
+    <ul class="list notif-list">
+      <li class="row r2 has-icon static"><span class="avatar pending" aria-hidden="true">MC</span><span class="row-main"><span class="row-title">Marina Costa</span><span class="row-sub">Enviado em 1 de nov.</span></span><button class="btn ghost destructive sm" type="button" aria-label="Cancelar convite de Marina Costa">Cancelar</button></li>
+    </ul>
+    <p class="list-foot">Quem foi convidado só entra na família depois de aceitar o convite.</p>
+  </section>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="send" data-s="20"></i><span>Convite enviado para Marina Costa.</span></div></div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

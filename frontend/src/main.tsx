@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
-import "./i18n";
+import i18n from "./i18n";
 import "./index.css";
 import App from "./App.tsx";
 import { AuthProvider } from "./Contexts/AuthContext.tsx";
@@ -13,12 +13,15 @@ import { TransactionProvider } from "./Contexts/TransactionContext.tsx";
 import { StatementProvider } from "./Contexts/StatementContext.tsx";
 import { BalanceProvider } from "./Contexts/BalanceContext.tsx";
 import { UiProvider } from "./Contexts/UiContext.tsx";
+import { InvitationProvider } from "./Contexts/InvitationContext.tsx";
+import { NotificationProvider } from "./Contexts/NotificationContext.tsx";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Elemento #root não encontrado em index.html");
 
 // Ordem dos providers: data-model §10 (UiProvider por último).
 // TransactionProvider depende do WalletProvider (refreshWallets após gravar).
+// Invitation/Notification (feature 003) ficam dentro do GroupProvider.
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider>
@@ -29,10 +32,21 @@ createRoot(rootElement).render(
               <TransactionProvider>
                 <StatementProvider>
                   <BalanceProvider>
-                    <UiProvider>
-                      <App />
-                      <Toaster theme="dark" position="top-center" richColors closeButton />
-                    </UiProvider>
+                    <InvitationProvider>
+                      <NotificationProvider>
+                        <UiProvider>
+                          <App />
+                          {/* Região `aria-live="polite"` do sonner com rótulo em português (T041) */}
+                          <Toaster
+                            theme="dark"
+                            position="top-center"
+                            richColors
+                            closeButton
+                            containerAriaLabel={i18n.t("app.toasts")}
+                          />
+                        </UiProvider>
+                      </NotificationProvider>
+                    </InvitationProvider>
                   </BalanceProvider>
                 </StatementProvider>
               </TransactionProvider>

@@ -1,6 +1,7 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Outlet, matchPath, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../../hooks/useNotification";
 import { useUi } from "../../hooks/useUi";
 import { cn } from "../../utils/cn";
 import { TransactionSheet } from "../transaction/TransactionSheet";
@@ -44,6 +45,12 @@ export const AppShell = () => {
     setTransactionSheetOpen,
   } = useUi();
   const fab = fabTargetFor(location.pathname);
+  const { refreshUnreadIfStale } = useNotification();
+
+  // Contador do sino atualizado a cada troca de tela (no máximo 1 vez a cada 10 s — R-06)
+  useEffect(() => {
+    refreshUnreadIfStale();
+  }, [location.pathname, refreshUnreadIfStale]);
 
   return (
     <div className="min-h-dvh">

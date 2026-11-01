@@ -19,7 +19,22 @@ Direção visual: **Noite Roxa** (iOS Dark Grouped tingido com a marca). Apenas 
 | [`mockups/wallets.html`](./mockups/wallets.html), [`group-manage.html`](./mockups/group-manage.html) | Aba Carteiras e formulários de carteira/família/membros | T064 |
 | [`mockups/group.html`](./mockups/group.html), [`member.html`](./mockups/member.html) | Saldo por membro (Full/Summary/Hidden) e tela do membro | T080 |
 | [`mockups/account.html`](./mockups/account.html) | Aba Conta estilo Ajustes | T087 |
+| [`REVIEW-003.md`](./REVIEW-003.md) | Revisão das telas da feature 003 no homolog (320/390/1440 px) — 0 altos, 2 médios, 6 baixos | T040 |
 | [`REVIEW.md`](./REVIEW.md) | Revisão das telas implementadas × mockups (320/390/768/1440 px), ajustes por severidade para o T092 | T091 |
+
+## Feature `003-family-member-invites` — convites e notificações
+
+| Artefato | Propósito | Tarefa |
+|---|---|---|
+| [`mockups/add-member-sheet.html`](./mockups/add-member-sheet.html) | Folha "Adicionar membro": email, inválido, verificando, Available → nova pessoa, sem email, Registered → convidar, AlreadyMember, PendingInvite (+ cancelar), enviando, erro do servidor, resultados (390 e 1440 px) | T001 |
+| [`mockups/notifications.html`](./mockups/notifications.html) | Tela `/notificacoes`: convite pendente com Aceitar/Recusar, aceitando, aceito, indisponível (409), estados finais, aceito/recusado para o responsável, "Carregar mais", vazio, carregando, erro (390 e 1440 px) | T002 |
+| [`components.md` §7](./components.md#7-convites-e-notificações-feature-003) | `NotificationBell` (posição, selo 1–9/"9+", foco, `aria-label`), `NotificationItem`, `AddMemberSheet`, `SectionHeaderAction`, `PendingInvitesSection`, variantes novas de Badge/Avatar; ajustes em Sidebar, LargeTitleHeader (`titleAccessory`) e MemberManager | T002 |
+| [`mockups/group.html`](./mockups/group.html) | "Adicionar membro" no cabeçalho de Membros, "Convites pendentes", ConfirmModal de cancelamento, foco | T003 |
+| [`mockups/home.html`](./mockups/home.html), [`wallets.html`](./mockups/wallets.html), [`account.html`](./mockups/account.html) | Sino no título das abas (celular) e no topo da Sidebar (desktop), com 0, 1, 2 e "9+" | T003 |
+| [`mockups/group-manage.html`](./mockups/group-manage.html) | "Gerenciar família" sem a inclusão de membros (research R-08) | T003 |
+
+Nenhum token novo: todas as combinações usam cores já validadas na tabela de contraste de
+`tokens.css`.
 
 ## Como ver os mockups
 
@@ -30,7 +45,8 @@ container queries (`@container app (min-width: 768px)`), reproduzindo o breakpoi
 Arquivos de apoio (não são parte do app):
 - `mockups/tokens-root.css` — cópia `:root` do `@theme` de `tokens.css` (gerada; não editar à mão).
 - `mockups/mockup.css` — estilos dos componentes nos mockups (referência visual das classes Tailwind).
-- `mockups/mockup.js` — monta a casca (Sidebar/TabBar/FAB) e injeta os ícones lucide.
+- `mockups/mockup.js` — monta a casca (Sidebar/TabBar/FAB), injeta os ícones lucide e o sino
+  (`data-bell="N"` = não lidas, `data-bell-active` = rota `/notificacoes`, `data-user="BL|Bruno Lima"`).
 
 ## Observações para a implementação
 

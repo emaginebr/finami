@@ -25,6 +25,26 @@ export enum BadgeVariant {
   Internal = "internal",
   Responsible = "responsible",
   Inactive = "inactive",
+  /** Estado final do convite (feature 003) */
+  InviteAccepted = "inviteAccepted",
+  InviteDeclined = "inviteDeclined",
+  InviteCanceled = "inviteCanceled",
+}
+
+export enum AvatarVariant {
+  /** Cor de apoio por posição na família */
+  Family = "family",
+  /** Pessoa encontrada / sem índice de família */
+  Neutral = "neutral",
+  /** Convite pendente (borda tracejada) */
+  Pending = "pending",
+}
+
+export enum NotificationBellVariant {
+  /** Linha do título grande nas abas (celular) */
+  Header = "header",
+  /** Topo da Sidebar (desktop) */
+  Sidebar = "sidebar",
 }
 
 export enum BannerTone {

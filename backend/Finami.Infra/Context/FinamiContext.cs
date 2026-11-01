@@ -7,6 +7,9 @@ namespace Finami.Infra.Context;
 
 public class FinamiContext : DbContext
 {
+    /// <summary>Índice único parcial de convites pendentes; a violação vira 409 (research R-04).</summary>
+    public const string GROUP_INVITATIONS_PENDING_INDEX = "ix_group_invitations_pending";
+
     public FinamiContext(DbContextOptions<FinamiContext> options) : base(options)
     {
     }
@@ -18,6 +21,8 @@ public class FinamiContext : DbContext
     public DbSet<BtcQuote> BtcQuotes => Set<BtcQuote>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -39,6 +44,74 @@ public class FinamiContext : DbContext
         ConfigureLedgerEntries(modelBuilder);
         ConfigureBtcQuotes(modelBuilder);
         ConfigureGroups(modelBuilder);
+        ConfigureGroupInvitations(modelBuilder);
+        ConfigureNotifications(modelBuilder);
+    }
+
+    private static void ConfigureGroupInvitations(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<GroupInvitation>(entity =>
+        {
+            entity.ToTable("group_invitations");
+            entity.HasKey(e => e.GroupInvitationId).HasName("group_invitations_pkey");
+            entity.Property(e => e.GroupInvitationId).HasColumnName("group_invitation_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.GroupId).HasColumnName("group_id");
+            entity.Property(e => e.InvitedUserId).HasColumnName("invited_user_id");
+            entity.Property(e => e.InvitedByUserId).HasColumnName("invited_by_user_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>()
+                .HasDefaultValue(GroupInvitationStatus.Pending).HasSentinel((GroupInvitationStatus)0);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Ignore(e => e.IsPending);
+
+            entity.HasOne<Group>().WithMany().HasForeignKey(e => e.GroupId)
+                .HasConstraintName("fk_group_group_invitation").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.InvitedUserId)
+                .HasConstraintName("fk_user_group_invitation_invited").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.InvitedByUserId)
+                .HasConstraintName("fk_user_group_invitation_inviter").OnDelete(DeleteBehavior.ClientSetNull);
+
+            // FR-010: no máximo um convite pendente por pessoa e família.
+            entity.HasIndex(e => new { e.GroupId, e.InvitedUserId }).IsUnique()
+                .HasFilter("status = 1").HasDatabaseName(GROUP_INVITATIONS_PENDING_INDEX);
+            entity.HasIndex(e => e.InvitedUserId).HasDatabaseName("ix_group_invitations_invited_user_id");
+            entity.HasIndex(e => e.InvitedByUserId).HasDatabaseName("ix_group_invitations_invited_by_user_id");
+            entity.HasIndex(e => new { e.GroupId, e.Status }).HasDatabaseName("ix_group_invitations_group_id_status");
+        });
+    }
+
+    private static void ConfigureNotifications(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(e => e.NotificationId).HasName("notifications_pkey");
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id").UseIdentityByDefaultColumn();
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>();
+            entity.Property(e => e.GroupId).HasColumnName("group_id");
+            entity.Property(e => e.GroupInvitationId).HasColumnName("group_invitation_id");
+            entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            entity.Property(e => e.ReadAt).HasColumnName("read_at");
+            entity.Ignore(e => e.IsRead);
+
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId)
+                .HasConstraintName("fk_user_notification").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId)
+                .HasConstraintName("fk_group_notification").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(e => e.Invitation).WithMany().HasForeignKey(e => e.GroupInvitationId)
+                .HasConstraintName("fk_group_invitation_notification").OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(e => e.Actor).WithMany().HasForeignKey(e => e.ActorUserId)
+                .HasConstraintName("fk_user_notification_actor").OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasIndex(e => new { e.UserId, e.NotificationId }).IsDescending(false, true)
+                .HasDatabaseName("ix_notifications_user_id_notification_id");
+            entity.HasIndex(e => e.UserId).HasFilter("read_at IS NULL").HasDatabaseName("ix_notifications_unread");
+            entity.HasIndex(e => e.GroupId).HasDatabaseName("ix_notifications_group_id");
+            entity.HasIndex(e => e.GroupInvitationId).HasDatabaseName("ix_notifications_group_invitation_id");
+            entity.HasIndex(e => e.ActorUserId).HasDatabaseName("ix_notifications_actor_user_id");
+        });
     }
 
     private static void ConfigureGroups(ModelBuilder modelBuilder)

@@ -96,7 +96,8 @@ export const Sheet = forwardRef<HTMLDivElement, SheetProps>(
               aria-hidden="true"
               className="mx-auto mt-2 h-[5px] w-9 shrink-0 rounded-pill bg-border/60 md:hidden"
             />
-            <div className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2">
+            {/* `gap-2` + título menor abaixo de 360 px separam "Cancelar"/"Voltar" do título (REVIEW-003 B-1) */}
+            <div className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2">
               <div className="justify-self-start">
                 {leading ?? (
                   <DialogPrimitive.Close asChild>
@@ -110,7 +111,7 @@ export const Sheet = forwardRef<HTMLDivElement, SheetProps>(
                   </DialogPrimitive.Close>
                 )}
               </div>
-              <DialogPrimitive.Title className="m-0 text-center text-headline">
+              <DialogPrimitive.Title className="m-0 text-center text-callout font-semibold min-[360px]:text-headline">
                 {title}
               </DialogPrimitive.Title>
               <div className="justify-self-end">{trailing}</div>

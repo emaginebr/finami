@@ -11,13 +11,14 @@
   <header>
     <h1>Carteiras <span class="muted" style="font-weight:400">· /carteiras · T064 · US4</span></h1>
     <p>Famílias da pessoa (selo "Responsável" quando é ela), depois todas as carteiras que ela controla agrupadas como na Home, e a seção "Inativas" recolhida (FR-024). Ações "Nova carteira" e "Nova família" logo abaixo do título — sempre visíveis, alvos de 44 px. Formulários em <a href="group-manage.html" style="color:#c9f59a">group-manage.html</a>.</p>
+    <p><b>Feature 003 (T003):</b> <code>NotificationBell</code> à direita do título grande (celular) e no topo da Sidebar, ao lado da logo (desktop). Selo com o número de não lidas (1–9; acima de 9, "9+"); sem não lidas, só o sino. Toque abre <a href="notifications.html" style="color:#c9f59a">/notificacoes</a>. Especificação em <code>components.md §7</code>.</p>
     <nav data-pages></nav>
   </header>
 
   <h2 class="group">Celular · 390 px</h2>
   <div class="stage">
-    <figure class="shot"><div class="device phone" data-screen="w" data-tab="wallets" data-fab></div>
-      <figcaption><b>Padrão.</b> Linha da família leva a <code>/familias/:id</code>. "Inativas (2)" é um botão com <code>aria-expanded="false"</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="w" data-tab="wallets" data-fab data-bell="1"></div>
+      <figcaption><b>Padrão · 1 não lida.</b> Sino à direita de "Carteiras" (<code>aria-label="Notificações, 1 não lida"</code>). Linha da família leva a <code>/familias/:id</code>. "Inativas (2)" é um botão com <code>aria-expanded="false"</code>.</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="w-open" data-tab="wallets" data-fab></div>
       <figcaption><b>Inativas expandidas.</b> Esmaecidas <b>e</b> com selo "inativa" (não depende só da opacidade); o extrato continua acessível.</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="w-nofam" data-tab="wallets" data-fab></div>
@@ -26,7 +27,7 @@
 
   <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
   <div class="stage">
-    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="w" data-tab="wallets" data-fab></div></div>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="w" data-tab="wallets" data-fab data-bell="1"></div></div>
       <figcaption><b>≥ 768 px.</b> Sidebar com "Carteiras" ativa; mesma coluna de 720 px.</figcaption></figure>
   </div>
 </div>

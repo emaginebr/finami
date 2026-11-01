@@ -4,6 +4,8 @@ using Finami.Domain.Interfaces;
 using Finami.Domain.Models;
 using Finami.Domain.Validators;
 using Finami.DTO.Groups;
+using Finami.DTO.Invitations;
+using Finami.DTO.Users;
 using Finami.Infra.Interfaces.Repository;
 using FluentValidation;
 
@@ -14,24 +16,36 @@ public class GroupService : IGroupService
     private readonly IGroupRepository<Group> _groupRepository;
     private readonly IUserRepository<User> _userRepository;
     private readonly IAccountRepository<Account> _accountRepository;
+    private readonly IGroupInvitationRepository<GroupInvitation> _invitationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IValidator<GroupInsertInfo> _insertValidator;
     private readonly IValidator<GroupUpdateInfo> _updateValidator;
+    private readonly IValidator<MemberLookupInfo> _lookupValidator;
+    private readonly IValidator<NewMemberInfo> _newMemberValidator;
+
+    public const string INVITATION_REQUIRED_MESSAGE = "Essa pessoa precisa ser convidada e aceitar o convite.";
+    public const string EMAIL_IN_USE_MESSAGE = "Este email já está em uso.";
 
     public GroupService(
         IGroupRepository<Group> groupRepository,
         IUserRepository<User> userRepository,
         IAccountRepository<Account> accountRepository,
+        IGroupInvitationRepository<GroupInvitation> invitationRepository,
         IUnitOfWork unitOfWork,
         IValidator<GroupInsertInfo> insertValidator,
-        IValidator<GroupUpdateInfo> updateValidator)
+        IValidator<GroupUpdateInfo> updateValidator,
+        IValidator<MemberLookupInfo> lookupValidator,
+        IValidator<NewMemberInfo> newMemberValidator)
     {
         _groupRepository = groupRepository;
         _userRepository = userRepository;
         _accountRepository = accountRepository;
+        _invitationRepository = invitationRepository;
         _unitOfWork = unitOfWork;
         _insertValidator = insertValidator;
         _updateValidator = updateValidator;
+        _lookupValidator = lookupValidator;
+        _newMemberValidator = newMemberValidator;
     }
 
     public async Task<GroupInfo> CreateAsync(long userId, GroupInsertInfo info)
@@ -81,12 +95,83 @@ public class GroupService : IGroupService
     {
         var group = await LoadAsync(groupId);
         group.EnsureResponsible(userId);
-        _ = await _userRepository.GetByIdAsync(info.UserId)
+        var target = await _userRepository.GetByIdAsync(info.UserId)
             ?? throw new NotFoundException("Usuário não encontrado.");
         if (group.IsMember(info.UserId))
             throw new ConflictException("O usuário já é membro do grupo.");
+        // Feature 003 (research R-03): só entra direto quem foi cadastrado pelo responsável;
+        // quem tem conta própria precisa aceitar um convite (FR-012).
+        if (target.CreatedByUserId != userId)
+            throw new BusinessRuleException(INVITATION_REQUIRED_MESSAGE);
 
         await _groupRepository.AddMemberAsync(groupId, info.UserId);
+        return await GetAsync(userId, groupId);
+    }
+
+    public async Task<MemberLookupResult> LookupMemberAsync(long userId, long groupId, MemberLookupInfo info)
+    {
+        await _lookupValidator.ValidateOrThrowAsync(info);
+        var group = await LoadAsync(groupId);
+        group.EnsureResponsible(userId);
+
+        var email = User.NormalizeEmail(info.Email)!;
+        var result = new MemberLookupResult { Email = email, Status = nameof(MemberLookupStatus.Available) };
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+            return result;
+
+        // FR-008: devolve só nome e sobrenome do dono do email.
+        result.User = new UserSummaryInfo { UserId = user.UserId, FirstName = user.FirstName, LastName = user.LastName };
+        if (group.IsMember(user.UserId))
+        {
+            result.Status = nameof(MemberLookupStatus.AlreadyMember);
+            return result;
+        }
+
+        var pending = await _invitationRepository.GetPendingAsync(groupId, user.UserId);
+        if (pending != null)
+        {
+            result.Status = nameof(MemberLookupStatus.PendingInvite);
+            result.InvitationId = pending.GroupInvitationId;
+            return result;
+        }
+
+        result.Status = nameof(MemberLookupStatus.Registered);
+        return result;
+    }
+
+    public async Task<GroupInfo> CreateMemberAsync(long userId, long groupId, NewMemberInfo info)
+    {
+        await _newMemberValidator.ValidateOrThrowAsync(info);
+        var group = await LoadAsync(groupId);
+        group.EnsureResponsible(userId);
+
+        var email = User.NormalizeEmail(info.Email);
+        // FR-004: email único; a corrida é coberta pelo índice ix_users_email (tratado abaixo).
+        if (email != null && await _userRepository.ExistsEmailAsync(email))
+            throw new ConflictException(EMAIL_IN_USE_MESSAGE);
+
+        var user = new User { CreatedByUserId = userId };
+        user.UpdateName(info.FirstName, info.LastName);
+        user.SetEmail(email);
+        user.UpdatedAt = null;
+
+        // research R-02: criar a pessoa e incluí-la são atômicos.
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _userRepository.InsertAsync(user);
+            await _groupRepository.AddMemberAsync(groupId, user.UserId);
+            await _unitOfWork.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackAsync();
+            if (UniqueViolation.Is(ex, UniqueViolation.USERS_EMAIL_INDEX))
+                throw new ConflictException(EMAIL_IN_USE_MESSAGE);
+            throw;
+        }
+
         return await GetAsync(userId, groupId);
     }
 

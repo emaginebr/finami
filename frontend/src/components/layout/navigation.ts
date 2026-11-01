@@ -23,6 +23,9 @@ export const NAV_ITEMS: NavItem[] = [
   { tab: AppTab.Account, to: "/conta", labelKey: "nav.account", icon: CircleUser },
 ];
 
+/** Rota da área de notificações (feature 003) */
+export const NOTIFICATIONS_PATH = "/notificacoes";
+
 /** Estado de navegação usado entre telas (`location.state`) */
 export interface NavState {
   /** Aba de origem de uma tela "push" (mantém a aba destacada) */
@@ -57,6 +60,8 @@ export const activeTabFor = (pathname: string, state: unknown): AppTab | null =>
   if (pathname === "/") return AppTab.Home;
   if (pathname.startsWith("/conta")) return AppTab.Account;
   if (pathname === "/carteiras") return AppTab.Wallets;
+  // Notificações mantêm a aba de onde o sino foi tocado (components.md §7)
+  if (pathname === NOTIFICATIONS_PATH) return origin ?? AppTab.Home;
   if (
     pathname.startsWith("/carteiras/") ||
     pathname.startsWith("/familias/") ||

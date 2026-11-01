@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { GroupForm } from "../components/group/GroupForm";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
+import { NotificationBell } from "../components/notification/NotificationBell";
+import { NotificationBellVariant } from "../components/ui/variants";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -147,7 +149,10 @@ const WalletsPage = () => {
 
   return (
     <>
-      <LargeTitleHeader title={t("nav.wallets")} />
+      <LargeTitleHeader
+        title={t("nav.wallets")}
+        titleAccessory={<NotificationBell variant={NotificationBellVariant.Header} className="md:hidden" />}
+      />
 
       <div className="mt-3 mb-1 flex flex-wrap gap-3">
         <Button variant="secondary" size="sm" icon={<Plus className="size-5" strokeWidth={1.75} />} onClick={openWalletSheet}>

@@ -9,6 +9,8 @@
 @groupId = 1
 @pedroId = 2
 @transactionId = 1
+@invitationId = 1
+@guestToken = cole-o-token-do-convidado
 
 ### 1. Cadastro (US1)
 POST {{baseUrl}}/api/auth/register
@@ -46,7 +48,7 @@ Content-Type: application/json
 
 { "name": "Família Silva" }
 
-### 3. Incluir membro
+### 3. Incluir membro — só pessoas cadastradas por você; outras → 422 (use o convite, seção 16)
 POST {{baseUrl}}/api/groups/{{groupId}}/members
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -179,3 +181,55 @@ Authorization: Bearer {{token}}
 ### 15. Minhas carteiras nas famílias (lista vazia se não houver grupos)
 GET {{baseUrl}}/api/users/1/group-balances
 Authorization: Bearer {{token}}
+
+### 16. Adicionar membro: verificar o email (feature 003) — Available | Registered | AlreadyMember | PendingInvite
+POST {{baseUrl}}/api/groups/{{groupId}}/member-lookup
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "email": " Bruno@Exemplo.com " }
+
+### 16. Cadastrar pessoa nova e incluir na família (email opcional; email já usado → 409)
+POST {{baseUrl}}/api/groups/{{groupId}}/members/new
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "firstName": "Lia", "lastName": "Silva", "email": null }
+
+### 16. Convidar pessoa cadastrada (já membro ou convite pendente → 409; email inexistente → 404)
+POST {{baseUrl}}/api/groups/{{groupId}}/invitations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "email": "bruno@exemplo.com" }
+
+### 16. Convites pendentes da família (status: Pending | Accepted | Declined | Canceled)
+GET {{baseUrl}}/api/groups/{{groupId}}/invitations?status=Pending
+Authorization: Bearer {{token}}
+
+### 16. Cancelar convite pendente (não pendente → 409)
+DELETE {{baseUrl}}/api/groups/{{groupId}}/invitations/{{invitationId}}
+Authorization: Bearer {{token}}
+
+### 16. Convidado aceita (repetir → 409 "Este convite não está mais disponível.")
+POST {{baseUrl}}/api/invitations/{{invitationId}}/accept
+Authorization: Bearer {{guestToken}}
+
+### 16. Convidado recusa
+POST {{baseUrl}}/api/invitations/{{invitationId}}/decline
+Authorization: Bearer {{guestToken}}
+
+### 17. Notificações (mais recentes primeiro; próxima página com beforeId = nextBeforeId)
+GET {{baseUrl}}/api/notifications?limit=20
+Authorization: Bearer {{guestToken}}
+
+### 17. Contador de não lidas
+GET {{baseUrl}}/api/notifications/unread-count
+Authorization: Bearer {{guestToken}}
+
+### 17. Marcar como lidas (1–100 ids; ids de outras pessoas são ignorados) → 204
+POST {{baseUrl}}/api/notifications/read
+Authorization: Bearer {{guestToken}}
+Content-Type: application/json
+
+{ "notificationIds": [1] }

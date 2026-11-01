@@ -13,5 +13,7 @@ export default defineConfig({
     setupFiles: "./src/test/setup.ts",
     globals: true,
     css: false,
+    // Testes de página com axe passam de 5 s quando a suíte inteira roda em paralelo
+    testTimeout: 15000,
   },
 });

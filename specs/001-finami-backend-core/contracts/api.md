@@ -19,7 +19,7 @@ monetários como número decimal (string-safe: até 8 casas). `currency`: `"BRL"
 | 401 | não autenticado, token inválido/expirado, credenciais inválidas (mensagem genérica) |
 | 403 | sem permissão sobre o recurso |
 | 404 | recurso inexistente (ou invisível para o usuário) |
-| 409 | conflito de unicidade (email já usado, transação já estornada, membro duplicado) |
+| 409 | conflito de unicidade (email já usado, transação já estornada, membro duplicado, convite pendente duplicado, convite não mais disponível) |
 | 422 | regra de negócio (saldo insuficiente, carteira inativa, compra resulta em 0 BTC, responsável não pode sair) |
 | 503 | cotação indisponível/desatualizada para conversão |
 | 500 | erro inesperado (`StatusCode(500, ex.Message)` — Princípio VII) |
@@ -94,13 +94,19 @@ Response `200`: `UserInfo` do usuário autenticado.
 
 `statementVisibility`: `"ResponsibleOnly"` | `"AllMembers"` | `"MembersSummary"`.
 
+> **Feature 003** — adicionar membro, convites e notificações: `POST /api/groups/{groupId}/member-lookup`,
+> `POST /api/groups/{groupId}/members/new`, `POST`/`GET /api/groups/{groupId}/invitations`,
+> `DELETE /api/groups/{groupId}/invitations/{invitationId}`, `POST /api/invitations/{invitationId}/accept|decline`,
+> `GET /api/notifications`, `GET /api/notifications/unread-count` e `POST /api/notifications/read`.
+> Contrato completo em [003 contracts/api.md](../../003-family-member-invites/contracts/api.md).
+
 | Método | Rota | Descrição | Permissão |
 |---|---|---|---|
 | `POST` | `/api/groups` | `{ name }` → `201 GroupInfo`; chamador vira responsável e membro (FR-012/016) | autenticado |
 | `GET` | `/api/groups` | grupos em que o chamador é membro/responsável (FR-017) | autenticado |
 | `GET` | `/api/groups/{id}` | `GroupInfo` | membro |
 | `PUT` | `/api/groups/{id}` | `{ name?, statementVisibility? }` (FR-013, FR-035a) | responsável |
-| `POST` | `/api/groups/{id}/members` | `{ userId }` → `201`; 409 se já membro | responsável |
+| `POST` | `/api/groups/{id}/members` | `{ userId }` → `201`; 409 se já membro; **desde a feature 003** só inclui pessoas cadastradas pelo responsável (`createdByUserId`), outras → 422 "Essa pessoa precisa ser convidada e aceitar o convite." | responsável |
 | `DELETE` | `/api/groups/{id}/members/{userId}` | retira membro e desvincula as carteiras dele (FR-019d); 422 se for o responsável | responsável |
 | `GET` | `/api/groups/{groupId}/balances` | saldo por membro → `GroupBalancesResult` (FR-029; feature 002). Só carteiras ativas do grupo; `detailLevel` `Full` (responsável ou `AllMembers`), `Summary` (`MembersSummary`, sem carteiras) ou `Hidden` (`ResponsibleOnly`, valores `null`). Membros: responsável primeiro, depois por nome. BTC estimado em BRL truncado em 2 casas; cotação desatualizada aceita (`quote.isStale`); sem cotação → `btcExcluded`. Ver [api-additions.md §2](../../002-finami-frontend-mobile/contracts/api-additions.md) | membro; não membro → 404 |
 

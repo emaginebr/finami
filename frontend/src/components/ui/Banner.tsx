@@ -18,13 +18,15 @@ export interface BannerProps {
   children?: ReactNode;
   /** `alert` para erros, `status` para avisos informativos */
   role?: "alert" | "status";
+  /** Ícone no lugar do padrão do tom (ex.: `UserCheck`, `Clock`) */
+  icon?: LucideIcon;
   className?: string;
 }
 
 /** Faixa de aviso com ícone + texto (nunca só cor) */
-export const Banner = ({ tone, title, children, role, className }: BannerProps) => {
+export const Banner = ({ tone, title, children, role, icon, className }: BannerProps) => {
   const style = TONES[tone as BannerTone];
-  const Icon = style.icon;
+  const Icon = icon ?? style.icon;
   return (
     <div
       role={role}

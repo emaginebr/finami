@@ -11,15 +11,16 @@
   <header>
     <h1>Home <span class="muted" style="font-weight:400">· / · T032 · US1</span></h1>
     <p>BalanceHero com o saldo total da pessoa (só carteiras de que ela é titular), cotação do bitcoin com horário, e as carteiras por família (A→Z) e depois "Avulsas". "Mesada do Pedro" aparece na seção Silva com o titular, mas não entra no total (Assumptions). Fixtures: Praia R$ 2.350,00 + Silva R$ 8.420,15 + Nubank R$ 1.234,56 + ₿ 0,00250000 × R$ 512.340,00 = R$ 1.280,85 → <b>R$ 13.285,56</b>.</p>
+    <p><b>Feature 003 (T003):</b> <code>NotificationBell</code> à direita do título grande (celular) e no topo da Sidebar, ao lado da logo (desktop). Selo com o número de não lidas (1–9; acima de 9, "9+"); sem não lidas, só o sino. Toque abre <a href="notifications.html" style="color:#c9f59a">/notificacoes</a>. Especificação em <code>components.md §7</code>.</p>
     <nav data-pages></nav>
   </header>
 
   <h2 class="group">Celular · 390 px</h2>
   <div class="stage">
-    <figure class="shot"><div class="device phone" data-screen="home" data-tab="home" data-fab></div>
-      <figcaption><b>Padrão.</b> Cabeçalho de seção da família é link para <code>/familias/:id</code> (ponto na cor de apoio por posição); "Avulsas" sem link. Valores nunca truncam — o nome trunca.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="home" data-tab="home" data-fab data-bell="2"></div>
+      <figcaption><b>Padrão · 2 não lidas.</b> Sino 44 px alinhado à primeira linha de "Olá, Ana", glifo rente à margem de 16 px; <code>aria-label="Notificações, 2 não lidas"</code>. Cabeçalho de seção da família é link para <code>/familias/:id</code> (ponto na cor de apoio por posição); "Avulsas" sem link. Valores nunca truncam — o nome trunca.</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="home-noquote" data-tab="home" data-fab></div>
-      <figcaption><b>Sem cotação (FR-012, US1-6).</b> Total só com reais (R$ 12.004,71) e aviso <code>role="status"</code>; a carteira BTC mostra "sem cotação" no lugar do ≈.</figcaption></figure>
+      <figcaption><b>Sem cotação (FR-012, US1-6) · sem não lidas.</b> Sino sem selo, <code>aria-label="Notificações"</code>. Total só com reais (R$ 12.004,71) e aviso <code>role="status"</code>; a carteira BTC mostra "sem cotação" no lugar do ≈.</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="home-loading" data-tab="home" data-fab></div>
       <figcaption><b>Carregando.</b> Skeletons no formato do hero e dos WalletCards; contêiner com <code>aria-busy</code> e "Carregando…" para leitor de tela. Shimmer desliga com movimento reduzido.</figcaption></figure>
   </div>
@@ -28,14 +29,14 @@
       <figcaption><b>Vazio (US1-7).</b> R$ 0,00 + convite para criar a primeira carteira.</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="home-error" data-tab="home" data-fab></div>
       <figcaption><b>Erro de rede/500.</b> ErrorState com "Tentar novamente" (<code>role="alert"</code>).</figcaption></figure>
-    <figure class="shot"><div class="device phone w320" data-screen="home-long" data-tab="home" data-fab></div>
-      <figcaption><b>320 px + cotação desatualizada.</b> R$ 1.234.567,89 cabe com <code>text-hero</code> fluido (31 px); selo "desatualizada" com ícone e texto; nomes longos truncam.</figcaption></figure>
+    <figure class="shot"><div class="device phone w320" data-screen="home-long" data-tab="home" data-fab data-bell="14"></div>
+      <figcaption><b>320 px + cotação desatualizada · 14 não lidas.</b> Selo "9+" (o <code>aria-label</code> diz "14 não lidas"); o título continua com a largura restante. R$ 1.234.567,89 cabe com <code>text-hero</code> fluido (31 px); selo "desatualizada" com ícone e texto; nomes longos truncam.</figcaption></figure>
   </div>
 
   <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
   <div class="stage">
-    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="home" data-tab="home" data-fab></div></div>
-      <figcaption><b>≥ 768 px.</b> Sidebar de 240 px com a logo e as 3 entradas (Home ativa em <code>brand-tint</code>); conteúdo em coluna de 720 px centralizada; FAB 16 px à direita da coluna.</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="home" data-tab="home" data-fab data-bell="2"></div></div>
+      <figcaption><b>≥ 768 px.</b> Sino no topo da Sidebar, à direita da logo (o sino do título some). Sidebar de 240 px com a logo e as 3 entradas (Home ativa em <code>brand-tint</code>); conteúdo em coluna de 720 px centralizada; FAB 16 px à direita da coluna.</figcaption></figure>
   </div>
 </div>
 
