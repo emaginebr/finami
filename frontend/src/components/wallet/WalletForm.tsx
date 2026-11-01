@@ -27,6 +27,12 @@ export interface WalletFormValues {
   ownerUserId: number | null;
 }
 
+/** Titular fixo (responsável criando para um membro na página da pessoa) */
+export interface WalletFormFixedOwner {
+  userId: number;
+  name: string;
+}
+
 export interface WalletFormProps {
   /** Id do `<form>` (o botão de enviar fica no rodapé da folha, com `form={formId}`) */
   formId: string;
@@ -40,7 +46,27 @@ export interface WalletFormProps {
   onSubmit: (values: WalletFormValues) => void;
   disabled?: boolean;
   serverError?: string | null;
+  /** Titular fixo: esconde o seletor de titular e mostra "Titular · {nome}" (só na criação) */
+  fixedOwner?: WalletFormFixedOwner | null;
+  /**
+   * Família obrigatória entre `groups` (sem a opção "Nenhuma"). Com uma família só, ela já
+   * vem selecionada.
+   */
+  requireGroup?: boolean;
 }
+
+/** Família inicial: a da carteira, a padrão ou — família obrigatória e única — a única */
+const initialGroupValue = (
+  wallet: WalletInfo | undefined,
+  groups: GroupInfo[],
+  defaultGroupId: number | null,
+  requireGroup: boolean,
+): string => {
+  if (wallet) return String(wallet.groupId ?? NO_GROUP);
+  if (defaultGroupId !== null) return String(defaultGroupId);
+  const only = requireGroup && groups.length === 1 ? groups[0] : undefined;
+  return only ? String(only.groupId) : NO_GROUP;
+};
 
 /**
  * Formulário de carteira (mockup group-manage.html): nome, descrição, moeda só na criação,
@@ -55,22 +81,27 @@ export const WalletForm = ({
   onSubmit,
   disabled = false,
   serverError,
+  fixedOwner = null,
+  requireGroup = false,
 }: WalletFormProps) => {
   const { t } = useTranslation();
   const currencyLabelId = useId();
+  const groupErrorId = useId();
   const isEdit = Boolean(wallet);
   const [name, setName] = useState(wallet?.name ?? "");
   const [description, setDescription] = useState(wallet?.description ?? "");
   const [currency, setCurrency] = useState<Currency>(wallet?.currency ?? Currency.BRL);
   const [isVirtual, setIsVirtual] = useState(wallet?.isVirtual ?? false);
-  const [groupValue, setGroupValue] = useState(
-    String(wallet ? (wallet.groupId ?? NO_GROUP) : (defaultGroupId ?? NO_GROUP)),
+  const [groupValue, setGroupValue] = useState(() =>
+    initialGroupValue(wallet, groups, defaultGroupId, requireGroup),
   );
   const [ownerValue, setOwnerValue] = useState(String(currentUserId ?? ""));
   const [nameError, setNameError] = useState<string | null>(null);
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   const selectedGroup = groups.find((g) => String(g.groupId) === groupValue) ?? null;
-  const canChooseOwner = !isEdit && selectedGroup !== null && selectedGroup.isResponsible;
+  const showFixedOwner = !isEdit && fixedOwner !== null;
+  const canChooseOwner = !isEdit && !showFixedOwner && selectedGroup !== null && selectedGroup.isResponsible;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -80,9 +111,11 @@ export const WalletForm = ({
       : trimmed.length > MAX_WALLET_NAME
         ? t("validation.maxLength", { max: MAX_WALLET_NAME })
         : null;
+    const missingGroup = requireGroup && !isEdit && groupValue === NO_GROUP ? t("wallets.form.familyRequired") : null;
     setNameError(error);
-    if (error) return;
-    const owner = canChooseOwner ? Number(ownerValue) : null;
+    setGroupError(missingGroup);
+    if (error || missingGroup) return;
+    const owner = showFixedOwner && fixedOwner ? fixedOwner.userId : canChooseOwner ? Number(ownerValue) : null;
     onSubmit({
       name: trimmed,
       description: description.trim() || null,
@@ -163,12 +196,27 @@ export const WalletForm = ({
             onChange={(value) => {
               setGroupValue(value);
               setOwnerValue(String(currentUserId ?? ""));
+              if (value !== NO_GROUP) setGroupError(null);
             }}
+            describedBy={groupError ? groupErrorId : undefined}
+            invalid={groupError !== null}
             options={[
-              { value: NO_GROUP, label: t("wallets.form.noFamily") },
+              // Família obrigatória: sem "Nenhuma"; o marcador "Escolha" só enquanto nada foi escolhido
+              ...(requireGroup && !isEdit
+                ? groupValue === NO_GROUP
+                  ? [{ value: NO_GROUP, label: t("wallets.form.chooseFamily") }]
+                  : []
+                : [{ value: NO_GROUP, label: t("wallets.form.noFamily") }]),
               ...groups.map((g) => ({ value: String(g.groupId), label: g.name })),
             ]}
           />
+          {showFixedOwner && fixedOwner ? (
+            <div className="list-row relative flex min-h-row w-full items-center gap-3 px-4 py-2">
+              <span className="flex-1 text-body">{t("wallets.form.owner")}</span>
+              <span className="sr-only">: </span>
+              <span className="max-w-[60%] truncate text-body text-text-muted">{fixedOwner.name}</span>
+            </div>
+          ) : null}
           {canChooseOwner && selectedGroup ? (
             <SelectRow
               label={t("wallets.form.owner")}
@@ -185,9 +233,19 @@ export const WalletForm = ({
             />
           ) : null}
         </div>
+        {groupError ? (
+          <p id={groupErrorId} role="alert" className="m-0 px-4 pt-2 text-footnote text-negative">
+            {groupError}
+          </p>
+        ) : null}
         {canChooseOwner && selectedGroup ? (
           <p className="m-0 px-4 pt-2 text-footnote text-text-muted">
             {t("wallets.form.ownerHint", { family: selectedGroup.name })}
+          </p>
+        ) : null}
+        {showFixedOwner && fixedOwner ? (
+          <p className="m-0 px-4 pt-2 text-footnote text-text-muted">
+            {t("wallets.form.fixedOwnerHint", { name: fixedOwner.name })}
           </p>
         ) : null}
       </div>
