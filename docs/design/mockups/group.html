@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Família — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Família <span class="muted" style="font-weight:400">· /familias/:groupId · T080 · US5</span></h1>
+    <p>Total da família e MemberRow por membro (avatar de iniciais na cor de apoio por posição, nome, selo "Responsável", total em BRL e detalhe BRL/BTC). O que aparece depende de <code>detailLevel</code> devolvido pela API: <b>Full</b> (valores + carteiras), <b>Summary</b> (valores por membro, sem carteiras) e <b>Hidden</b> (só a lista de pessoas + explicação, FR-031). O botão de gerenciar (lápis) só existe para o responsável.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="gf" data-tab="wallets"></div>
+      <figcaption><b>Full · Silva (Ana é responsável).</b> Total R$ 11.670,15 = 8.420,15 + 3.150,00 + 100,00 + 0,00. Lia sem carteira aparece com R$ 0,00 (US5-1). Abaixo, as carteiras da família com titular.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="gs" data-tab="wallets"></div>
+      <figcaption><b>Summary · Praia ("Membros veem só os totais").</b> Valores por membro, sem lista de carteiras; aviso informativo explica que os extratos de outras pessoas não abrem (US5-4).</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="gh" data-tab="wallets"></div>
+      <figcaption><b>Hidden · Avós ("Somente o responsável").</b> Sem total e sem valores; aviso com <code>EyeOff</code> explicando quem restringiu (US5-3). Linhas sem chevron e sem link. Não é ErrorState.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="gf" data-tab="wallets"></div></div>
+      <figcaption><b>≥ 768 px.</b> Mesmo conteúdo na coluna de 720 px, com as seções empilhadas para manter a leitura em lista.</figcaption></figure>
+  </div>
+</div>
+
+<template id="gf">
+  <div class="navbar"><a class="back" href="wallets.html" aria-label="Voltar para Carteiras"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><a class="icon-btn" href="group-manage.html" aria-label="Gerenciar família"><i data-i="pencil"></i></a></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle" style="margin-bottom:16px">4 membros · todos veem os extratos</p>
+  <section class="hero" aria-labelledby="gt1">
+    <p class="label" id="gt1">Total da família</p>
+    <p class="value"><span class="cur">R$</span>11.670,15</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+
+  <section class="section" aria-labelledby="gm">
+    <div class="section-head"><h2 id="gm">Membros</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="member.html" aria-label="Ana Silva, responsável, total R$ 8.420,15"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html" aria-label="Carlos Souza, total R$ 3.150,00: R$ 2.900,00 e 0,00048796 bitcoin"><span class="avatar fam-1">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span><span class="row-sub num">R$ 2.900,00 · ₿ 0,00048796</span></span><span class="row-end"><span class="amount num">R$ 3.150,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html" aria-label="Pedro Silva, total R$ 100,00"><span class="avatar fam-2">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span></span><span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html" aria-label="Lia Silva, total R$ 0,00, sem carteiras"><span class="avatar fam-3">LS</span><span class="row-main"><span class="row-title">Lia Silva</span><span class="row-sub">sem carteiras</span></span><span class="row-end"><span class="amount num">R$ 0,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="gw">
+    <div class="section-head"><h2 id="gw">Carteiras da família</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real · de Ana Silva</span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Salário Carlos</span><span class="row-sub">Real · de Carlos Souza</span></span><span class="row-end"><span class="amount num">R$ 2.900,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Cofrinho</span><span class="row-sub">Bitcoin · de Carlos Souza</span></span><span class="row-end"><span class="amount num">₿ 0,00048796</span><span class="sec num">≈ R$ 250,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Mesada do Pedro</span><span class="row-sub">Real · de Pedro Silva</span></span><span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<template id="gs">
+  <div class="navbar"><a class="back" href="wallets.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Praia</h1>
+  <p class="subtitle" style="margin-bottom:16px">3 membros · responsável: Carlos Souza</p>
+  <section class="hero" aria-labelledby="gt2">
+    <p class="label" id="gt2">Total da família</p>
+    <p class="value"><span class="cur">R$</span>3.550,00</p>
+  </section>
+  <div class="banner info" style="margin-top:16px"><i data-i="info" data-s="18"></i><span><b>Você vê só os totais</b>O responsável permite ver o saldo de cada pessoa, mas os extratos das carteiras dos outros membros não podem ser abertos.</span></div>
+  <section class="section" aria-labelledby="gm2">
+    <div class="section-head"><h2 id="gm2">Membros</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="member.html" aria-label="Carlos Souza, responsável, total R$ 600,00"><span class="avatar fam-0">CS</span><span class="row-main"><span class="row-title">Carlos Souza <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="row-end"><span class="amount num">R$ 600,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html" aria-label="Ana Silva, você, total R$ 2.350,00"><span class="avatar fam-1">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub">você</span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html" aria-label="Marta Souza, total R$ 600,00"><span class="avatar fam-2">MS</span><span class="row-main"><span class="row-title">Marta Souza</span></span><span class="row-end"><span class="amount num">R$ 600,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<template id="gh">
+  <div class="navbar"><a class="back" href="wallets.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Avós</h1>
+  <p class="subtitle" style="margin-bottom:16px">3 membros · responsável: Marta Souza</p>
+  <div class="banner info" role="note"><i data-i="eye-off" data-s="18"></i><span><b>Valores restritos</b>Marta Souza, a responsável, definiu que só ela vê os saldos e extratos desta família.</span></div>
+  <section class="section" aria-labelledby="gm3">
+    <div class="section-head"><h2 id="gm3">Membros</h2></div>
+    <div class="list">
+      <div class="row r2 has-icon static" aria-label="Marta Souza, responsável, valor oculto"><span class="avatar fam-0">MS</span><span class="row-main"><span class="row-title">Marta Souza <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="value-r subtle" aria-hidden="true">—</span></div>
+      <div class="row r2 has-icon static" aria-label="José Souza, valor oculto"><span class="avatar fam-1">JS</span><span class="row-main"><span class="row-title">José Souza</span></span><span class="value-r subtle" aria-hidden="true">—</span></div>
+      <div class="row r2 has-icon static" aria-label="Ana Silva, você"><span class="avatar fam-2">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub">você</span></span><span class="value-r subtle" aria-hidden="true">—</span></div>
+    </div>
+  </section>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

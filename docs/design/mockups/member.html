@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Membro — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Membro <span class="muted" style="font-weight:400">· /pessoas/:userId · T080 · US5</span></h1>
+    <p>Total do membro e carteiras agrupadas por família, só nas famílias que quem está vendo pode ver (FR-030). Família <b>Full</b>: lista as carteiras (abrem o extrato quando <code>canViewStatement</code>). Família <b>Summary</b>: só o total daquela família, sem carteiras. Famílias <b>Hidden</b> não aparecem.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="m" data-tab="wallets"></div>
+      <figcaption><b>Carlos visto por Ana.</b> Silva (Full) com 2 carteiras; Praia (Summary) só com o total. Total R$ 3.750,00 = 3.150,00 + 600,00.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="m-noquote" data-tab="wallets"></div>
+      <figcaption><b>Sem cotação (<code>btcExcluded</code>).</b> Total sem o bitcoin e aviso; a carteira BTC mostra "sem cotação". Carteira sem permissão de extrato: sem chevron e com cadeado + texto.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="m" data-tab="wallets"></div></div>
+      <figcaption><b>≥ 768 px.</b> Mesma estrutura na coluna de 720 px.</figcaption></figure>
+  </div>
+</div>
+
+<template id="m">
+  <div class="navbar"><a class="back" href="group.html" aria-label="Voltar para Silva"><i data-i="chevron-left" data-s="24"></i>Silva</a></div>
+  <div style="display:flex;align-items:center;gap:16px;margin:4px 0 16px"><span class="avatar lg fam-1" aria-hidden="true">CS</span><div><h1 class="large-title" style="margin:0">Carlos Souza</h1><p class="foot muted" style="margin:0">Membro de 2 famílias que você vê</p></div></div>
+  <section class="hero" aria-labelledby="mt">
+    <p class="label" id="mt">Saldo nas famílias</p>
+    <p class="value"><span class="cur">R$</span>3.750,00</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+
+  <section class="section" aria-labelledby="mf1">
+    <a class="section-head" href="group.html"><span class="dot fam-1"></span><h2 id="mf1">Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i><span class="aside num">R$ 3.150,00</span></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Salário Carlos</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 2.900,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Cofrinho</span><span class="row-sub">Bitcoin · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">₿ 0,00048796</span><span class="sec num">≈ R$ 250,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="mf2">
+    <a class="section-head" href="group.html"><span class="dot fam-0"></span><h2 id="mf2">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i><span class="aside num">R$ 600,00</span></a>
+    <div class="list"><div class="row r2 static has-icon"><span class="wicon sm rev"><i data-i="eye-off" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Só o total</span><span class="row-sub" style="white-space:normal">Nesta família você vê apenas o total de cada pessoa.</span></span><span class="row-end"><span class="amount num">R$ 600,00</span></span></div></div>
+  </section>
+</template>
+
+<template id="m-noquote">
+  <div class="navbar"><a class="back" href="group.html"><i data-i="chevron-left" data-s="24"></i>Silva</a></div>
+  <div style="display:flex;align-items:center;gap:16px;margin:4px 0 16px"><span class="avatar lg fam-1" aria-hidden="true">CS</span><div><h1 class="large-title" style="margin:0">Carlos Souza</h1><p class="foot muted" style="margin:0">Membro de 2 famílias que você vê</p></div></div>
+  <section class="hero" aria-labelledby="mt2">
+    <p class="label" id="mt2">Saldo nas famílias</p>
+    <p class="value"><span class="cur">R$</span>3.500,00</p>
+    <div class="banner warn" role="status"><i data-i="triangle-alert" data-s="18"></i><span><b>Cotação do bitcoin indisponível</b>As carteiras em bitcoin não entraram no total.</span></div>
+  </section>
+  <section class="section" aria-labelledby="mf3">
+    <a class="section-head" href="#"><span class="dot fam-1"></span><h2 id="mf3">Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i><span class="aside num">R$ 2.900,00</span></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Salário Carlos</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 2.900,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <div class="row r2 has-icon static"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Cofrinho</span><span class="row-sub"><i data-i="lock" data-s="12"></i> extrato restrito</span></span><span class="row-end"><span class="amount num">₿ 0,00048796</span><span class="sec">sem cotação</span></span></div>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="mf4">
+    <a class="section-head" href="#"><span class="dot fam-0"></span><h2 id="mf4">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i><span class="aside num">R$ 600,00</span></a>
+    <div class="list"><div class="row r2 static has-icon"><span class="wicon sm rev"><i data-i="eye-off" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Só o total</span><span class="row-sub" style="white-space:normal">Nesta família você vê apenas o total de cada pessoa.</span></span><span class="row-end"><span class="amount num">R$ 600,00</span></span></div></div>
+  </section>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

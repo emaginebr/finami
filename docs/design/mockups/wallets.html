@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Carteiras — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Carteiras <span class="muted" style="font-weight:400">· /carteiras · T064 · US4</span></h1>
+    <p>Famílias da pessoa (selo "Responsável" quando é ela), depois todas as carteiras que ela controla agrupadas como na Home, e a seção "Inativas" recolhida (FR-024). Ações "Nova carteira" e "Nova família" logo abaixo do título — sempre visíveis, alvos de 44 px. Formulários em <a href="group-manage.html" style="color:#c9f59a">group-manage.html</a>.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="w" data-tab="wallets" data-fab></div>
+      <figcaption><b>Padrão.</b> Linha da família leva a <code>/familias/:id</code>. "Inativas (2)" é um botão com <code>aria-expanded="false"</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="w-open" data-tab="wallets" data-fab></div>
+      <figcaption><b>Inativas expandidas.</b> Esmaecidas <b>e</b> com selo "inativa" (não depende só da opacidade); o extrato continua acessível.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="w-nofam" data-tab="wallets" data-fab></div>
+      <figcaption><b>Sem família.</b> Convite para criar a primeira família no lugar da lista; carteiras só em "Avulsas".</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="w" data-tab="wallets" data-fab></div></div>
+      <figcaption><b>≥ 768 px.</b> Sidebar com "Carteiras" ativa; mesma coluna de 720 px.</figcaption></figure>
+  </div>
+</div>
+
+<template id="w">
+  <h1 class="large-title" style="margin-top:12px">Carteiras</h1>
+  <div class="btn-row" style="margin:12px 0 4px"><a class="btn secondary sm" href="group-manage.html"><i data-i="plus"></i>Nova carteira</a><a class="btn secondary sm" href="group-manage.html"><i data-i="users"></i>Nova família</a></div>
+
+  <section class="section" aria-labelledby="fam">
+    <div class="section-head"><h2 id="fam">Famílias</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="group.html"><span class="wicon" style="background:var(--color-family-blue);color:var(--color-on-family)"><i data-i="users"></i></span><span class="row-main"><span class="row-title">Praia</span><span class="row-sub">3 membros · responsável: Carlos Souza</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="group.html"><span class="wicon" style="background:var(--color-family-pink);color:var(--color-on-family)"><i data-i="users"></i></span><span class="row-main"><span class="row-title">Silva</span><span class="row-sub">4 membros · <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="w1">
+    <div class="section-head"><span class="dot fam-0"></span><h2 id="w1">Praia</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="w2">
+    <div class="section-head"><span class="dot fam-1"></span><h2 id="w2">Silva</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Mesada do Pedro</span><span class="row-sub">Real · de Pedro Silva</span></span><span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="w3">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="w3">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="wallet-statement.html"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Reserva BTC</span><span class="row-sub">Bitcoin</span></span><span class="row-end"><span class="amount num">₿ 0,00250000</span><span class="sec num">≈ R$ 1.280,85</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section">
+    <div class="list"><button class="row has-icon" aria-expanded="false" aria-controls="inativas"><span class="wicon sm rev"><i data-i="archive" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Inativas (2)</span></span><i data-i="chevron-down" data-s="18" class="chev"></i></button></div>
+  </section>
+</template>
+
+<template id="w-open">
+  <h1 class="large-title" style="margin-top:12px">Carteiras</h1>
+  <div class="btn-row" style="margin:12px 0 4px"><a class="btn secondary sm" href="#"><i data-i="plus"></i>Nova carteira</a><a class="btn secondary sm" href="#"><i data-i="users"></i>Nova família</a></div>
+  <section class="section" aria-labelledby="w4">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="w4">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Reserva BTC</span><span class="row-sub">Bitcoin</span></span><span class="row-end"><span class="amount num">₿ 0,00250000</span><span class="sec num">≈ R$ 1.280,85</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section">
+    <div class="list">
+      <button class="row has-icon" aria-expanded="true" aria-controls="inativas2"><span class="wicon sm rev"><i data-i="archive" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Inativas (2)</span></span><i data-i="chevron-down" data-s="18" class="chev" style="transform:rotate(180deg)"></i></button>
+    </div>
+    <div class="list" id="inativas2" style="margin-top:8px">
+      <a class="row r2 has-icon inactive" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Poupança antiga</span><span class="row-sub">Real · <span class="badge neutral">inativa</span></span></span><span class="row-end"><span class="amount num">R$ 0,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon inactive" href="wallet-statement.html"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Viagem 2025</span><span class="row-sub">Real · Praia · <span class="badge neutral">inativa</span></span></span><span class="row-end"><span class="amount num">R$ 12,40</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<template id="w-nofam">
+  <h1 class="large-title" style="margin-top:12px">Carteiras</h1>
+  <div class="btn-row" style="margin:12px 0 4px"><a class="btn secondary sm" href="#"><i data-i="plus"></i>Nova carteira</a><a class="btn secondary sm" href="#"><i data-i="users"></i>Nova família</a></div>
+  <section class="section" aria-labelledby="fam2">
+    <div class="section-head"><h2 id="fam2">Famílias</h2></div>
+    <div class="card state" style="padding:28px 20px">
+      <span class="ic"><i data-i="users" data-s="32"></i></span>
+      <h3>Crie sua primeira família</h3>
+      <p>Junte as carteiras da casa e acompanhe o saldo de cada pessoa.</p>
+      <a class="btn primary sm" href="group-manage.html"><i data-i="plus"></i>Nova família</a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="w5">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="w5">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

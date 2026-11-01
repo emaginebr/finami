@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Gestão de carteiras e famílias — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Gestão de carteiras e famílias <span class="muted" style="font-weight:400">· WalletForm · GroupForm · MemberManager · VisibilityPicker · T064 · US4</span></h1>
+    <p>Todos os formulários abrem como Sheet (celular) / modal (desktop). "Nova carteira" e "Nova família" vêm de <code>/carteiras</code>; "Gerenciar família" vem do botão de editar em <code>/familias/:id</code> (só para o responsável); "Editar carteira" vem do lápis no extrato. Ações sem permissão <b>não são renderizadas</b> (FR-028).</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Criar</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="g-new-wallet" data-tab="wallets" data-fab></div>
+      <figcaption><b>Nova carteira (FR-025).</b> Moeda em SegmentedControl (só na criação), "Virtual" com Switch, família opcional e — porque Ana é responsável da Silva — titular entre os membros.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="g-new-family" data-tab="wallets" data-fab></div>
+      <figcaption><b>Nova família.</b> Só o nome; explica que a pessoa será a responsável e única integrante (US4-2).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Gerenciar família (responsável)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="g-manage" data-tab="wallets"></div>
+      <figcaption><b>MemberManager.</b> Renomear, membros com "Retirar" (<code>aria-label="Retirar Carlos Souza"</code>), incluir por email (busca exata) ou cadastrar pessoa sem login.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="g-visibility" data-tab="wallets"></div>
+      <figcaption><b>VisibilityPicker.</b> <code>role="radiogroup"</code> com as três opções e a explicação de cada uma. Salva ao confirmar.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="g-person" data-tab="wallets"></div>
+      <figcaption><b>Cadastrar pessoa sem login.</b> Nome e sobrenome obrigatórios; email opcional. Ao salvar, cria a pessoa e a inclui na família.</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="g-remove" data-tab="wallets"></div>
+      <figcaption><b>Retirar membro (US4-5).</b> ConfirmModal destrutivo avisando que as carteiras do membro deixarão de pertencer à família.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="g-member-view" data-tab="wallets"></div>
+      <figcaption><b>Quem não é responsável (US4-4).</b> Lista de membros sem "Retirar", sem "Incluir", sem renomear e sem visibilidade — e sem botão de gerenciar na tela da família. Só a opção de ver.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Editar carteira</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="g-edit-wallet" data-tab="home" data-fab></div>
+      <figcaption><b>Editar (FR-026).</b> Moeda somente leitura com cadeado; família vinculável; zona de perigo com Desativar e Excluir em rosa.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="g-delete-blocked" data-tab="home" data-fab></div>
+      <figcaption><b>Excluir com lançamentos (US4-6).</b> Modal explica que não é possível e oferece "Desativar carteira".</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="g-new-wallet" data-tab="wallets" data-fab></div></div>
+      <figcaption><b>≥ 768 px.</b> Sheet vira modal central de 480 px.</figcaption></figure>
+  </div>
+</div>
+
+<template id="g-new-wallet">
+  <h1 class="large-title" style="margin-top:12px">Carteiras</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="gw1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="gw1">Nova carteira</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="field"><label for="wn">Nome</label><input id="wn" class="input focus" value="Mesada da Lia"></div>
+        <div class="field"><label for="wd">Descrição <span class="subtle">(opcional)</span></label><input id="wd" class="input" placeholder="Para que serve esta carteira?"></div>
+        <div class="field"><span class="lbl" id="wcur">Moeda</span><div class="seg" role="radiogroup" aria-labelledby="wcur"><button role="radio" aria-checked="true">Real (R$)</button><button role="radio" aria-checked="false">Bitcoin (₿)</button></div><span class="hint">A moeda não pode ser alterada depois.</span></div>
+        <div class="list" style="margin-top:20px">
+          <div class="row static"><span class="row-main"><span class="row-title regular" id="wv">Carteira virtual</span><span class="row-sub">Dinheiro separado só no app, sem conta real</span></span><button class="switch" role="switch" aria-checked="false" aria-labelledby="wv"></button></div>
+          <button class="row" aria-haspopup="listbox"><span class="row-main"><span class="row-title regular">Família</span></span><span class="value-r">Silva</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+          <button class="row" aria-haspopup="listbox"><span class="row-main"><span class="row-title regular">Titular</span></span><span class="value-r">Lia Silva</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+        </div>
+        <p class="list-foot">Como responsável da família Silva, você pode criar carteiras para os membros.</p>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Criar carteira</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="g-new-family">
+  <h1 class="large-title" style="margin-top:12px">Carteiras</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gf1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="gf1">Nova família</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="field"><label for="fnm">Nome da família</label><input id="fnm" class="input focus" value="Silva"></div>
+        <div class="banner info" style="margin-top:16px"><i data-i="crown" data-s="18"></i><span>Você será a <b style="display:inline">responsável</b> e, por enquanto, a única integrante. Depois é só incluir as outras pessoas.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Criar família</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="g-manage">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="gm1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="gm1">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="list">
+          <button class="row"><span class="row-main"><span class="row-title regular">Nome</span></span><span class="value-r">Silva</span><i data-i="pencil" data-s="16" class="chev"></i></button>
+          <button class="row"><span class="row-main"><span class="row-title regular">Quem vê os extratos</span></span><span class="value-r foot">Todos os membros</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+        </div>
+        <div class="section-head" style="margin-top:12px"><h3 style="font:inherit;margin:0">Membros (4)</h3></div>
+        <div class="list">
+          <div class="row r2 has-icon static"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub"><span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span> · você</span></span></div>
+          <div class="row r2 has-icon static"><span class="avatar fam-1">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span><span class="row-sub">carlos@exemplo.com</span></span><button class="btn ghost destructive sm" aria-label="Retirar Carlos Souza">Retirar</button></div>
+          <div class="row r2 has-icon static"><span class="avatar fam-2">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span><span class="row-sub">sem login</span></span><button class="btn ghost destructive sm" aria-label="Retirar Pedro Silva">Retirar</button></div>
+          <div class="row r2 has-icon static"><span class="avatar fam-3">LS</span><span class="row-main"><span class="row-title">Lia Silva</span><span class="row-sub">sem login</span></span><button class="btn ghost destructive sm" aria-label="Retirar Lia Silva">Retirar</button></div>
+        </div>
+        <div class="section-head" style="margin-top:12px"><h3 style="font:inherit;margin:0">Incluir membro</h3></div>
+        <div class="card">
+          <div class="field"><label for="se">Email exato da pessoa</label><div style="display:flex;gap:8px"><input id="se" class="input" type="email" value="rafa@exemplo.com"><button class="btn secondary" aria-label="Buscar pessoa"><i data-i="search" data-s="18"></i></button></div></div>
+          <div class="row r2 has-icon static" style="padding:8px 0;margin-top:8px"><span class="avatar fam-0" style="width:36px;height:36px">RL</span><span class="row-main"><span class="row-title">Rafael Lima</span><span class="row-sub">Encontrado</span></span><button class="btn primary sm"><i data-i="user-plus" data-s="18"></i>Incluir</button></div>
+        </div>
+        <div class="list" style="margin-top:12px"><button class="row action has-icon"><span class="wicon sm" style="color:var(--color-accent)"><i data-i="user-plus" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Cadastrar pessoa sem login</span><span class="row-sub">Para crianças ou quem não usa o app</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="g-visibility">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="gv1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Família</button><h2 class="title" id="gv1">Quem vê os extratos</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="list" role="radiogroup" aria-labelledby="gv1">
+          <div class="row r2" role="radio" aria-checked="false" tabindex="-1" style="align-items:flex-start;padding:14px 16px"><span class="radio" style="margin-top:2px"></span><span class="row-main"><span class="row-title">Somente o responsável</span><span class="row-sub" style="white-space:normal">Só você vê saldos e extratos da família. Os membros veem apenas a lista de pessoas.</span></span></div>
+          <div class="row r2" role="radio" aria-checked="true" tabindex="0" style="align-items:flex-start;padding:14px 16px"><span class="radio on" style="margin-top:2px"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Todos os membros</span><span class="row-sub" style="white-space:normal">Todos veem os saldos e os extratos de todas as carteiras da família.</span></span></div>
+          <div class="row r2" role="radio" aria-checked="false" tabindex="-1" style="align-items:flex-start;padding:14px 16px"><span class="radio" style="margin-top:2px"></span><span class="row-main"><span class="row-title">Membros veem só os totais</span><span class="row-sub" style="white-space:normal">Todos veem o saldo de cada pessoa, mas só você abre os extratos.</span></span></div>
+        </div>
+        <p class="list-foot">Vale para todas as carteiras ligadas à família Silva. Você, como responsável, sempre vê tudo.</p>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Salvar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="g-person">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gp1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Família</button><h2 class="title" id="gp1">Pessoa sem login</h2><span></span></div>
+      <div class="sheet-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field"><label for="pn">Nome</label><input id="pn" class="input" value="Lia"></div>
+          <div class="field" style="margin-top:0"><label for="ps">Sobrenome</label><input id="ps" class="input" value="Silva"></div>
+        </div>
+        <div class="field"><label for="pe">Email <span class="subtle">(opcional)</span></label><input id="pe" class="input" type="email" placeholder="Se ela tiver um"></div>
+        <div class="banner info" style="margin-top:16px"><i data-i="info" data-s="18"></i><span>Lia não poderá entrar no app. Você poderá criar carteiras para ela e ela aparecerá em "Pessoas que cadastrei".</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Cadastrar e incluir</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="g-remove">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rm1" aria-describedby="rm1d">
+      <h2 id="rm1"><i data-i="triangle-alert" data-s="24" class="neg"></i>Retirar Carlos Souza?</h2>
+      <p id="rm1d">As carteiras de Carlos (<b style="color:var(--color-text)">Salário Carlos</b> e <b style="color:var(--color-text)">Cofrinho</b>) deixarão de pertencer à família Silva e não entrarão mais no total da família. Os saldos não mudam.</p>
+      <div class="actions"><button class="btn destructive block">Retirar</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="g-member-view">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Praia</h1>
+  <p class="subtitle">Responsável: Carlos Souza</p>
+  <div class="section-head"><h2 style="font:inherit;margin:0">Membros (3)</h2></div>
+  <div class="list">
+    <div class="row r2 has-icon static"><span class="avatar fam-0">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span><span class="row-sub"><span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span></div>
+    <div class="row r2 has-icon static"><span class="avatar fam-1">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub">você</span></span></div>
+    <div class="row r2 has-icon static"><span class="avatar fam-2">MS</span><span class="row-main"><span class="row-title">Marta Souza</span><span class="row-sub">membro</span></span></div>
+  </div>
+  <p class="list-foot">Só o responsável pode incluir ou retirar pessoas, renomear a família e definir quem vê os extratos.</p>
+</template>
+
+<template id="g-edit-wallet">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Nubank</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="ew1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="ew1">Editar carteira</h2><button class="back r" style="padding:0 8px;font-weight:600">Salvar</button></div>
+      <div class="sheet-body">
+        <div class="field"><label for="en">Nome</label><input id="en" class="input" value="Nubank"></div>
+        <div class="field"><label for="ed">Descrição <span class="subtle">(opcional)</span></label><input id="ed" class="input" value="Conta do dia a dia"></div>
+        <div class="field"><span class="lbl">Moeda</span><div class="input readonly"><i data-i="lock" data-s="16"></i>Real (R$) — não pode ser alterada</div></div>
+        <div class="list" style="margin-top:20px">
+          <div class="row static"><span class="row-main"><span class="row-title regular" id="ev">Carteira virtual</span></span><button class="switch" role="switch" aria-checked="false" aria-labelledby="ev"></button></div>
+          <button class="row" aria-haspopup="listbox"><span class="row-main"><span class="row-title regular">Família</span></span><span class="value-r">Nenhuma (avulsa)</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+        </div>
+        <div class="section-head" style="margin-top:12px"><h3 style="font:inherit;margin:0">Zona de perigo</h3></div>
+        <div class="list">
+          <button class="row destructive has-icon"><i data-i="power"></i><span class="row-main"><span class="row-title regular">Desativar carteira</span><span class="row-sub">Some da Home e dos lançamentos; o extrato continua acessível</span></span></button>
+          <button class="row destructive has-icon"><i data-i="trash-2"></i><span class="row-main"><span class="row-title regular">Excluir carteira</span><span class="row-sub">Só é possível se não houver lançamentos</span></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="g-delete-blocked">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Nubank</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="db1" aria-describedby="db1d">
+      <h2 id="db1"><i data-i="circle-alert" data-s="24" class="neg"></i>Não é possível excluir</h2>
+      <p id="db1d">A carteira Nubank tem lançamentos e por isso não pode ser excluída. Você pode desativá-la: ela sai da Home e dos lançamentos, mas o extrato continua disponível.</p>
+      <div class="actions"><button class="btn destructive block"><i data-i="power" data-s="18"></i>Desativar carteira</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

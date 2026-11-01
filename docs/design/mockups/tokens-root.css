@@ -1,0 +1,191 @@
+/* GERADO a partir de ../tokens.css (bloco @theme -> :root) para os mockups HTML.
+   Não editar à mão: altere tokens.css e regenere. */
+:root {
+  /* ---------------------------------------------------------------------------
+     Cores — primitivas da logo (não usar direto em componentes; use semânticas)
+     ------------------------------------------------------------------------- */
+  --color-logo-purple: #380159;
+  --color-logo-green: #6ae005;
+  --color-logo-green-bars: #59de14;
+  --color-logo-white: #f9f7f9;
+  --color-logo-blue: #02a7f4;
+  --color-logo-pink: #fd809b;
+  --color-logo-yellow: #ffd007;
+
+  /* ---------------------------------------------------------------------------
+     Superfícies (do mais fundo ao mais elevado)
+     ------------------------------------------------------------------------- */
+  --color-bg: #12021c; /* fundo do app, theme_color do manifest */
+  --color-surface: #1e0631; /* listas agrupadas, cartões, sidebar */
+  --color-surface-2: #2a0b44; /* campos, sheet, cartão elevado, segmented */
+  --color-surface-3: #381457; /* hover/pressed de linhas, skeleton realce */
+  --color-separator: #3a1a55; /* hairline entre linhas (decorativo) */
+  --color-border: #84679f; /* borda de campo / controle (≥ 3:1) */
+  --color-tabbar: rgb(26 4 43 / 0.82); /* barra inferior translúcida + blur */
+  --color-scrim: rgb(8 0 14 / 0.64); /* fundo atrás de sheet/modal */
+
+  /* ---------------------------------------------------------------------------
+     Texto
+     ------------------------------------------------------------------------- */
+  --color-text: #f9f7f9; /* principal (branco da logo) */
+  --color-text-muted: #bcaccc; /* secundário: legendas, rótulos de seção */
+  --color-text-subtle: #a08db3; /* terciário: placeholder, horário, "≈" */
+  --color-text-disabled: #7e6b92; /* só para controles desabilitados */
+
+  /* ---------------------------------------------------------------------------
+     Marca e ação
+     ------------------------------------------------------------------------- */
+  --color-brand: #380159; /* roxo da logo: hero, fundo do ícone */
+  --color-brand-tint: #4a0f73; /* item ativo da sidebar, segmento selecionado */
+  --color-accent: #6ae005; /* ação principal, FAB, aba ativa, links */
+  --color-accent-hover: #7dea25;
+  --color-accent-pressed: #58bc04;
+  --color-on-accent: #12021c; /* texto/ícone sobre accent */
+
+  /* ---------------------------------------------------------------------------
+     Semânticas (sempre acompanhadas de sinal, ícone ou texto — nunca só cor)
+     ------------------------------------------------------------------------- */
+  --color-positive: #6ae005; /* entradas, saldo positivo, sucesso */
+  --color-negative: #fd809b; /* saídas (com "−"), erro, destrutivo */
+  --color-warning: #ffd007; /* cotação desatualizada/indisponível */
+  --color-info: #3db8f5; /* dicas, selo "virtual", cotação */
+  --color-positive-soft: #1c3310;
+  --color-negative-soft: #3b1030;
+  --color-warning-soft: #33290a;
+  --color-info-soft: #0e2442;
+
+  /* ---------------------------------------------------------------------------
+     Famílias / membros (avatar de iniciais, marcador de seção)
+     Atribuição: pela posição na lista (índice % 4) → blue, pink, yellow, green.
+     ------------------------------------------------------------------------- */
+  --color-family-blue: #02a7f4;
+  --color-family-pink: #fd809b;
+  --color-family-yellow: #ffd007;
+  --color-family-green: #6ae005;
+  --color-on-family: #12021c;
+
+  /* ---------------------------------------------------------------------------
+     Foco visível (anel de 2 px + 2 px de afastamento na cor do fundo)
+     ------------------------------------------------------------------------- */
+  --color-focus: #5cc8ff;
+
+  /* ---------------------------------------------------------------------------
+     Tipografia — fontes do sistema (aparência nativa no iPhone, zero download)
+     ------------------------------------------------------------------------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Escala inspirada nos estilos dinâmicos do iOS (em rem para respeitar zoom 200 %) */
+  --text-hero: clamp(1.75rem, 0.75rem + 6vw, 2.75rem); /* saldo total: 31 px em 320, 44 px ≥ 550 */
+  --text-hero--line-height: 1.1;
+  --text-hero--letter-spacing: -0.02em;
+  --text-hero--font-weight: 700;
+
+  --text-large-title: 2.125rem; /* 34 px — título grande de cada tela */
+  --text-large-title--line-height: 2.5625rem;
+  --text-large-title--letter-spacing: 0.01em;
+  --text-large-title--font-weight: 700;
+
+  --text-title-2: 1.375rem; /* 22 px — totais do extrato, título de sheet */
+  --text-title-2--line-height: 1.75rem;
+  --text-title-2--font-weight: 700;
+
+  --text-title-3: 1.25rem; /* 20 px — título compacto do cabeçalho ao rolar */
+  --text-title-3--line-height: 1.5625rem;
+  --text-title-3--font-weight: 600;
+
+  --text-headline: 1.0625rem; /* 17 px semibold — nome da carteira, botões */
+  --text-headline--line-height: 1.375rem;
+  --text-headline--font-weight: 600;
+
+  --text-body: 1.0625rem; /* 17 px — texto padrão, campos (evita zoom no iOS) */
+  --text-body--line-height: 1.375rem;
+
+  --text-callout: 1rem; /* 16 px */
+  --text-callout--line-height: 1.3125rem;
+
+  --text-subhead: 0.9375rem; /* 15 px — saldo secundário, descrição */
+  --text-subhead--line-height: 1.25rem;
+
+  --text-footnote: 0.8125rem; /* 13 px — rótulo de seção (CAIXA ALTA), ajuda */
+  --text-footnote--line-height: 1.125rem;
+
+  --text-caption: 0.75rem; /* 12 px — selos, horário da cotação */
+  --text-caption--line-height: 1rem;
+
+  --text-tab: 0.6875rem; /* 11 px — rótulo das abas (mínimo do app) */
+  --text-tab--line-height: 0.8125rem;
+  --text-tab--font-weight: 600;
+
+  /* ---------------------------------------------------------------------------
+     Raios
+     ------------------------------------------------------------------------- */
+  --radius-xs: 0.375rem; /* 6 px — selos */
+  --radius-sm: 0.5rem; /* 8 px — segmentos internos */
+  --radius-md: 0.625rem; /* 10 px — campos, botões */
+  --radius-lg: 0.75rem; /* 12 px — listas agrupadas (inset grouped) */
+  --radius-card: 1.25rem; /* 20 px — BalanceHero, cartões de destaque */
+  --radius-sheet: 1.25rem; /* 20 px — cantos superiores da sheet */
+  --radius-icon: 22.37%; /* squircle aproximado do ícone iOS */
+  --radius-pill: 9999px;
+
+  /* ---------------------------------------------------------------------------
+     Espaçamentos e medidas fixas (base Tailwind --spacing = 0.25rem mantida)
+     ------------------------------------------------------------------------- */
+  --spacing-gutter: 1rem; /* 16 px — margem lateral no celular */
+  --spacing-gutter-lg: 1.5rem; /* 24 px — margem lateral ≥ 768 px */
+  --spacing-touch: 2.75rem; /* 44 px — alvo mínimo de toque */
+  --spacing-row: 2.75rem; /* 44 px — linha de lista de 1 linha (estilo Ajustes) */
+  --spacing-row-2: 3.75rem; /* 60 px — linha com título + subtítulo (WalletCard) */
+  --spacing-tabbar: 3.0625rem; /* 49 px — altura útil da TabBar (+ safe area) */
+  --spacing-fab: 3.5rem; /* 56 px — diâmetro do botão flutuante */
+  --spacing-sidebar: 15rem; /* 240 px — largura da Sidebar ≥ 768 px */
+  --spacing-header: 2.75rem; /* 44 px — barra de navegação compacta */
+
+  --container-content: 45rem; /* 720 px — largura máxima do conteúdo ≥ 768 px */
+  --container-sheet: 30rem; /* 480 px — sheet vira modal central no desktop */
+  --container-auth: 24rem; /* 384 px — cartão de login/cadastro */
+
+  /* ---------------------------------------------------------------------------
+     Sombras e elevação (no escuro a elevação vem mais da cor que da sombra)
+     ------------------------------------------------------------------------- */
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --shadow-fab: 0 8px 24px rgb(106 224 5 / 0.28), 0 2px 6px rgb(0 0 0 / 0.5);
+  --shadow-sheet: 0 -8px 40px rgb(0 0 0 / 0.55);
+  --shadow-modal: 0 24px 64px rgb(0 0 0 / 0.6);
+
+  /* ---------------------------------------------------------------------------
+     Movimento (sempre via `motion-safe:` ou com a regra de reduced-motion abaixo)
+     ------------------------------------------------------------------------- */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1); /* sheet/push estilo UIKit */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-sheet-in: sheet-in 360ms var(--ease-ios) both;
+  --animate-modal-in: modal-in 220ms var(--ease-out-soft) both;
+  --animate-fade-in: fade-in 200ms ease-out both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}

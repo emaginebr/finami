@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Folha de lançamento — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Folha de lançamento <span class="muted" style="font-weight:400">· TransactionSheet · T048 · US2</span></h1>
+    <p>Passos da máquina de estados de <code>data-model.md §6</code>: <code>chooseType → form → (preview) → submitting → closed + toast</code>, com <code>preview[bloqueado]</code> (503) e <code>form[erro do servidor]</code>. Radix Dialog: foco preso, <code>Esc</code>/scrim fecham (exceto durante o envio), <code>Dialog.Title</code> = título do cabeçalho. Celular: sobe de baixo com alça; desktop: modal central de 480 px.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">1 · chooseType → form</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="t-type" data-tab="home" data-fab></div>
+      <figcaption><b>chooseType.</b> Três opções de 60 px com ícone, título e descrição. Foco inicial na primeira. "Cancelar" fecha.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="t-form-in" data-tab="home" data-fab></div>
+      <figcaption><b>form · Entrada.</b> SegmentedControl permite trocar o tipo sem voltar. MoneyInput com prefixo da moeda da carteira, 32 px tabular; "Disponível" como ajuda. Entrada/Saída na mesma moeda → envia direto (sem prévia).</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="t-picker" data-tab="home" data-fab></div>
+      <figcaption><b>Seletor de carteira.</b> Sub-passo da folha (<code>role="listbox"</code>): só carteiras ativas que a pessoa controla, com saldo; marcada com ✓ e <code>aria-selected</code>.</figcaption></figure>
+  </div>
+
+  <h2 class="group">2 · validação e transferência para terceiro</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="t-form-err" data-tab="home" data-fab></div>
+      <figcaption><b>Validação local (US2-7).</b> 3 casas em BRL: campo marcado, mensagem ligada por <code>aria-describedby</code>, botão desabilitado até corrigir.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="t-xfer-code" data-tab="home" data-fab></div>
+      <figcaption><b>Transferência · "Outra carteira (código)".</b> Busca <code>GET /api/wallets/{id}/public</code> e mostra cartão com nome, moeda e titular; exige marcar a confirmação antes de continuar (US2-5).</figcaption></figure>
+  </div>
+
+  <h2 class="group">3 · preview</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="t-preview" data-tab="home" data-fab></div>
+      <figcaption><b>preview · BRL → BTC (US2-4).</b> Origem → destino com valores grandes, tipo "Compra de bitcoin", cotação e horário. Aviso de que vale o valor registrado pelo servidor.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="t-blocked" data-tab="home" data-fab></div>
+      <figcaption><b>preview[bloqueado] · 503 (US2-6).</b> Aviso amarelo com ícone e texto; "Confirmar" desabilitado; "Voltar" continua ativo.</figcaption></figure>
+  </div>
+
+  <h2 class="group">4 · envio e resultado</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="t-sending" data-tab="home" data-fab></div>
+      <figcaption><b>submitting.</b> Botão em loading (bloqueia duplo toque), campos desabilitados, Esc/scrim ignorados até a resposta.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="t-server-err" data-tab="home" data-fab></div>
+      <figcaption><b>form[erro do servidor] · 422.</b> Faixa <code>role="alert"</code> no topo do passo com a mensagem do servidor; dados preservados.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="t-done" data-tab="home" data-fab></div>
+      <figcaption><b>closed + toast.</b> Folha fechada, toast (<code>aria-live="polite"</code>) com o valor efetivado; Home atualizada (+R$ 100,00).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="t-preview" data-tab="home" data-fab></div></div>
+      <figcaption><b>≥ 768 px.</b> A Sheet vira modal central (480 px, raio 20, sem alça) sobre o scrim.</figcaption></figure>
+  </div>
+</div>
+
+
+<template id="t-type">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="hero"><p class="label">Saldo total</p><p class="value"><span class="cur">R$</span>13.285,56</p></div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tt1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="tt1">Novo lançamento</h2><span></span></div>
+      <div class="sheet-body" style="padding-bottom:24px">
+        <div class="list">
+          <button class="row r2 has-icon is-focus"><span class="wicon in type-ic"><i data-i="arrow-down-left" data-s="22"></i></span><span class="row-main"><span class="row-title">Entrada</span><span class="row-sub">Dinheiro que chegou de fora</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+          <button class="row r2 has-icon"><span class="wicon out type-ic"><i data-i="arrow-up-right" data-s="22"></i></span><span class="row-main"><span class="row-title">Saída</span><span class="row-sub">Dinheiro que saiu, como uma compra</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+          <button class="row r2 has-icon"><span class="wicon xfer type-ic"><i data-i="arrow-left-right" data-s="22"></i></span><span class="row-main"><span class="row-title">Transferência</span><span class="row-sub">Entre carteiras, inclusive real ↔ bitcoin</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-form-in">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="tt2">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="tt2">Entrada</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="seg" role="radiogroup" aria-label="Tipo de lançamento"><button role="radio" aria-checked="true">Entrada</button><button role="radio" aria-checked="false">Saída</button><button role="radio" aria-checked="false">Transferência</button></div>
+        <div class="field" style="margin-top:20px"><span class="lbl" id="lw">Carteira</span>
+          <div class="list"><button class="row r2 has-icon" aria-labelledby="lw lw2" aria-haspopup="listbox"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main" id="lw2"><span class="row-title">Conta conjunta</span><span class="row-sub">Silva · Real</span></span><i data-i="chevrons-up-down" data-s="18" class="chev"></i></button></div></div>
+        <div class="field"><label for="amt1">Valor</label>
+          <div class="money focus"><span class="cur" aria-hidden="true">R$</span><span class="amt num">100,00<span class="caret"></span></span></div>
+          <span class="hint">Disponível: <span class="num">R$ 8.420,15</span></span></div>
+        <div class="field"><label for="d1">Descrição <span class="subtle">(opcional)</span></label><input id="d1" class="input" value="Presente da vó"><span class="counter">14/500</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Registrar entrada</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-picker">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="tt3">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Entrada</button><h2 class="title" id="tt3">Carteira</h2><span></span></div>
+      <div class="sheet-body" role="listbox" aria-labelledby="tt3">
+        <div class="section-head" style="padding-left:16px"><span class="dot fam-0"></span>Praia</div>
+        <div class="list"><div class="row r2 has-icon" role="option" aria-selected="false"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub num">R$ 2.350,00</span></span></div></div>
+        <div class="section-head" style="padding-left:16px"><span class="dot fam-1"></span>Silva</div>
+        <div class="list">
+          <div class="row r2 has-icon" role="option" aria-selected="true"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub num">R$ 8.420,15</span></span><i data-i="check" data-s="20" data-w="2.5" class="pos"></i></div>
+          <div class="row r2 has-icon" role="option" aria-selected="false"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Mesada do Pedro</span><span class="row-sub"><span class="num">R$ 100,00</span> · de Pedro Silva</span></span></div>
+        </div>
+        <div class="section-head" style="padding-left:16px"><span class="dot fam-none"></span>Avulsas</div>
+        <div class="list">
+          <div class="row r2 has-icon" role="option" aria-selected="false"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub num">R$ 1.234,56</span></span></div>
+          <div class="row r2 has-icon" role="option" aria-selected="false"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Reserva BTC</span><span class="row-sub num">₿ 0,00250000</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-form-err">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="tt4">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="tt4">Saída</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="seg" role="radiogroup" aria-label="Tipo de lançamento"><button role="radio" aria-checked="false">Entrada</button><button role="radio" aria-checked="true">Saída</button><button role="radio" aria-checked="false">Transferência</button></div>
+        <div class="field" style="margin-top:20px"><span class="lbl">Carteira</span>
+          <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Avulsa · Real</span></span><i data-i="chevrons-up-down" data-s="18" class="chev"></i></button></div></div>
+        <div class="field"><label>Valor</label>
+          <div class="money invalid" aria-invalid="true" aria-describedby="ae1"><span class="cur" aria-hidden="true">R$</span><span class="amt num">45,905</span></div>
+          <span class="err" id="ae1" role="alert"><i data-i="circle-alert" data-s="16"></i>Use no máximo 2 casas decimais para reais.</span></div>
+        <div class="field"><label for="d4">Descrição <span class="subtle">(opcional)</span></label><input id="d4" class="input" value="Farmácia"><span class="counter">8/500</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" disabled>Registrar saída</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-xfer-code">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="tt5">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="tt5">Transferência</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="field"><span class="lbl">De</span>
+          <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub num">R$ 1.234,56</span></span><i data-i="chevrons-up-down" data-s="18" class="chev"></i></button></div></div>
+        <div class="field"><span class="lbl">Para</span>
+          <div class="list"><button class="row has-icon" aria-haspopup="listbox"><span class="wicon sm xfer"><i data-i="hash" data-s="18"></i></span><span class="row-main"><span class="row-title">Outra carteira (código)</span></span><i data-i="chevrons-up-down" data-s="18" class="chev"></i></button></div></div>
+        <div class="field"><label for="code">Código da carteira</label>
+          <div style="display:flex;gap:8px"><input id="code" class="input num" inputmode="numeric" value="1042"><button class="btn secondary" style="min-height:48px"><i data-i="search" data-s="18"></i>Buscar</button></div></div>
+        <div class="confirm-card" style="margin-top:12px">
+          <div style="display:flex;gap:12px;align-items:center"><span class="avatar fam-2">LR</span><div><div class="row-title">Viagem da Lu</div><div class="row-sub">Real · titular <b style="color:var(--color-text)">Luísa Ramos</b></div></div></div>
+          <label style="display:flex;gap:12px;align-items:center;min-height:44px;margin-top:12px;font-size:var(--text-subhead)"><span class="check on" role="checkbox" aria-checked="true"><i data-i="check" data-s="16" data-w="3"></i></span>Confirmo que esta carteira é de Luísa Ramos</label>
+        </div>
+        <div class="field"><label>Valor</label>
+          <div class="money"><span class="cur" aria-hidden="true">R$</span><span class="amt num">250,00</span></div></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Continuar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-preview">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="hero"><p class="label">Saldo total</p><p class="value"><span class="cur">R$</span>13.285,56</p></div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tt6">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="tt6">Confirmar compra</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="card flow">
+          <span class="foot muted">Sai de Conta conjunta</span>
+          <span class="big neg"><span class="sr-only">saída de </span>−R$ 500,00</span>
+          <span class="arrow"><i data-i="arrow-down" data-s="20"></i></span>
+          <span class="big pos">+₿ 0,00097591</span>
+          <span class="foot muted">Entra em Reserva BTC</span>
+        </div>
+        <dl class="card" style="margin-top:12px">
+          <div class="kv"><dt>Tipo</dt><dd>Compra de bitcoin</dd></div>
+          <div class="kv"><dt>Cotação</dt><dd class="num">₿ 1 = R$ 512.340,00</dd></div>
+          <div class="kv"><dt>Obtida às</dt><dd class="num">14:32</dd></div>
+        </dl>
+        <div class="banner info" style="margin-top:12px"><i data-i="info" data-s="18"></i><span>Se a cotação mudar até a confirmação, vale o valor registrado — ele aparece na confirmação.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Confirmar compra</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-blocked">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="hero"><p class="label">Saldo total</p><p class="value"><span class="cur">R$</span>13.285,56</p></div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tt7">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="tt7">Confirmar compra</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="banner warn" role="alert"><i data-i="triangle-alert" data-s="18"></i><span><b>Cotação indisponível</b>A conversão entre real e bitcoin não pode ser feita agora. Tente novamente em alguns minutos.</span></div>
+        <div class="card flow" style="margin-top:12px">
+          <span class="foot muted">Sai de Conta conjunta</span>
+          <span class="big">R$ 500,00</span>
+          <span class="arrow"><i data-i="arrow-down" data-s="20"></i></span>
+          <span class="big subtle">₿ —</span>
+          <span class="foot muted">Entra em Reserva BTC</span>
+        </div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" disabled aria-disabled="true">Confirmar compra</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-sending">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="tt8" aria-busy="true">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span class="back l" style="color:var(--color-text-disabled)"><i data-i="chevron-left" data-s="24"></i>Voltar</span><h2 class="title" id="tt8">Entrada</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="seg" role="radiogroup" aria-label="Tipo de lançamento" style="opacity:.6"><button role="radio" aria-checked="true" disabled>Entrada</button><button role="radio" aria-checked="false" disabled>Saída</button><button role="radio" aria-checked="false" disabled>Transferência</button></div>
+        <div class="field" style="margin-top:20px"><span class="lbl">Carteira</span>
+          <div class="list" style="opacity:.6"><div class="row r2 has-icon static"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Silva · Real</span></span></div></div></div>
+        <div class="field"><label>Valor</label><div class="money" style="opacity:.6"><span class="cur">R$</span><span class="amt num">100,00</span></div></div>
+        <div class="field"><label>Descrição</label><input class="input" value="Presente da vó" disabled></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block" aria-busy="true" aria-disabled="true"><i data-i="loader" class="spin"></i>Registrando…</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-server-err">
+  <h1 class="large-title" style="margin-top:12px">Olá, Ana</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="tt9">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="tt9">Saída</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="banner err" role="alert" style="margin-bottom:16px"><i data-i="circle-alert" data-s="18"></i><span><b>Saldo insuficiente</b>A carteira Nubank tem R$ 1.234,56 disponíveis.</span></div>
+        <div class="seg" role="radiogroup" aria-label="Tipo de lançamento"><button role="radio" aria-checked="false">Entrada</button><button role="radio" aria-checked="true">Saída</button><button role="radio" aria-checked="false">Transferência</button></div>
+        <div class="field" style="margin-top:20px"><span class="lbl">Carteira</span>
+          <div class="list"><button class="row r2 has-icon"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Avulsa · Real</span></span><i data-i="chevrons-up-down" data-s="18" class="chev"></i></button></div></div>
+        <div class="field"><label>Valor</label><div class="money"><span class="cur">R$</span><span class="amt num">2.000,00</span></div><span class="hint">Disponível: <span class="num">R$ 1.234,56</span></span></div>
+        <div class="field"><label for="d9">Descrição <span class="subtle">(opcional)</span></label><input id="d9" class="input" value="Notebook"></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Registrar saída</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="t-done">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero"><p class="label">Saldo total</p><p class="value"><span class="cur">R$</span>13.385,56</p><p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p></section>
+  <section class="section"><a class="section-head" href="#"><span class="dot fam-1"></span><h2>Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list"><a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 8.520,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a></div></section>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Entrada de <b class="num">R$ 100,00</b> registrada em Conta conjunta.</span></div></div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

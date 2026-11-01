@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Entrar — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Entrar <span class="muted" style="font-weight:400">· /entrar · T032 · US1</span></h1>
+    <p>AppIcon (squircle) + Logo, email e senha, botão oficial do Google (tema <code>filled_black</code>), link para o cadastro. Sem TabBar/Sidebar. No desktop o formulário fica num cartão centralizado de até 384 px.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="login" data-tab="none"></div>
+      <figcaption><b>Padrão.</b> Foco no campo email (anel <code>--color-focus</code>). Campos com <code>&lt;label&gt;</code>, <code>autocomplete="email"</code> e <code>current-password</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="login-error" data-tab="none"></div>
+      <figcaption><b>Credenciais erradas (US1-3).</b> Faixa <code>role="alert"</code> no topo; o email digitado é preservado; senha limpa. Ícone + texto, não só cor.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="login-expired" data-tab="none"></div>
+      <figcaption><b>Sessão expirada + enviando.</b> Chegou via 401 com <code>state.reason</code>: aviso informativo. Botão em <code>loading</code> (spinner, desabilitado, <code>aria-busy</code>).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="login" data-tab="none"></div></div>
+      <figcaption><b>≥ 768 px.</b> Mesmo conteúdo, centralizado vertical e horizontalmente.</figcaption></figure>
+  </div>
+</div>
+
+<template id="login">
+  <div class="auth-wrap"><div class="auth">
+    <div class="auth-brand">
+      <img class="app-icon" data-asset="app-icon.png" width="96" height="96" alt="">
+      <div class="logo-box"><img data-asset="logo.webp" height="56" alt="Finami"></div>
+    </div>
+    <h1 class="large-title" style="font-size:28px;line-height:34px;margin-bottom:20px">Entrar</h1>
+    <form>
+      <div class="field"><label for="e1">Email</label><input id="e1" class="input focus" type="email" autocomplete="email" placeholder="voce@exemplo.com"></div>
+      <div class="field"><label for="p1">Senha</label>
+        <div class="input-wrap"><input id="p1" class="input" type="password" autocomplete="current-password" placeholder="Sua senha"><button type="button" class="icon-btn" aria-label="Mostrar senha" aria-pressed="false"><i data-i="eye"></i></button></div></div>
+      <button class="btn primary block" type="submit" style="margin-top:24px">Entrar</button>
+    </form>
+    <div class="divider">ou</div>
+    <button class="google-btn" type="button"><i data-i="google"></i>Fazer login com o Google</button>
+    <p class="center muted foot" style="margin-top:24px">Ainda não tem conta? <a class="link" href="register.html">Criar conta</a></p>
+  </div></div>
+</template>
+
+<template id="login-error">
+  <div class="auth-wrap"><div class="auth">
+    <div class="auth-brand">
+      <img class="app-icon" data-asset="app-icon.png" width="96" height="96" alt="">
+      <div class="logo-box"><img data-asset="logo.webp" height="56" alt="Finami"></div>
+    </div>
+    <h1 class="large-title" style="font-size:28px;line-height:34px;margin-bottom:16px">Entrar</h1>
+    <div class="banner err" role="alert" style="margin-bottom:16px"><i data-i="circle-alert" data-s="18"></i><span><b>Não foi possível entrar</b>Email ou senha incorretos. Confira e tente de novo.</span></div>
+    <form>
+      <div class="field"><label for="e2">Email</label><input id="e2" class="input" type="email" value="ana.silva@exemplo.com"></div>
+      <div class="field"><label for="p2">Senha</label>
+        <div class="input-wrap"><input id="p2" class="input invalid" type="password" aria-invalid="true" aria-describedby="p2e" placeholder="Sua senha"><button type="button" class="icon-btn" aria-label="Mostrar senha"><i data-i="eye"></i></button></div>
+        <span class="err" id="p2e"><i data-i="circle-alert" data-s="16"></i>Digite a senha novamente.</span></div>
+      <button class="btn primary block" type="submit" style="margin-top:24px">Entrar</button>
+    </form>
+    <div class="divider">ou</div>
+    <button class="google-btn" type="button"><i data-i="google"></i>Fazer login com o Google</button>
+  </div></div>
+</template>
+
+<template id="login-expired">
+  <div class="auth-wrap"><div class="auth">
+    <div class="auth-brand">
+      <img class="app-icon" data-asset="app-icon.png" width="96" height="96" alt="">
+      <div class="logo-box"><img data-asset="logo.webp" height="56" alt="Finami"></div>
+    </div>
+    <div class="banner info" role="status" style="margin-bottom:16px"><i data-i="clock" data-s="18"></i><span><b>Sua sessão expirou</b>Entre novamente para voltar de onde parou.</span></div>
+    <form>
+      <div class="field"><label for="e3">Email</label><input id="e3" class="input" type="email" value="ana.silva@exemplo.com" disabled></div>
+      <div class="field"><label for="p3">Senha</label><input id="p3" class="input" type="password" value="••••••••••" disabled></div>
+      <button class="btn primary block" type="submit" aria-busy="true" aria-disabled="true" style="margin-top:24px"><i data-i="loader" class="spin"></i>Entrando…</button>
+    </form>
+  </div></div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>
