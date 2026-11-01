@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Autorizar assistente — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Autorizar assistente <span class="muted" style="font-weight:400">· /autorizar?pedido=… · T004 · US1</span></h1>
+    <p>Tela de consentimento do OAuth. Fica <b>fora das abas</b> (sem TabBar/Sidebar/FAB) e usa o mesmo <code>AuthLayout</code> do login: coluna de até 384 px, centralizada no desktop. Sem sessão, o app redireciona para <code>/entrar</code> com retorno para <code>/autorizar?pedido=…</code> (não há tela própria para isso). Textos: <code>specs/004-mcp-oauth-server/contracts/ui.md</code> (namespace i18n <code>oauth</code>). Os rádios deste mockup são nativos e funcionam: clique ou use as setas.</p>
+    <p>Ordem de foco: <b>Trocar de conta → grupo de rádio (1 parada; setas trocam a opção) → Autorizar → Negar</b>. Foco inicial: nenhum elemento forçado; o <code>&lt;h1&gt;</code> é o primeiro conteúdo lido.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px · pronto</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="c-ready" data-tab="none"></div>
+      <figcaption><b>Pronto · pediu consulta e alterações.</b> Nome do assistente em negrito no título; host de retorno em destaque (é a garantia de para onde a pessoa vai). Rádio já marcado no que foi pedido ("Consultar e fazer alterações"); a pessoa pode reduzir para "Consultar". Autorizar (primário) em cima, Negar (secundário) embaixo — negar não é destrutivo.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="c-read-only" data-tab="none"></div>
+      <figcaption><b>Pronto · pediu só consulta.</b> Sem grupo de rádio (um rádio sozinho não é escolha): a permissão aparece como item estático com ícone <code>Eye</code>, título "O que o assistente vai poder fazer" e a nota "O assistente pediu só para consultar. Ele não poderá fazer alterações.". Autorizar envia <code>["finami:read"]</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone w320" data-screen="c-ready" data-tab="none"></div>
+      <figcaption><b>320 px.</b> Título quebra em 3 linhas, host quebra em qualquer ponto (<code>overflow-wrap:anywhere</code>), descrições dos rádios quebram livremente. A tela rola; os botões não ficam fixos (o conteúdo precisa ser lido antes de autorizar).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Celular · 390 px · envio e retorno</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="c-sending" data-tab="none"></div>
+      <figcaption><b>Enviando (Autorizar).</b> "Autorizar" em <code>loading</code> com o rótulo "Conectando…" (<code>aria-busy</code>, mesma largura); Negar, Trocar de conta e os rádios <code>disabled</code>. Região <code>role="status" aria-live="polite"</code> anuncia "Conectando…". Ao Negar: o botão Negar fica em loading com "Negando…" e o resto desabilitado.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="c-redirecting" data-tab="none"></div>
+      <figcaption><b>Voltando.</b> Resposta 200 de approve/deny: tudo continua desabilitado e uma linha com spinner diz "Voltando para claude.ai…" (mesma região viva). Em seguida <code>window.location.assign(redirectUrl)</code>. O mesmo texto vale depois de Negar.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="c-net-submit" data-tab="none"></div>
+      <figcaption><b>Erro de rede ao enviar.</b> Faixa <code>role="alert"</code> logo acima dos botões; escolha preservada; botões voltam ao normal — Autorizar/Negar <b>são</b> o "tentar de novo" (o pedido continua válido por 10 min). Foco permanece no botão tocado.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Celular · 390 px · carga e pedido inválido</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="c-loading" data-tab="none"></div>
+      <figcaption><b>Carregando.</b> Logo real + esqueleto no formato da tela; contêiner com <code>aria-busy="true"</code> e "Carregando…" <code>sr-only</code>. Blocos <code>aria-hidden</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="c-expired" data-tab="none"></div>
+      <figcaption><b>Vencido ou já respondido (410).</b> Ícone de alerta 72 px (<code>TriangleAlert</code>, amarelo sobre <code>warning-soft</code>), título com a 1ª frase da mensagem da API e a instrução fixa abaixo. <b>Sem botões.</b> Contêiner <code>role="alert"</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="c-notfound" data-tab="none"></div>
+      <figcaption><b>Inexistente (404).</b> Mesma anatomia; título "Pedido de autorização não encontrado." e a mesma instrução. Também é o estado quando falta <code>?pedido=</code> na URL (sem chamar a API).</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="c-net-load" data-tab="none"></div>
+      <figcaption><b>Erro de rede ao carregar.</b> Faixa de erro <code>role="alert"</code> com "Tentar de novo" (<code>Button secondary sm</code>, ícone <code>RotateCw</code>), que refaz o GET. Ao tentar, o botão entra em loading ("Carregando…").</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="c-ready" data-tab="none"></div></div>
+      <figcaption><b>≥ 768 px.</b> Mesmo conteúdo na coluna de 384 px, centralizada vertical e horizontalmente (<code>md:grid md:place-items-center</code> do <code>AuthLayout</code>). Botões continuam empilhados.</figcaption></figure>
+  </div>
+</div>
+
+<!-- ============================ PRONTO (leitura + escrita) ============================ -->
+<template id="c-ready">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <form aria-labelledby="ct1">
+      <h1 class="consent-title" id="ct1" style="font-weight:400"><b style="font-weight:700">Claude</b> quer acessar sua conta</h1>
+      <p class="host-line"><i data-i="external-link" data-s="16"></i><span>Você vai voltar para <b>claude.ai</b></span></p>
+
+      <div class="account-card">
+        <span class="avatar fam-0" aria-hidden="true">AS</span>
+        <p class="who" style="margin:0"><span class="lbl">Entrando como</span><span class="row-title">Ana Silva</span></p>
+        <button type="button" class="btn ghost sm">Trocar de conta</button>
+      </div>
+
+      <fieldset class="scope">
+        <legend>O que o assistente pode fazer</legend>
+        <div class="list">
+          <label class="row opt"><input type="radio" name="scope" value="read"><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar</span><span class="row-sub wrap">Ver saldos, carteiras, extratos, família e notificações</span></span></label>
+          <label class="row opt"><input type="radio" name="scope" value="read write" checked><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar e fazer alterações</span><span class="row-sub wrap">Também lançar receitas, despesas e transferências, gerenciar carteiras, família e convites</span></span></label>
+        </div>
+      </fieldset>
+
+      <div class="banner info consent-notice"><i data-i="shield-check" data-s="18"></i><span>Você pode desconectar quando quiser em <b style="display:inline">Conta → Assistentes conectados</b>.</span></div>
+
+      <div class="consent-actions">
+        <button type="submit" class="btn primary block">Autorizar</button>
+        <button type="button" class="btn secondary block">Negar</button>
+      </div>
+      <p class="sr-only" role="status" aria-live="polite"></p>
+    </form>
+  </div></div>
+</template>
+
+<!-- ============================ PRONTO (só leitura pedida) ============================ -->
+<template id="c-read-only">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <form aria-labelledby="cr1">
+      <h1 class="consent-title" id="cr1" style="font-weight:400"><b style="font-weight:700">ChatGPT</b> quer acessar sua conta</h1>
+      <p class="host-line"><i data-i="external-link" data-s="16"></i><span>Você vai voltar para <b>chatgpt.com</b></span></p>
+
+      <div class="account-card">
+        <span class="avatar fam-0" aria-hidden="true">AS</span>
+        <p class="who" style="margin:0"><span class="lbl">Entrando como</span><span class="row-title">Ana Silva</span></p>
+        <button type="button" class="btn ghost sm">Trocar de conta</button>
+      </div>
+
+      <section style="margin-top:24px" aria-labelledby="cr2">
+        <h2 class="scope-static-title" id="cr2">O que o assistente vai poder fazer</h2>
+        <ul class="list" style="list-style:none;margin:0;padding:0">
+          <li class="row static opt"><span class="wicon sm scope-tile" style="background:var(--color-info-soft);color:var(--color-info)" aria-hidden="true"><i data-i="eye" data-s="18"></i></span><span class="row-main"><span class="row-title">Consultar</span><span class="row-sub wrap">Ver saldos, carteiras, extratos, família e notificações</span></span></li>
+        </ul>
+        <p class="list-foot">O assistente pediu só para consultar. Ele não poderá fazer alterações.</p>
+      </section>
+
+      <div class="banner info consent-notice"><i data-i="shield-check" data-s="18"></i><span>Você pode desconectar quando quiser em <b style="display:inline">Conta → Assistentes conectados</b>.</span></div>
+
+      <div class="consent-actions">
+        <button type="submit" class="btn primary block">Autorizar</button>
+        <button type="button" class="btn secondary block">Negar</button>
+      </div>
+      <p class="sr-only" role="status" aria-live="polite"></p>
+    </form>
+  </div></div>
+</template>
+
+<!-- ============================ ENVIANDO ============================ -->
+<template id="c-sending">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <form aria-labelledby="cs1" aria-busy="true">
+      <h1 class="consent-title" id="cs1" style="font-weight:400"><b style="font-weight:700">Claude</b> quer acessar sua conta</h1>
+      <p class="host-line"><i data-i="external-link" data-s="16"></i><span>Você vai voltar para <b>claude.ai</b></span></p>
+
+      <div class="account-card">
+        <span class="avatar fam-0" aria-hidden="true">AS</span>
+        <p class="who" style="margin:0"><span class="lbl">Entrando como</span><span class="row-title">Ana Silva</span></p>
+        <button type="button" class="btn ghost sm" disabled>Trocar de conta</button>
+      </div>
+
+      <fieldset class="scope" disabled>
+        <legend>O que o assistente pode fazer</legend>
+        <div class="list">
+          <label class="row opt"><input type="radio" name="scope" value="read" disabled><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar</span><span class="row-sub wrap">Ver saldos, carteiras, extratos, família e notificações</span></span></label>
+          <label class="row opt"><input type="radio" name="scope" value="read write" checked disabled><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar e fazer alterações</span><span class="row-sub wrap">Também lançar receitas, despesas e transferências, gerenciar carteiras, família e convites</span></span></label>
+        </div>
+      </fieldset>
+
+      <div class="banner info consent-notice"><i data-i="shield-check" data-s="18"></i><span>Você pode desconectar quando quiser em <b style="display:inline">Conta → Assistentes conectados</b>.</span></div>
+
+      <div class="consent-actions">
+        <button type="submit" class="btn primary block" aria-busy="true" aria-disabled="true"><i data-i="loader" class="spin"></i>Conectando…</button>
+        <button type="button" class="btn secondary block" disabled>Negar</button>
+      </div>
+      <p class="sr-only" role="status" aria-live="polite">Conectando…</p>
+    </form>
+  </div></div>
+</template>
+
+<!-- ============================ VOLTANDO ============================ -->
+<template id="c-redirecting">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <form aria-labelledby="cv1" aria-busy="true">
+      <h1 class="consent-title" id="cv1" style="font-weight:400"><b style="font-weight:700">Claude</b> quer acessar sua conta</h1>
+      <p class="host-line"><i data-i="external-link" data-s="16"></i><span>Você vai voltar para <b>claude.ai</b></span></p>
+
+      <div class="account-card">
+        <span class="avatar fam-0" aria-hidden="true">AS</span>
+        <p class="who" style="margin:0"><span class="lbl">Entrando como</span><span class="row-title">Ana Silva</span></p>
+        <button type="button" class="btn ghost sm" disabled>Trocar de conta</button>
+      </div>
+
+      <fieldset class="scope" disabled>
+        <legend>O que o assistente pode fazer</legend>
+        <div class="list">
+          <label class="row opt"><input type="radio" name="scope" value="read" disabled><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar</span><span class="row-sub wrap">Ver saldos, carteiras, extratos, família e notificações</span></span></label>
+          <label class="row opt"><input type="radio" name="scope" value="read write" checked disabled><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar e fazer alterações</span><span class="row-sub wrap">Também lançar receitas, despesas e transferências, gerenciar carteiras, família e convites</span></span></label>
+        </div>
+      </fieldset>
+
+      <div class="consent-actions">
+        <button type="submit" class="btn primary block" disabled>Autorizar</button>
+        <button type="button" class="btn secondary block" disabled>Negar</button>
+      </div>
+      <p class="consent-status" role="status" aria-live="polite"><i data-i="loader" data-s="18" class="spin"></i>Voltando para claude.ai…</p>
+    </form>
+  </div></div>
+</template>
+
+<!-- ============================ ERRO DE REDE AO ENVIAR ============================ -->
+<template id="c-net-submit">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <form aria-labelledby="cn1">
+      <h1 class="consent-title" id="cn1" style="font-weight:400"><b style="font-weight:700">Claude</b> quer acessar sua conta</h1>
+      <p class="host-line"><i data-i="external-link" data-s="16"></i><span>Você vai voltar para <b>claude.ai</b></span></p>
+
+      <div class="account-card">
+        <span class="avatar fam-0" aria-hidden="true">AS</span>
+        <p class="who" style="margin:0"><span class="lbl">Entrando como</span><span class="row-title">Ana Silva</span></p>
+        <button type="button" class="btn ghost sm">Trocar de conta</button>
+      </div>
+
+      <fieldset class="scope">
+        <legend>O que o assistente pode fazer</legend>
+        <div class="list">
+          <label class="row opt"><input type="radio" name="scope" value="read" checked><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar</span><span class="row-sub wrap">Ver saldos, carteiras, extratos, família e notificações</span></span></label>
+          <label class="row opt"><input type="radio" name="scope" value="read write"><span class="radio" aria-hidden="true"><i data-i="check" data-s="14" data-w="3"></i></span><span class="row-main"><span class="row-title">Consultar e fazer alterações</span><span class="row-sub wrap">Também lançar receitas, despesas e transferências, gerenciar carteiras, família e convites</span></span></label>
+        </div>
+      </fieldset>
+
+      <div class="banner err" role="alert" style="margin-top:16px"><i data-i="wifi-off" data-s="18"></i><span><b>Não foi possível enviar sua resposta</b>Confira sua conexão e toque de novo em Autorizar ou Negar.</span></div>
+
+      <div class="consent-actions">
+        <button type="submit" class="btn primary block is-focus">Autorizar</button>
+        <button type="button" class="btn secondary block">Negar</button>
+      </div>
+    </form>
+  </div></div>
+</template>
+
+<!-- ============================ CARREGANDO ============================ -->
+<template id="c-loading">
+  <div class="auth-wrap"><div class="auth" aria-busy="true">
+    <span class="sr-only">Carregando…</span>
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <div aria-hidden="true">
+      <span class="skel" style="width:88%;height:28px;margin-bottom:8px"></span>
+      <span class="skel" style="width:52%;height:28px;margin-bottom:14px"></span>
+      <span class="skel" style="width:60%;height:16px;margin-bottom:24px"></span>
+      <span class="skel" style="width:100%;height:64px;border-radius:12px;margin-bottom:24px"></span>
+      <span class="skel" style="width:58%;height:13px;margin:0 16px 16px"></span>
+      <span class="skel" style="width:100%;height:150px;border-radius:12px;margin-bottom:24px"></span>
+      <span class="skel" style="width:100%;height:48px;border-radius:10px;margin-bottom:8px"></span>
+      <span class="skel" style="width:100%;height:48px;border-radius:10px"></span>
+    </div>
+  </div></div>
+</template>
+
+<!-- ============================ VENCIDO (410) ============================ -->
+<template id="c-expired">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <div class="consent-dead" role="alert">
+      <span class="ic" aria-hidden="true"><i data-i="triangle-alert" data-s="36"></i></span>
+      <h1>Este pedido de autorização venceu.</h1>
+      <p>Volte ao assistente e tente conectar de novo.</p>
+    </div>
+  </div></div>
+</template>
+
+<!-- ============================ INEXISTENTE (404) ============================ -->
+<template id="c-notfound">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <div class="consent-dead" role="alert">
+      <span class="ic" aria-hidden="true"><i data-i="triangle-alert" data-s="36"></i></span>
+      <h1>Pedido de autorização não encontrado.</h1>
+      <p>Volte ao assistente e tente conectar de novo.</p>
+    </div>
+  </div></div>
+</template>
+
+<!-- ============================ ERRO DE REDE AO CARREGAR ============================ -->
+<template id="c-net-load">
+  <div class="auth-wrap"><div class="auth">
+    <div class="consent-brand"><div class="logo-box"><img data-asset="logo.webp" height="48" alt="Finami"></div></div>
+    <h1 class="sr-only">Autorizar assistente</h1>
+    <div class="banner err" role="alert"><i data-i="wifi-off" data-s="18"></i><span><b>Não foi possível carregar o pedido</b>Confira sua conexão e tente de novo.<br><button type="button" class="btn secondary sm"><i data-i="rotate-cw" data-s="18"></i>Tentar de novo</button></span></div>
+  </div></div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

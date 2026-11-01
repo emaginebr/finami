@@ -464,3 +464,83 @@ a.notif:hover { background: var(--color-surface-3); }
   .toast { left: calc(240px + 24px); right: 24px; }
   .sheet, .sheet.tall { inset: 0; margin: auto; height: fit-content; transform: none; }
 }
+
+/* =============================================================================
+   Feature 004 — autorização de assistentes (OAuth) e "Assistentes conectados"
+   ============================================================================= */
+
+/* ---------- OAuthConsentPage (/autorizar) ---------- */
+.consent-brand { display: flex; justify-content: center; margin: 8px 0 28px; }
+.consent-brand .logo-box img { display: block; height: 48px; width: auto; }
+.consent-title { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 700; margin: 0 0 6px; overflow-wrap: anywhere; }
+.host-line { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 20px; font-size: var(--text-subhead); line-height: var(--text-subhead--line-height); color: var(--color-text-muted); }
+.host-line svg { flex-shrink: 0; margin-top: 1px; }
+.host-line b { color: var(--color-text); font-weight: 600; overflow-wrap: anywhere; }
+.account-card { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; min-height: 64px; padding: 8px 4px 8px 16px; background: var(--color-surface); border-radius: var(--radius-lg); }
+.account-card .who { flex: 1 1 6.5rem; min-width: 0; }
+.account-card .who .lbl { white-space: nowrap; }
+.account-card .who .lbl { display: block; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+.account-card .btn { flex-shrink: 0; margin-left: auto; padding: 0 12px; }
+
+/* ScopeChoice: fieldset + legend com rádios nativos dentro de <label> (linha de 60 px+) */
+.scope { border: 0; margin: 24px 0 0; padding: 0; min-width: 0; }
+.scope > legend { display: block; width: 100%; padding: 13px 16px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); font-weight: 600; }
+.scope-static-title { margin: 0; padding: 13px 16px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); font-weight: 600; }
+.opt { align-items: flex-start; min-height: 60px; padding: 14px 16px; }
+.opt input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.opt .radio { margin-top: 1px; }
+.opt .radio svg { visibility: hidden; }
+.opt:has(input:checked) .radio { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+.opt:has(input:checked) .radio svg { visibility: visible; }
+.opt:has(input:focus-visible), .opt.is-focus { outline: 2px solid var(--color-focus); outline-offset: -2px; border-radius: 12px; }
+.opt:has(input:disabled) { cursor: not-allowed; }
+.opt:has(input:disabled):hover { background: transparent; }
+.opt:has(input:disabled) .row-main { color: var(--color-text-disabled); }
+.opt:has(input:disabled) .row-sub { color: var(--color-text-disabled); }
+.opt:has(input:disabled) .radio { opacity: .5; }
+.row-sub.wrap { white-space: normal; }
+.scope-tile { margin-top: -1px; }
+
+.consent-notice { margin-top: 16px; }
+.consent-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+.consent-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin: 8px 0 0; font-size: var(--text-subhead); color: var(--color-text-muted); }
+.consent-status .spin, .spin { animation: spin 0.9s linear infinite; }
+.banner .btn { margin-top: 10px; }
+.banner .stack-tight > * + * { margin-top: 2px; }
+
+/* estado terminal (410/404): sem ações */
+.consent-dead { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 16px 8px 0; }
+.consent-dead .ic { width: 72px; height: 72px; border-radius: 99px; display: grid; place-items: center; background: var(--color-warning-soft); color: var(--color-warning); margin-bottom: 8px; }
+.consent-dead h1 { margin: 0; font-size: var(--text-title-3); line-height: var(--text-title-3--line-height); font-weight: 600; }
+.consent-dead p { margin: 0; max-width: 34ch; font-size: var(--text-subhead); line-height: var(--text-subhead--line-height); color: var(--color-text-muted); }
+
+/* ---------- ConnectedAssistantsSection (Conta) ---------- */
+.section-lead { margin: -4px 0 8px; padding: 0 16px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+.conn-list { list-style: none; margin: 0; padding: 0; }
+.conn-list > li { position: relative; }
+.conn-list > li + li::before { content: ""; position: absolute; z-index: 1; top: 0; right: 0; left: 64px; border-top: .5px solid var(--color-separator); }
+.conn { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 12px; padding: 14px 16px 6px; }
+.conn .wicon { margin-top: 2px; }
+.conn-main { flex: 1; min-width: 0; }
+.conn-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; font-size: var(--text-headline); line-height: var(--text-headline--line-height); font-weight: 600; overflow-wrap: anywhere; }
+.conn-meta { display: flex; flex-wrap: wrap; gap: 0 6px; margin: 4px 0 0; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+.conn-actions { flex-basis: 100%; padding-left: 32px; } /* 48 px (tile+gap) − 16 px do padding do botão ghost: o texto alinha com o nome */
+.conn-actions .btn { padding: 0 16px; }
+.badge svg { flex-shrink: 0; }
+.badge.write { background: var(--color-warning-soft); color: var(--color-warning); }
+.disconnect-all { margin-top: 16px; }
+.disconnect-all .row { justify-content: flex-start; gap: 12px; font-weight: 400; }
+
+.mcp-empty { padding: 16px; }
+.mcp-empty h3 { margin: 0 0 4px; font-size: var(--text-headline); line-height: var(--text-headline--line-height); font-weight: 600; }
+.mcp-empty p { margin: 0 0 16px; font-size: var(--text-subhead); line-height: var(--text-subhead--line-height); color: var(--color-text-muted); }
+.copy-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.copy-row .input { flex: 1 1 100%; font-family: var(--font-mono); font-size: var(--text-body); text-overflow: ellipsis; }
+.copy-row .btn { flex: 0 0 auto; }
+
+@container app (min-width: 768px) {
+  .conn { flex-wrap: nowrap; align-items: center; padding: 12px 8px 12px 16px; }
+  .conn-actions { flex-basis: auto; padding-left: 0; }
+  .copy-row { flex-wrap: nowrap; }
+  .copy-row .input { flex: 1 1 auto; }
+}
