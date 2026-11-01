@@ -13,6 +13,11 @@ export const notifySuccess = (message: string): void => {
   toast.success(message);
 };
 
+/** Toast de erro com um texto pronto (falhas locais, ex.: área de transferência) */
+export const notifyErrorMessage = (message: string): void => {
+  toast.error(message);
+};
+
 /** Toast de erro com a mensagem do `ApiError` ou a mensagem genérica de rede */
 export const notifyError = (err: unknown): void => {
   toast.error(errorMessage(err));

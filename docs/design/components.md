@@ -524,3 +524,164 @@ sino em [`home.html`](./mockups/home.html), [`wallets.html`](./mockups/wallets.h
 - `pending`: fundo transparente, borda tracejada `border-border` 1,5 px, iniciais
   `text-text-muted` — sempre acompanhado de texto ("Enviado em …" ou a seção "Convites
   pendentes"), nunca só a borda.
+
+---
+
+## 8. Assistentes de IA — OAuth e conexões (feature 004)
+
+Mockups: [`oauth-consent.html`](./mockups/oauth-consent.html),
+[`account-connections.html`](./mockups/account-connections.html) e a página da API
+[`oauth-error.html`](./mockups/oauth-error.html). Textos: `specs/004-mcp-oauth-server/contracts/ui.md`
+(namespace i18n `oauth`); textos marcados *(proposta)* não estão no contrato e devem entrar em
+`pt-BR.json` como estão. Nenhum token novo; contrastes conferidos no fim de cada componente.
+Ícones lucide novos: `Bot`, `Unplug`, `ExternalLink`.
+
+### OAuthConsentPage (`/autorizar?pedido={requestKey}`)
+- **Moldura**: `AuthLayout` (o mesmo do login; sem TabBar/Sidebar/Fab). Sem sessão →
+  `<Navigate to="/entrar" state={{ from: "/autorizar?pedido=…" }}>`. Sem `?pedido=` → estado
+  "inexistente" sem chamar a API.
+- **Anatomia (pronto)**, de cima para baixo:
+  1. `Logo` centralizada, `h-12`, dentro de `rounded-[12px] overflow-hidden bg-brand`, `mt-2 mb-7`
+     (sem o AppIcon: a tela é longa).
+  2. `<h1>` `font-display text-[28px] leading-[34px] font-normal [overflow-wrap:anywhere] mb-1.5`
+     com `<b class="font-bold">{clientName}</b>` + " quer acessar sua conta".
+  3. Linha do host: `<p class="flex items-start gap-1.5 mb-5 text-subhead text-text-muted">` com
+     `ExternalLink` 16 px + "Você vai voltar para " + `<b class="font-semibold text-text
+     [overflow-wrap:anywhere]">{redirectHost}</b>`.
+  4. **AccountCard**: `flex flex-wrap items-center gap-x-3 min-h-16 bg-surface rounded-lg py-2
+     pl-4 pr-1` — avatar 40 px (cor do usuário, `aria-hidden`); bloco `flex-[1_1_6.5rem] min-w-0`
+     com "Entrando como" (`text-footnote text-text-muted whitespace-nowrap`) e o nome
+     (`text-headline`); `Button variant="ghost" size="sm" className="ml-auto px-3"` **"Trocar de
+     conta"** (logout e volta a `/entrar` mantendo o retorno). Em 320 px o botão desce para a
+     2ª linha, à direita.
+  5. **ScopeChoice** (abaixo), `mt-6`.
+  6. `Banner tone="info"` (`ShieldCheck` 18 px), `mt-4`: "Você pode desconectar quando quiser em
+     **Conta → Assistentes conectados**." (trecho em negrito inline, `font-semibold text-text`).
+  7. Ações `mt-6 flex flex-col gap-2`: `Button primary block` **"Autorizar"** (`type="submit"`)
+     e `Button secondary block` **"Negar"**. Negar **não** é destrutivo (é a ação segura).
+     Empilhados também no desktop.
+  8. Região viva `<p role="status" aria-live="polite" class="sr-only">`, sempre montada (só o
+     texto muda).
+- **ScopeChoice — pedido com `finami:write`**: `<fieldset>` sem borda + `<legend>` no estilo de
+  cabeçalho de seção (`block w-full px-4 py-[13px] text-footnote uppercase tracking-[.06em]
+  font-semibold text-text-muted`) **"O que o assistente pode fazer"**; `ListGroup` com 2
+  `<label>` (linhas `min-h-[60px] px-4 py-3.5 items-start gap-3`), cada uma com
+  `<input type="radio" name="scope" class="sr-only">` **nativo** + círculo visual 22 px
+  (`aria-hidden`; marcado `bg-accent border-accent` com `Check` 14 px traço 3 `text-on-accent`;
+  desmarcado `border-2 border-border`) + título `text-headline` + descrição `text-footnote
+  text-text-muted` (quebra livre):
+  - `read` — **"Consultar"** · "Ver saldos, carteiras, extratos, família e notificações"
+  - `read write` — **"Consultar e fazer alterações"** · "Também lançar receitas, despesas e
+    transferências, gerenciar carteiras, família e convites"
+
+  Padrão = o que foi pedido (com write → 2ª opção marcada). Foco: anel na linha inteira com
+  `has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-focus
+  outline-offset-[-2px] rounded-[12px]`. Teclado nativo: Tab entra pela opção marcada, setas
+  trocam. Hover `bg-surface-3`. Envio: `["finami:read"]` ou `["finami:read","finami:write"]`.
+- **ScopeChoice — só `finami:read` pedido**: sem rádio (um rádio sozinho não é escolha). `<h2>`
+  no mesmo estilo da legend: **"O que o assistente vai poder fazer"**; `ListGroup` com 1 item
+  estático: tile 32 px `bg-info-soft text-info` com `Eye` 18 px + "Consultar" + descrição;
+  rodapé `text-footnote text-text-muted px-4 pt-2`: "O assistente pediu só para consultar. Ele
+  não poderá fazer alterações." *(proposta)*. Autorizar envia `["finami:read"]`.
+- **Estados**
+
+| Estado | Visual | A11y |
+|---|---|---|
+| Carregando | Logo real + skeletons (título 2 linhas, host, card 64 px, legend, lista 150 px, 2 botões) | contêiner `aria-busy="true"`, "Carregando…" `sr-only`, blocos `aria-hidden` |
+| Pronto | acima | `<form aria-labelledby={id do h1}>` |
+| Enviando (Autorizar) | Autorizar `loading` com rótulo visível **"Conectando…"** (spinner 18 px); Negar, Trocar de conta e `<fieldset disabled>` | região viva "Conectando…" |
+| Enviando (Negar) | Negar `loading` **"Negando…"** *(proposta)*; resto desabilitado | região viva "Negando…" |
+| Voltando | tudo desabilitado; abaixo dos botões `<p role="status">` visível (`flex justify-center items-center gap-2 min-h-11 mt-2 text-subhead text-text-muted`) com spinner + **"Voltando para {redirectHost}…"**; depois `window.location.assign(redirectUrl)` | a linha visível substitui o `sr-only` como região viva |
+| Erro de rede ao enviar | `Banner tone="error"` (`WifiOff`) `mt-4` acima das ações: **"Não foi possível enviar sua resposta"** / "Confira sua conexão e toque de novo em Autorizar ou Negar." *(proposta)*; escolha preservada; botões reabilitados — eles são o "tentar de novo" | `role="alert"`; foco fica no botão tocado |
+| Erro de rede ao carregar | Logo + `<h1 class="sr-only">Autorizar assistente</h1>` + `Banner tone="error"`: **"Não foi possível carregar o pedido"** / "Confira sua conexão e tente de novo." + `Button secondary sm` **"Tentar de novo"** (`RotateCw`), que refaz o GET | `role="alert"` |
+| 410 | círculo 72 px `bg-warning-soft text-warning` com `TriangleAlert` 36 px; `<h1 class="text-title-3 font-semibold">` **"Este pedido de autorização venceu."**; `<p class="text-subhead text-text-muted max-w-[34ch]">` **"Volte ao assistente e tente conectar de novo."** Centralizado. Sem botões | contêiner `role="alert"` |
+| 404 / sem `pedido` | igual, título **"Pedido de autorização não encontrado."** | idem |
+
+  A `mensagem` do 410 traz as duas frases juntas; a tela usa chaves i18n por status (mesmo texto,
+  separado em título + instrução) e só usa a `mensagem` da API para status inesperados.
+- **Ordem de foco**: Trocar de conta → grupo de rádio (1 parada) → Autorizar → Negar. Não mover o
+  foco ao carregar. `document.title`: "Autorizar {clientName} — Finami".
+- **Contraste**: título `text`/`bg` 18,74 · host muted/`bg` 9,43 · "Trocar de conta"
+  `accent`/`surface` 10,91 · descrições muted/`surface` 8,81 · círculo do rádio `border`/`surface`
+  3,93 (≥ 3) · marcado `on-accent`/`accent` 11,68 · aviso `info`/`info-soft` 6,94 (negrito
+  `text`/`info-soft` 14,60) · "Conectando…" `on-accent`/`accent-pressed` 8,19 · alerta 410
+  `warning`/`warning-soft` 9,76 · erro `negative`/`negative-soft` 6,71 · foco/`surface` 9,92.
+  Desabilitado `text-disabled`/`surface-2` 3,58 (isento, WCAG 1.4.3).
+
+### ConnectedAssistantsSection (Conta)
+- **Posição**: `AccountPage`, **entre "Segurança" e "Pessoas que cadastrei"**.
+  `<section aria-labelledby aria-describedby>`: cabeçalho de seção padrão **"Assistentes
+  conectados"** e, logo abaixo, `<p class="-mt-1 mb-2 px-4 text-footnote text-text-muted">`
+  **"Assistentes de IA que podem acessar sua conta pelo MCP."** (alvo do `aria-describedby`).
+  Carrega sozinha (`GET /api/oauth/connections`); o resto da Conta não espera.
+- **Lista**: `<ul class="bg-surface rounded-lg overflow-hidden">`, separador hairline recuado
+  64 px. **ConnectionItem** (`<li>`): `flex flex-wrap items-start gap-x-3 px-4 pt-3.5 pb-1.5`
+  (≥ 768 px: `md:flex-nowrap md:items-center md:py-3 md:pr-2`):
+  - tile 36 px `rounded-[10px] bg-surface-2 text-accent` com `Bot` 20 px (`aria-hidden`);
+  - `min-w-0 flex-1`: linha `flex flex-wrap items-center gap-x-2 gap-y-1` com
+    `<h3 class="text-headline font-semibold">{clientName}</h3>` + **ScopeBadge**; meta
+    `<p class="mt-1 flex flex-wrap gap-x-1.5 text-footnote text-text-muted">`: "Conectado em
+    `<time>`01/11/2026`</time>`" · (separador `aria-hidden`) · "Último uso `<time>`há 5
+    min`</time>`" ou **"Ainda não usado"** (`lastUsedAt == null`). Data `dd/MM/yyyy`; último
+    uso relativo (`Intl.RelativeTimeFormat("pt-BR")`: "há 5 min", "há 2 h", "há 3 dias"; > 30
+    dias → data), `dateTime` ISO;
+  - ações `basis-full pl-8` (≥ 768 px: `md:basis-auto md:pl-0`): `Button
+    variant={DestructiveGhost} size="sm"` **"Desconectar"** (`px-4`; no celular o texto alinha
+    com o nome), `aria-label="Desconectar {clientName}"`, `aria-haspopup="dialog"`.
+- **ScopeBadge** (variante nova de Badge, sempre ícone + texto): com `finami:write` →
+  **"Consulta e alterações"** `bg-warning-soft text-warning` + `Pencil` 12 px (9,76:1);
+  só leitura → **"Só consulta"** `bg-surface-3 text-text-muted` + `Eye` 12 px (7,05:1).
+- **Desconectar todos** (só com **2+** conexões): `ListGroup` próprio `mt-4` com uma `ListRow
+  destructive` alinhada à esquerda: `Unplug` 20 px + **"Desconectar todos"**,
+  `aria-haspopup="dialog"`.
+- **ConfirmModal** (`tone="destructive"`, foco inicial em "Cancelar"):
+  - item: título **"Desconectar {nome}?"**, descrição **"O assistente perde o acesso na hora."**,
+    `confirmLabel="Desconectar"`, loading "Desconectando…"; sucesso → toast **"{nome}
+    desconectado."**;
+  - todos: **"Desconectar todos os assistentes?"** / "Os {n} assistentes perdem o acesso na
+    hora. Para usar de novo, será preciso conectar cada um outra vez." *(proposta)*,
+    `confirmLabel="Desconectar todos"`; sucesso → toast "Assistentes desconectados."
+    *(proposta)* e a seção vai para o vazio;
+  - erro → toast de erro com a mensagem da API; a lista não muda.
+- **Foco depois de desconectar**: "Desconectar" do item que ocupou a posição (ou do anterior);
+  sem itens, o `<h3 tabIndex={-1}>` "Nenhum assistente conectado.".
+- **Vazio (McpAddressCard)**: `bg-surface rounded-lg p-4` com `<h3 tabIndex={-1}
+  class="text-headline font-semibold mb-1">` **"Nenhum assistente conectado."**;
+  `<p class="text-subhead text-text-muted mb-4">` **"Para conectar, adicione este endereço no seu
+  assistente (ex.: Claude → Conectores):"**; `TextField` com `<label>` visível **"Endereço do
+  MCP"** *(proposta)*, `readOnly`, `value={mcpUrl}`, `font-mono text-body` (17 px evita zoom
+  no iOS), `spellCheck={false}`, seleciona tudo ao focar. Mantém o visual de campo comum
+  (`bg-surface-2 border-border`), porque o "somente leitura sem borda" do TextField sumiria
+  sobre `bg-surface`. Ao lado, `Button secondary sm` **"Copiar"** com `Copy` 18 px e
+  `aria-label="Copiar endereço do MCP"` (começa pelo texto visível, WCAG 2.5.3). Layout
+  `flex flex-wrap gap-2`: campo `basis-full` no celular (botão embaixo, à esquerda);
+  `md:flex-nowrap` + campo `md:basis-auto md:flex-1` no desktop. Sucesso → toast **"Endereço
+  copiado."**; falha de `navigator.clipboard` → toast de erro "Não foi possível copiar.
+  Selecione o endereço e copie manualmente." *(proposta)* com o texto do campo selecionado.
+- **Carregando**: `ListGroup aria-busy` com 2 skeletons no formato do item (tile 36 + 2 linhas)
+  e "Carregando…" `sr-only`. **Erro**: `Banner tone="error" role="alert"` (`WifiOff`) "Não foi
+  possível carregar os assistentes" / "Confira sua conexão e tente de novo." *(proposta)* +
+  `Button secondary sm` "Tentar de novo" (`RotateCw`).
+- **Ordem de foco**: Desconectar (item 1) → Desconectar (item 2) → … → Desconectar todos; no
+  vazio, campo → Copiar.
+- **Contraste**: nome `text`/`surface` 17,50 · meta muted/`surface` 8,81 · tile
+  `accent`/`surface-2` 9,98 · "Desconectar" `negative`/`surface` 7,76 (hover `surface-3` 6,22) ·
+  selos 9,76 e 7,05 · campo `text`/`surface-2` 16,02, borda/`surface` 3,93 · toast
+  `text`/`surface-3` 14,01.
+
+### OAuthErrorPage (HTML da API, `GET /oauth/authorize` → 400)
+- O arquivo [`oauth-error.html`](./mockups/oauth-error.html) (≈ 22 KB) é **final**: embutir como
+  recurso no backend e trocar **só** o texto do motivo (marcado `{{REASON}}`), sempre com
+  `HtmlEncoder.Default.Encode`. Motivos: **"Assistente não registrado."** (`client_id`
+  desconhecido) e **"Endereço de retorno não autorizado."** (`redirect_uri` não registrado).
+- Autocontido: CSS inline, logo em data URI (`logo.webp`), fontes do sistema, sem JS e sem
+  requisições externas. `lang="pt-BR"`, `color-scheme: dark`, `noindex`. CSP compatível:
+  `default-src 'none'; style-src 'unsafe-inline'; img-src data:`.
+- Anatomia: fundo `#12021C`, coluna de 384 px centralizada; logo `h-12` em cápsula `#380159`;
+  cartão `#1E0631`, raio 20 px, com `<h1>` 22 px **"Não foi possível conectar este
+  assistente."**, faixa de erro (`CircleAlert` + "Motivo" + texto do motivo) e a instrução
+  "Volte ao assistente e tente conectar de novo. Se o erro continuar, remova o Finami do
+  assistente e adicione outra vez." *(proposta)*; abaixo, "Você pode fechar esta janela."
+  *(proposta)*.
+- Contraste: `text`/`bg` 18,74 · `text`/`surface` 17,50 · muted/`surface` 8,81 e /`bg` 9,43 ·
+  `negative`/`negative-soft` 6,71 · `text`/`negative-soft` 15,12. Sem elementos interativos.

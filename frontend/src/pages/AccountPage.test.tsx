@@ -15,6 +15,8 @@ const setup = (user: UserInfo = makeUser(), routes: Record<string, MockResponse 
     "GET /api/users/created-by-me": {
       body: [makeUser({ userId: 9, firstName: "Pedro", lastName: "Silva", email: null, canLogin: false })],
     },
+    "GET /api/oauth/connections": { body: [] },
+    "GET /api/oauth/mcp-info": { body: { mcpUrl: "https://finami.app/mcp" } },
     ...routes,
   });
   const userEv = userEvent.setup();
@@ -89,6 +91,14 @@ describe("AccountPage", () => {
         { currentPassword: null, newPassword: "nova12345" },
       ]),
     );
+  });
+
+  it("seção \"Assistentes conectados\" fica entre Segurança e Pessoas que cadastrei", async () => {
+    setup();
+
+    expect(await screen.findByText("Nenhum assistente conectado.")).toBeInTheDocument();
+    const titles = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(titles).toEqual(["Dados pessoais", "Segurança", "Assistentes conectados", "Pessoas que cadastrei"]);
   });
 
   it("sair com confirmação remove finami:auth e vai para /entrar", async () => {

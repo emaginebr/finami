@@ -13,7 +13,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Página de erro do GET /oauth/authorize (mockup docs/design/mockups/oauth-error.html). -->
+    <EmbeddedResource Include="Resources\oauth-error.html" LogicalName="Finami.API.Resources.oauth-error.html" />
   </ItemGroup>
 
   <ItemGroup>

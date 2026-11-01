@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -24,6 +24,8 @@ export interface ConfirmModalProps {
   cancelLabel?: string;
   tone?: ConfirmTone | `${ConfirmTone}`;
   loading?: boolean;
+  /** Texto visível no botão de confirmar durante `loading` (ex.: "Desconectando…") */
+  loadingLabel?: string;
 }
 
 /**
@@ -40,10 +42,23 @@ export const ConfirmModal = ({
   cancelLabel,
   tone = ConfirmTone.Default,
   loading = false,
+  loadingLabel,
 }: ConfirmModalProps) => {
   const { t } = useTranslation();
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  /** Falha pendente de devolver o foco ao botão de confirmar */
+  const refocusConfirm = useRef(false);
+  const [failureTick, setFailureTick] = useState(0);
   const destructive = tone === ConfirmTone.Destructive;
+
+  // Após uma falha o botão de confirmar volta a ficar habilitado; o navegador pode ter tirado o
+  // foco dele enquanto estava `disabled`, então o foco é devolvido (WCAG 2.4.3)
+  useEffect(() => {
+    if (loading || !refocusConfirm.current) return;
+    refocusConfirm.current = false;
+    confirmRef.current?.focus();
+  }, [failureTick, loading]);
 
   const handleConfirm = async () => {
     try {
@@ -51,6 +66,8 @@ export const ConfirmModal = ({
       onOpenChange(false);
     } catch {
       // Quem chamou já exibiu o erro; o modal fica aberto para nova tentativa
+      refocusConfirm.current = true;
+      setFailureTick((tick) => tick + 1);
     }
   };
 
@@ -75,8 +92,10 @@ export const ConfirmModal = ({
         </ModalHeader>
         <ModalFooter>
           <Button
+            ref={confirmRef}
             variant={destructive ? "destructive" : "primary"}
             loading={loading}
+            loadingLabel={loadingLabel}
             onClick={() => {
               void handleConfirm();
             }}

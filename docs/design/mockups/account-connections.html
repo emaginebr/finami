@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Assistentes conectados — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Assistentes conectados <span class="muted" style="font-weight:400">· /conta · T004 · US4</span></h1>
+    <p>Seção nova da aba Conta, <b>entre "Segurança" e "Pessoas que cadastrei"</b> (é assunto de acesso à conta). Cabeçalho de seção padrão + linha de apoio, lista agrupada com um item por conexão, "Desconectar todos" só com 2+ conexões, e estado vazio que ensina a conectar com o endereço do MCP para copiar. Textos: <code>specs/004-mcp-oauth-server/contracts/ui.md</code>. Para caber no aparelho, alguns estados omitem o cartão do perfil e "Dados pessoais".</p>
+    <p>Ordem de foco na seção: <b>Desconectar (item 1) → Desconectar (item 2) → … → Desconectar todos</b>; no vazio: <b>campo do endereço → Copiar</b>.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px · lista</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="k-list" data-tab="account"></div>
+      <figcaption><b>Duas conexões.</b> Cada item: tile 36 px com <code>Bot</code>, nome (<code>&lt;h3&gt;</code>), selo de permissão com ícone + texto ("Consulta e alterações" amarelo com <code>Pencil</code>; "Só consulta" neutro com <code>Eye</code>), "Conectado em 01/11/2026" · "Último uso há 5 min" / "Ainda não usado". "Desconectar" (ghost destrutivo, 44 px) abaixo do texto, alinhado ao nome; <code>aria-label="Desconectar {nome}"</code>. Com 2+, "Desconectar todos" numa lista própria abaixo.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="k-confirm" data-tab="account"></div>
+      <figcaption><b>Confirmação.</b> <code>ConfirmModal tone="destructive"</code>: "Desconectar Claude?" / "O assistente perde o acesso na hora." Foco inicial em "Cancelar". Confirmando: botão em loading "Desconectando…", modal não fecha por Esc/scrim durante o envio.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="k-after" data-tab="account"></div>
+      <figcaption><b>Depois de desconectar.</b> Item sai da lista; toast "Claude desconectado." (<code>role="status"</code>). Com 1 conexão, "Desconectar todos" some. Foco vai para o "Desconectar" do item que ocupou o lugar (ou do anterior); sem itens, para o título "Nenhum assistente conectado." (<code>tabIndex=-1</code>).</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="k-confirm-all" data-tab="account"></div>
+      <figcaption><b>Desconectar todos.</b> Mesmo ConfirmModal, com a contagem: "Desconectar todos os assistentes?" / "Os 2 assistentes perdem o acesso na hora. Para usar de novo, será preciso conectar cada um outra vez." Confirmar: "Desconectar todos". Toast "Assistentes desconectados." e a seção passa ao estado vazio.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="k-empty" data-tab="account"></div>
+      <figcaption><b>Vazio + copiar (US4-3).</b> Cartão com "Nenhum assistente conectado.", a instrução e o campo <b>somente leitura</b> "Endereço do MCP" (<code>readOnly</code>, fonte mono, seleciona tudo ao focar) e "Copiar" (<code>aria-label="Copiar endereço do MCP"</code>). No celular o botão fica abaixo do campo para a URL caber inteira.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="k-copied" data-tab="account"></div>
+      <figcaption><b>Copiado.</b> Toast "Endereço copiado." Se a API de área de transferência falhar, toast de erro "Não foi possível copiar. Selecione o endereço e copie manualmente." e o texto do campo fica selecionado.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Celular · 390 px · carga</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone short" data-screen="k-loading" data-tab="account"></div>
+      <figcaption><b>Carregando.</b> Só a seção carrega (o resto da Conta já está na tela): 2 skeletons no formato do item, <code>aria-busy</code> na lista + "Carregando…" <code>sr-only</code>.</figcaption></figure>
+    <figure class="shot"><div class="device phone short" data-screen="k-error" data-tab="account"></div>
+      <figcaption><b>Erro.</b> Faixa <code>role="alert"</code> dentro da seção com "Tentar de novo"; o resto da Conta continua usável.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="k-list" data-tab="account"></div></div>
+      <figcaption><b>≥ 768 px — lista.</b> "Desconectar" sobe para a direita do item, centralizado na altura.</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="k-empty" data-tab="account"></div></div>
+      <figcaption><b>≥ 768 px — vazio.</b> Campo e "Copiar" lado a lado.</figcaption></figure>
+  </div>
+</div>
+
+<!-- ============================ LISTA (2 conexões) ============================ -->
+<template id="k-list">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-top:12px"><span class="avatar lg fam-0" aria-hidden="true">AS</span><div style="min-width:0"><div class="row-title">Ana Silva</div><div class="row-sub">ana.silva@exemplo.com</div></div></div>
+
+  <section class="section" aria-labelledby="ks1">
+    <div class="section-head"><h2 id="ks1">Segurança</h2></div>
+    <div class="list">
+      <button class="row has-icon"><span class="wicon set" style="background:var(--color-family-yellow)"><i data-i="key-round" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Trocar senha</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+      <div class="row has-icon static"><span class="wicon set" style="background:#f9f7f9"><i data-i="google"></i></span><span class="row-main"><span class="row-title regular">Google</span></span><span class="value-r" style="display:flex;align-items:center;gap:4px;color:var(--color-positive)"><i data-i="check" data-s="16" data-w="2.5"></i>Vinculado</span></div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="kc1" aria-describedby="kc1d">
+    <div class="section-head"><h2 id="kc1">Assistentes conectados</h2></div>
+    <p class="section-lead" id="kc1d">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <ul class="list conn-list">
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">Claude</h3><span class="badge write"><i data-i="pencil" data-s="12"></i>Consulta e alterações</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-11-01T18:00:00Z">01/11/2026</time></span><span aria-hidden="true">·</span><span>Último uso <time datetime="2026-11-01T18:42:00Z">há 5 min</time></span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm" aria-label="Desconectar Claude" aria-haspopup="dialog">Desconectar</button></div>
+      </li>
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">ChatGPT</h3><span class="badge neutral"><i data-i="eye" data-s="12"></i>Só consulta</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-10-28T13:10:00Z">28/10/2026</time></span><span aria-hidden="true">·</span><span>Ainda não usado</span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm" aria-label="Desconectar ChatGPT" aria-haspopup="dialog">Desconectar</button></div>
+      </li>
+    </ul>
+    <div class="list disconnect-all"><button type="button" class="row destructive" aria-haspopup="dialog"><i data-i="unplug" data-s="20"></i><span class="row-main">Desconectar todos</span></button></div>
+  </section>
+
+  <section class="section" aria-labelledby="kp1">
+    <div class="section-head"><h2 id="kp1">Pessoas que cadastrei</h2></div>
+    <div class="list">
+      <div class="row r2 has-icon static"><span class="avatar fam-2" style="width:36px;height:36px">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span><span class="row-sub">sem login · família Silva</span></span></div>
+    </div>
+  </section>
+</template>
+
+<!-- ============================ CONFIRMAÇÃO ============================ -->
+<template id="k-confirm">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <section class="section" aria-labelledby="kc2">
+    <div class="section-head"><h2 id="kc2">Assistentes conectados</h2></div>
+    <p class="section-lead">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <ul class="list conn-list">
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">Claude</h3><span class="badge write"><i data-i="pencil" data-s="12"></i>Consulta e alterações</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-11-01T18:00:00Z">01/11/2026</time></span><span aria-hidden="true">·</span><span>Último uso <time datetime="2026-11-01T18:42:00Z">há 5 min</time></span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm" aria-label="Desconectar Claude" aria-haspopup="dialog">Desconectar</button></div>
+      </li>
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">ChatGPT</h3><span class="badge neutral"><i data-i="eye" data-s="12"></i>Só consulta</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-10-28T13:10:00Z">28/10/2026</time></span><span aria-hidden="true">·</span><span>Ainda não usado</span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm" aria-label="Desconectar ChatGPT" aria-haspopup="dialog">Desconectar</button></div>
+      </li>
+    </ul>
+  </section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="kd1" aria-describedby="kd1d">
+      <h2 id="kd1"><i data-i="triangle-alert" data-s="24" class="neg"></i>Desconectar Claude?</h2>
+      <p id="kd1d">O assistente perde o acesso na hora.</p>
+      <div class="actions"><button class="btn destructive block">Desconectar</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<!-- ============================ DEPOIS DE DESCONECTAR ============================ -->
+<template id="k-after">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <section class="section" aria-labelledby="kc3">
+    <div class="section-head"><h2 id="kc3">Assistentes conectados</h2></div>
+    <p class="section-lead">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <ul class="list conn-list">
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">ChatGPT</h3><span class="badge neutral"><i data-i="eye" data-s="12"></i>Só consulta</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-10-28T13:10:00Z">28/10/2026</time></span><span aria-hidden="true">·</span><span>Ainda não usado</span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm is-focus" aria-label="Desconectar ChatGPT" aria-haspopup="dialog">Desconectar</button></div>
+      </li>
+    </ul>
+  </section>
+  <section class="section" aria-labelledby="kp3">
+    <div class="section-head"><h2 id="kp3">Pessoas que cadastrei</h2></div>
+    <div class="list">
+      <div class="row r2 has-icon static"><span class="avatar fam-2" style="width:36px;height:36px">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span><span class="row-sub">sem login · família Silva</span></span></div>
+    </div>
+  </section>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Claude desconectado.</span></div></div>
+</template>
+
+<!-- ============================ CONFIRMAR "DESCONECTAR TODOS" ============================ -->
+<template id="k-confirm-all">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <section class="section" aria-labelledby="kc4">
+    <div class="section-head"><h2 id="kc4">Assistentes conectados</h2></div>
+    <p class="section-lead">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <ul class="list conn-list">
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">Claude</h3><span class="badge write"><i data-i="pencil" data-s="12"></i>Consulta e alterações</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-11-01T18:00:00Z">01/11/2026</time></span><span aria-hidden="true">·</span><span>Último uso <time datetime="2026-11-01T18:42:00Z">há 5 min</time></span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm" aria-label="Desconectar Claude">Desconectar</button></div>
+      </li>
+      <li class="conn">
+        <span class="wicon" aria-hidden="true"><i data-i="bot" data-s="20"></i></span>
+        <div class="conn-main">
+          <div class="conn-name"><h3 style="font:inherit;margin:0">ChatGPT</h3><span class="badge neutral"><i data-i="eye" data-s="12"></i>Só consulta</span></div>
+          <p class="conn-meta"><span>Conectado em <time datetime="2026-10-28T13:10:00Z">28/10/2026</time></span><span aria-hidden="true">·</span><span>Ainda não usado</span></p>
+        </div>
+        <div class="conn-actions"><button type="button" class="btn ghost destructive sm" aria-label="Desconectar ChatGPT">Desconectar</button></div>
+      </li>
+    </ul>
+    <div class="list disconnect-all"><button type="button" class="row destructive"><i data-i="unplug" data-s="20"></i><span class="row-main">Desconectar todos</span></button></div>
+  </section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="kd2" aria-describedby="kd2d">
+      <h2 id="kd2"><i data-i="triangle-alert" data-s="24" class="neg"></i>Desconectar todos os assistentes?</h2>
+      <p id="kd2d">Os 2 assistentes perdem o acesso na hora. Para usar de novo, será preciso conectar cada um outra vez.</p>
+      <div class="actions"><button class="btn destructive block">Desconectar todos</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<!-- ============================ VAZIO ============================ -->
+<template id="k-empty">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-top:12px"><span class="avatar lg fam-0" aria-hidden="true">AS</span><div style="min-width:0"><div class="row-title">Ana Silva</div><div class="row-sub">ana.silva@exemplo.com</div></div></div>
+
+  <section class="section" aria-labelledby="ks5">
+    <div class="section-head"><h2 id="ks5">Segurança</h2></div>
+    <div class="list">
+      <button class="row has-icon"><span class="wicon set" style="background:var(--color-family-yellow)"><i data-i="key-round" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Trocar senha</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="kc5" aria-describedby="kc5d">
+    <div class="section-head"><h2 id="kc5">Assistentes conectados</h2></div>
+    <p class="section-lead" id="kc5d">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <div class="card mcp-empty">
+      <h3 tabindex="-1">Nenhum assistente conectado.</h3>
+      <p>Para conectar, adicione este endereço no seu assistente (ex.: Claude → Conectores):</p>
+      <div class="field"><label for="mcp5">Endereço do MCP</label>
+        <div class="copy-row"><input id="mcp5" class="input" readonly value="https://finami.app/mcp" spellcheck="false" autocapitalize="none"><button type="button" class="btn secondary sm" aria-label="Copiar endereço do MCP"><i data-i="copy" data-s="18"></i>Copiar</button></div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<!-- ============================ COPIADO ============================ -->
+<template id="k-copied">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <section class="section" aria-labelledby="kc6" aria-describedby="kc6d">
+    <div class="section-head"><h2 id="kc6">Assistentes conectados</h2></div>
+    <p class="section-lead" id="kc6d">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <div class="card mcp-empty">
+      <h3 tabindex="-1">Nenhum assistente conectado.</h3>
+      <p>Para conectar, adicione este endereço no seu assistente (ex.: Claude → Conectores):</p>
+      <div class="field"><label for="mcp6">Endereço do MCP</label>
+        <div class="copy-row"><input id="mcp6" class="input" readonly value="https://finami.app/mcp" spellcheck="false" autocapitalize="none"><button type="button" class="btn secondary sm is-focus" aria-label="Copiar endereço do MCP"><i data-i="copy" data-s="18"></i>Copiar</button></div>
+      </div>
+    </div>
+  </section>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Endereço copiado.</span></div></div>
+</template>
+
+<!-- ============================ CARREGANDO ============================ -->
+<template id="k-loading">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <section class="section" aria-labelledby="kc7">
+    <div class="section-head"><h2 id="kc7">Assistentes conectados</h2></div>
+    <p class="section-lead">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <div class="list" aria-busy="true"><span class="sr-only">Carregando…</span>
+      <div class="conn" aria-hidden="true" style="padding-bottom:14px"><span class="skel circle" style="width:36px;height:36px"></span><div class="conn-main"><span class="skel" style="width:140px;height:16px;margin-bottom:8px"></span><span class="skel" style="width:210px;height:12px"></span></div></div>
+      <div class="conn" aria-hidden="true" style="padding-bottom:14px"><span class="skel circle" style="width:36px;height:36px"></span><div class="conn-main"><span class="skel" style="width:110px;height:16px;margin-bottom:8px"></span><span class="skel" style="width:180px;height:12px"></span></div></div>
+    </div>
+  </section>
+</template>
+
+<!-- ============================ ERRO ============================ -->
+<template id="k-error">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <section class="section" aria-labelledby="kc8">
+    <div class="section-head"><h2 id="kc8">Assistentes conectados</h2></div>
+    <p class="section-lead">Assistentes de IA que podem acessar sua conta pelo MCP.</p>
+    <div class="banner err" role="alert"><i data-i="wifi-off" data-s="18"></i><span><b>Não foi possível carregar os assistentes</b>Confira sua conexão e tente de novo.<br><button type="button" class="btn secondary sm"><i data-i="rotate-cw" data-s="18"></i>Tentar de novo</button></span></div>
+  </section>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

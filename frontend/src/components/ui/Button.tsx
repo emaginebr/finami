@@ -38,6 +38,21 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 const DISABLED_CLASSES =
   "disabled:bg-surface-2 disabled:text-text-disabled disabled:border-transparent disabled:cursor-not-allowed disabled:hover:bg-surface-2";
 
+/**
+ * Estilo "ocupado" (durante `loading`) por variante: o rótulo de progresso continua legível
+ * em vez de cair no visual de desabilitado. Variantes sem entrada usam `DISABLED_CLASSES`.
+ */
+const BUSY_CLASSES: Partial<Record<ButtonVariant, string>> = {
+  // on-accent / accent-pressed 8,19:1
+  [ButtonVariant.Primary]: "disabled:bg-accent-pressed disabled:text-on-accent disabled:cursor-progress",
+  // text-muted / surface-3 7,05:1
+  [ButtonVariant.Secondary]:
+    "disabled:bg-surface-3 disabled:text-text-muted disabled:cursor-progress disabled:hover:bg-surface-3",
+  // on-accent / negative 8,31:1
+  [ButtonVariant.Destructive]:
+    "disabled:bg-negative disabled:text-on-accent disabled:opacity-80 disabled:cursor-progress disabled:hover:opacity-80",
+};
+
 /** Botão do design system (components.md §3) — altura mínima de 44 px */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -57,7 +72,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const { t } = useTranslation();
-    const isPrimaryBusy = loading && variant === ButtonVariant.Primary;
+    const busyClasses = loading ? BUSY_CLASSES[variant as ButtonVariant] : undefined;
 
     return (
       <button
@@ -71,9 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           VARIANT_CLASSES[variant as ButtonVariant],
           SIZE_CLASSES[size as ButtonSize],
           block && "flex w-full",
-          isPrimaryBusy
-            ? "disabled:bg-accent-pressed disabled:text-on-accent disabled:cursor-progress"
-            : DISABLED_CLASSES,
+          busyClasses ?? DISABLED_CLASSES,
           className,
         )}
         {...props}

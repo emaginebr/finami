@@ -19,6 +19,7 @@ Direção visual: **Noite Roxa** (iOS Dark Grouped tingido com a marca). Apenas 
 | [`mockups/wallets.html`](./mockups/wallets.html), [`group-manage.html`](./mockups/group-manage.html) | Aba Carteiras e formulários de carteira/família/membros | T064 |
 | [`mockups/group.html`](./mockups/group.html), [`member.html`](./mockups/member.html) | Saldo por membro (Full/Summary/Hidden) e tela do membro | T080 |
 | [`mockups/account.html`](./mockups/account.html) | Aba Conta estilo Ajustes | T087 |
+| [`REVIEW-004.md`](./REVIEW-004.md) | Revisão da feature 004 (consentimento OAuth, Conta → Assistentes conectados, página de erro da API) × mockups e WCAG 2.1 AA — 0 altos, 3 médios, 8 baixos | T062 |
 | [`REVIEW-003.md`](./REVIEW-003.md) | Revisão das telas da feature 003 no homolog (320/390/1440 px) — 0 altos, 2 médios, 6 baixos | T040 |
 | [`REVIEW.md`](./REVIEW.md) | Revisão das telas implementadas × mockups (320/390/768/1440 px), ajustes por severidade para o T092 | T091 |
 
@@ -35,6 +36,17 @@ Direção visual: **Noite Roxa** (iOS Dark Grouped tingido com a marca). Apenas 
 
 Nenhum token novo: todas as combinações usam cores já validadas na tabela de contraste de
 `tokens.css`.
+
+## Feature `004-mcp-oauth-server` — assistentes de IA (OAuth)
+
+| Artefato | Propósito | Tarefa |
+|---|---|---|
+| [`mockups/oauth-consent.html`](./mockups/oauth-consent.html) | Tela `/autorizar`: pronto (leitura+escrita), só leitura pedida, 320 px, enviando, voltando, erro de rede ao enviar e ao carregar, carregando, vencido (410), inexistente (404), desktop | T004 |
+| [`mockups/account-connections.html`](./mockups/account-connections.html) | Conta → "Assistentes conectados": lista, confirmação, depois de desconectar, desconectar todos, vazio com copiar, copiado, carregando, erro (390 e 1440 px) | T004 |
+| [`mockups/oauth-error.html`](./mockups/oauth-error.html) | Página de erro do `GET /oauth/authorize`: HTML **final** e autocontido para embutir na API (trocar só `{{REASON}}`) | T004 |
+| [`components.md` §8](./components.md#8-assistentes-de-ia--oauth-e-conexões-feature-004) | `OAuthConsentPage`, `AccountCard`, `ScopeChoice`, `ConnectedAssistantsSection`, `ConnectionItem`, `ScopeBadge`, `McpAddressCard`, `OAuthErrorPage` | T004 |
+
+Nenhum token novo. Ícones lucide novos: `Bot`, `Unplug`, `ExternalLink`.
 
 ## Como ver os mockups
 

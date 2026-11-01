@@ -15,6 +15,7 @@ import { UiProvider } from "../Contexts/UiContext";
 import { WalletProvider } from "../Contexts/WalletContext";
 import { InvitationProvider } from "../Contexts/InvitationContext";
 import { NotificationProvider } from "../Contexts/NotificationContext";
+import { OAuthConnectionProvider } from "../Contexts/OAuthConnectionContext";
 
 /** axe sem as regras que dependem da página inteira ou de CSS real (jsdom) */
 export const axe = configureAxe({
@@ -112,7 +113,9 @@ export const AppProviders = ({ children }: { children: ReactNode }) => (
                 <BalanceProvider>
                   <InvitationProvider>
                     <NotificationProvider>
-                      <UiProvider>{children}</UiProvider>
+                      <OAuthConnectionProvider>
+                        <UiProvider>{children}</UiProvider>
+                      </OAuthConnectionProvider>
                     </NotificationProvider>
                   </InvitationProvider>
                 </BalanceProvider>

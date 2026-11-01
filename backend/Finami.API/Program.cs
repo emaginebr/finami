@@ -1,5 +1,7 @@
 using Finami.API.Extensions;
+using Finami.API.Hosted;
 using Finami.API.HealthChecks;
+using Finami.API.Mcp;
 using Finami.Application;
 using Finami.DTO;
 using Finami.DTO.Settings;
@@ -14,6 +16,12 @@ const string CORS_POLICY = "FinamiCors";
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureFinami(builder.Configuration);
+
+// Servidor MCP + esquema McpBearer + CORS McpPublic (feature 004). O JwtBearer continua o padrão de /api/*.
+builder.Services.AddFinamiMcp();
+builder.Services.AddFinamiRateLimiting();
+if (builder.Configuration.GetValue("Mcp:CleanupEnabled", true))
+    builder.Services.AddHostedService<OAuthCleanupService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -104,7 +112,10 @@ app.UseHttpsRedirection();
 app.UseCors(CORS_POLICY);
 app.UseAuthentication();
 app.UseAuthorization();
+// Depois da autorização: em /mcp o principal do McpBearer (grant_id) já está em HttpContext.User.
+app.UseRateLimiter();
 app.MapControllers();
+app.MapFinamiMcp().RequireRateLimiting(McpRateLimiting.MCP_POLICY);
 app.MapHealthChecks("/health").AllowAnonymous();
 
 var databaseSettings = app.Configuration.GetSection("Database").Get<DatabaseSettings>() ?? new DatabaseSettings();

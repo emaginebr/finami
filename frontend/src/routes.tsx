@@ -16,6 +16,7 @@ const MemberPage = lazy(() => import("./pages/MemberPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const AuthorizePage = lazy(() => import("./pages/AuthorizePage"));
 
 const withSuspense = (element: ReactNode) => (
   <Suspense fallback={<PageLoading fullScreen />}>{element}</Suspense>
@@ -25,6 +26,8 @@ const withSuspense = (element: ReactNode) => (
 export const appRoutes: RouteObject[] = [
   { path: "/entrar", element: <LoginPage /> },
   { path: "/cadastro", element: withSuspense(<RegisterPage />) },
+  // Consentimento OAuth (feature 004): fora das abas; a própria página exige sessão
+  { path: "/autorizar", element: withSuspense(<AuthorizePage />) },
   {
     element: (
       <RequireAuth>

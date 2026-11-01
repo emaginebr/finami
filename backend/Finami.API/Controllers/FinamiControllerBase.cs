@@ -22,6 +22,7 @@ public abstract class FinamiControllerBase : ControllerBase
         catch (ForbiddenException ex) { return Error(StatusCodes.Status403Forbidden, ex); }
         catch (NotFoundException ex) { return Error(StatusCodes.Status404NotFound, ex); }
         catch (ConflictException ex) { return Error(StatusCodes.Status409Conflict, ex); }
+        catch (GoneException ex) { return Error(StatusCodes.Status410Gone, ex); }
         catch (BusinessRuleException ex) { return Error(StatusCodes.Status422UnprocessableEntity, ex); }
         catch (QuoteUnavailableException ex) { return Error(StatusCodes.Status503ServiceUnavailable, ex); }
         catch (Exception ex)

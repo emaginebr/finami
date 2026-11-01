@@ -60,8 +60,8 @@ Workflow [`Deploy Production`](.github/workflows/deploy-prod.yml), disparado man
    `docker compose --env-file .env.prod -f docker-compose-prod.yml up --build -d`.
 3. Espera a API ficar saudável (as migrations rodam na subida) e mostra os logs se falhar.
 
-O Caddy publica tudo num único domínio com HTTPS: `/api/*` vai para a API e o resto para o
-frontend.
+O Caddy publica tudo num único domínio com HTTPS: `/api/*`, `/mcp*`, `/oauth/*` e
+`/.well-known/oauth-*` vão para a API e o resto para o frontend.
 
 **Pré-requisitos no servidor**: Docker Engine com o plugin Compose, Git, portas 80 e 443 abertas e
 o DNS do domínio apontando para o servidor.
@@ -80,8 +80,24 @@ o DNS do domínio apontando para o servidor.
 | Variable | `PROD_DOMAIN` | Domínio público (ex.: `finami.exemplo.com.br`) |
 | Variable | `PROD_ACME_EMAIL` | Email para o Let's Encrypt |
 | Variable | `GOOGLE_CLIENT_ID` | OAuth Client ID (opcional; autorize `https://<domínio>`) |
+| Variable | `MCP_PUBLIC_URL` / `APP_PUBLIC_URL` | Opcionais; padrão `https://<PROD_DOMAIN>` (servidor MCP/OAuth e tela `/autorizar`) |
 
 Evite `$` nas senhas: o Docker Compose interpreta `$` como variável dentro do `.env.prod`.
+
+## Assistentes de IA (MCP)
+
+O Finami tem um servidor MCP com OAuth: assistentes como Claude, Claude Code e ChatGPT podem
+consultar saldos e extratos e lançar receitas, despesas e transferências em nome da pessoa, que
+autoriza a conexão no próprio app (tela `/autorizar`, com opção de só consultar) e pode desconectá-la
+em **Conta → Assistentes conectados**.
+
+- Endereço: `https://<domínio>/mcp` (dev e homolog: `http://localhost:5145/mcp`).
+- Claude: Configurações → Conectores → *Adicionar conector personalizado* com esse endereço.
+- Claude Code: `claude mcp add --transport http finami https://<domínio>/mcp` e `/mcp` para autenticar.
+- Escopos `finami:read` e `finami:write`; 38 ferramentas em português, 4 recursos e 3 prompts.
+
+Detalhes (ferramentas, erros, limites, auditoria) em [`backend/README.md`](backend/README.md#servidor-mcp-feature-004)
+e em [`specs/004-mcp-oauth-server/`](specs/004-mcp-oauth-server/).
 
 ## Versionamento
 

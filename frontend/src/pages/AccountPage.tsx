@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Check, ChevronRight, KeyRound, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ConnectedAssistants } from "../components/account/ConnectedAssistants";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
 import { NotificationBell } from "../components/notification/NotificationBell";
@@ -255,6 +256,9 @@ const AccountPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Feature 004: entre "Segurança" e "Pessoas que cadastrei" (components.md §8) */}
+      <ConnectedAssistants />
 
       <section aria-labelledby={peopleId} className="mt-7">
         <h2 id={peopleId} className={sectionTitle}>
