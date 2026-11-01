@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Ban, Check, Clock, Cloud, Crown, Undo2, X } from "lucide-react";
+import { Ban, Check, Clock, Cloud, Crown, Eye, Pencil, Undo2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -15,6 +15,8 @@ const VARIANT_STYLE: Record<BadgeVariant, { className: string; icon: LucideIcon 
   [BadgeVariant.InviteAccepted]: { className: "bg-positive-soft text-positive", icon: Check },
   [BadgeVariant.InviteDeclined]: { className: "bg-surface-3 text-text-muted", icon: X },
   [BadgeVariant.InviteCanceled]: { className: "bg-surface-3 text-text-muted", icon: Ban },
+  [BadgeVariant.ScopeReadWrite]: { className: "bg-warning-soft text-warning", icon: Pencil },
+  [BadgeVariant.ScopeReadOnly]: { className: "bg-surface-3 text-text-muted", icon: Eye },
 };
 
 export interface BadgeProps {

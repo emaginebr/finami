@@ -250,6 +250,31 @@ export const relativeDayOf = (value: string | Date, now: Date = new Date()): Rel
 /** Instante em ISO 8601 com fuso (para `<time dateTime>`); vazio se inválido */
 export const toIsoInstant = (value: string | Date): string => parseApiDate(value)?.toISOString() ?? "";
 
+// `long`: "há 5 minutos" (o `short` gera "há 5 min.", com ponto de abreviação no meio da frase)
+const RELATIVE_FORMAT = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto", style: "long" });
+const MS_PER_MINUTE = 60_000;
+/** Acima disso o "último uso" vira data (components.md §8) */
+const MAX_RELATIVE_DAYS = 30;
+
+/**
+ * Tempo relativo por extenso em pt-BR ("agora", "há 5 minutos", "há 2 horas", "ontem", "há 3 dias");
+ * acima de 30 dias devolve `dd/MM/yyyy`. Datas futuras contam como menos de 1 minuto, que usa
+ * `justNow` quando informado (ex.: "agora há pouco") ou "agora".
+ */
+export const formatRelativeOrDate = (value: string | Date, now: Date = new Date(), justNow?: string): string => {
+  const date = parseApiDate(value);
+  if (!date) return "";
+  const elapsed = Math.max(0, now.getTime() - date.getTime());
+  const minutes = Math.floor(elapsed / MS_PER_MINUTE);
+  if (minutes < 1) return justNow ?? RELATIVE_FORMAT.format(0, "second");
+  if (minutes < 60) return RELATIVE_FORMAT.format(-minutes, "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return RELATIVE_FORMAT.format(-hours, "hour");
+  const days = Math.floor(hours / 24);
+  if (days <= MAX_RELATIVE_DAYS) return RELATIVE_FORMAT.format(-days, "day");
+  return formatDate(date);
+};
+
 /** `dd/MM/yyyy HH:mm` no fuso de São Paulo */
 export const formatDateTime = (value: string | Date): string => {
   const date = parseApiDate(value);

@@ -54,6 +54,20 @@ export interface WalletSummary {
 export const readNavState = (state: unknown): NavState =>
   typeof state === "object" && state !== null ? (state as NavState) : {};
 
+/**
+ * Rota para onde voltar depois de entrar (ou criar conta): `from` com query e hash
+ * — ex.: `/autorizar?pedido=…` (feature 004, T027). Só aceita caminhos internos.
+ */
+export const returnPathOf = (navState: NavState): string => {
+  const from = navState.from;
+  if (!from || !from.pathname.startsWith("/") || from.pathname.startsWith("//")) return "/";
+  return `${from.pathname}${from.search ?? ""}${from.hash ?? ""}`;
+};
+
+/** Estado repassado entre Entrar e Criar conta para não perder a rota de retorno */
+export const carryReturnState = (navState: NavState): NavState | undefined =>
+  navState.from ? { from: navState.from } : undefined;
+
 /** Aba destacada para uma rota (telas push mantêm a aba de origem) */
 export const activeTabFor = (pathname: string, state: unknown): AppTab | null => {
   const origin = readNavState(state).tab;

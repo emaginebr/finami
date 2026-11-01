@@ -29,6 +29,9 @@ export enum BadgeVariant {
   InviteAccepted = "inviteAccepted",
   InviteDeclined = "inviteDeclined",
   InviteCanceled = "inviteCanceled",
+  /** Permissão de assistente conectado (feature 004) */
+  ScopeReadWrite = "scopeReadWrite",
+  ScopeReadOnly = "scopeReadOnly",
 }
 
 export enum AvatarVariant {

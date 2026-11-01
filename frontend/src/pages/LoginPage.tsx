@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AppIcon } from "../components/brand/AppIcon";
 import { Logo } from "../components/brand/Logo";
 import { AuthLayout } from "../components/layout/AuthLayout";
-import { readNavState } from "../components/layout/navigation";
+import { carryReturnState, readNavState, returnPathOf } from "../components/layout/navigation";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { PasswordField } from "../components/ui/PasswordField";
@@ -29,9 +29,8 @@ const LoginPage = () => {
   const location = useLocation();
   const { status, login, loginWithGoogle, logoutReason } = useAuth();
   const navState = readNavState(location.state);
-  const from = navState.from
-    ? `${navState.from.pathname}${navState.from.search ?? ""}${navState.from.hash ?? ""}`
-    : "/";
+  // Volta com a query (ex.: `/autorizar?pedido=…`), também no login com Google
+  const from = returnPathOf(navState);
   const reason = navState.reason ?? logoutReason;
 
   const [email, setEmail] = useState("");
@@ -157,7 +156,7 @@ const LoginPage = () => {
 
       <p className="mt-6 text-center text-subhead text-text-muted">
         {t("auth.login.noAccount")}{" "}
-        <Link to="/cadastro" className="inline-flex min-h-touch items-center font-semibold text-accent no-underline">
+        <Link to="/cadastro" state={carryReturnState(navState)} className="inline-flex min-h-touch items-center font-semibold text-accent no-underline">
           {t("auth.login.createAccount")}
         </Link>
       </p>

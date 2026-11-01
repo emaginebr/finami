@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useLocation } from "react-router-dom";
 import LoginPage from "./LoginPage";
 import { AUTH_STORAGE_KEY } from "../Services/apiHelpers";
 import { SESSION_EXPIRED_MESSAGE } from "../Contexts/AuthContext";
@@ -14,6 +15,19 @@ const AUTH_RESULT = {
   user: makeUser(),
 };
 
+/** Tela de destino que mostra a query recebida */
+const SearchProbe = () => {
+  const location = useLocation();
+  return <p>Tela de autorização {location.search}</p>;
+};
+
+/** Tela de cadastro que mostra o `from` recebido no state */
+const RegisterProbe = () => {
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname: string; search?: string } } | null)?.from;
+  return <p>Tela de cadastro {from ? `${from.pathname}${from.search ?? ""}` : "sem retorno"}</p>;
+};
+
 const renderLogin = (state?: unknown) =>
   renderWithProviders(<LoginPage />, {
     path: "/entrar",
@@ -21,6 +35,8 @@ const renderLogin = (state?: unknown) =>
     wrapInMain: false,
     extraRoutes: [
       { path: "/carteiras", element: <p>Tela de carteiras</p> },
+      { path: "/autorizar", element: <SearchProbe /> },
+      { path: "/cadastro", element: <RegisterProbe /> },
       { path: "/", element: <p>Tela inicial</p> },
     ],
   });
@@ -40,6 +56,30 @@ describe("LoginPage", () => {
     expect(localStorage.getItem(AUTH_STORAGE_KEY)).toContain("novo-jwt");
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({ email: "ana@ex.com", password: "segredo123" });
+  });
+
+  it("volta para a rota de origem com a query string (/autorizar?pedido=…)", async () => {
+    mockFetch({ "POST /api/auth/login": { body: AUTH_RESULT } });
+    const user = userEvent.setup();
+
+    renderLogin({ from: { pathname: "/autorizar", search: "?pedido=q3Jk" } });
+
+    await user.type(await screen.findByLabelText("Email"), "ana@ex.com");
+    await user.type(screen.getByLabelText("Senha"), "segredo123");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByText("Tela de autorização ?pedido=q3Jk")).toBeInTheDocument();
+  });
+
+  it("\"Criar conta\" leva a rota de retorno adiante", async () => {
+    mockFetch({});
+    const user = userEvent.setup();
+
+    renderLogin({ from: { pathname: "/autorizar", search: "?pedido=q3Jk" } });
+
+    await user.click(await screen.findByRole("link", { name: "Criar conta" }));
+
+    expect(await screen.findByText("Tela de cadastro /autorizar?pedido=q3Jk")).toBeInTheDocument();
   });
 
   it("credenciais erradas mostram a mensagem e preservam o email", async () => {

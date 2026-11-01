@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ChevronLeft } from "lucide-react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppIcon } from "../components/brand/AppIcon";
 import { AuthLayout } from "../components/layout/AuthLayout";
+import { carryReturnState, readNavState, returnPathOf } from "../components/layout/navigation";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { PasswordField } from "../components/ui/PasswordField";
@@ -47,6 +48,10 @@ const isFieldName = (value: string): value is keyof RegisterFields =>
 const RegisterPage = () => {
   const { t } = useTranslation();
   const { status, register, loginWithGoogle } = useAuth();
+  const location = useLocation();
+  // Quem veio do login com uma rota de retorno (ex.: `/autorizar?pedido=…`) volta para ela
+  const navState = readNavState(location.state);
+  const returnState = carryReturnState(navState);
   const [fields, setFields] = useState<RegisterFields>(EMPTY_FIELDS);
   const [errors, setErrors] = useState<RegisterErrors>(NO_ERRORS);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -66,7 +71,7 @@ const RegisterPage = () => {
     },
   });
 
-  if (status === AuthStatus.Authenticated) return <Navigate to="/" replace />;
+  if (status === AuthStatus.Authenticated) return <Navigate to={returnPathOf(navState)} replace />;
 
   const update = (name: keyof RegisterFields, value: string) => {
     setFields((prev) => ({ ...prev, [name]: value }));
@@ -142,6 +147,7 @@ const RegisterPage = () => {
       <div className="-mx-2 flex min-h-header items-center">
         <Link
           to="/entrar"
+          state={returnState}
           aria-label={t("nav.backTo", { label: t("auth.register.backToLogin") })}
           className="inline-flex min-h-touch min-w-touch items-center gap-0.5 pr-2 text-body text-accent no-underline"
         >
@@ -159,7 +165,7 @@ const RegisterPage = () => {
       {emailTaken ? (
         <Banner tone="error" role="alert" title={t("auth.register.emailTakenTitle")} className="mb-4">
           {t("auth.register.emailTakenBody")}{" "}
-          <Link to="/entrar" className="text-inherit underline">
+          <Link to="/entrar" state={returnState} className="text-inherit underline">
             {t("auth.register.emailTakenLink")}
           </Link>
           .
