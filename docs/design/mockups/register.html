@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Criar conta — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Criar conta <span class="muted" style="font-weight:400">· /cadastro · T032 · US1</span></h1>
+    <p>Auto-cadastro (FR-001): nome, sobrenome, email e senha (mínimo 8 caracteres). Cabeçalho com voltar para "Entrar". Erros de campo ligados por <code>aria-describedby</code>; erro do servidor (409 email já cadastrado) no topo.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="reg" data-tab="none"></div>
+      <figcaption><b>Preenchendo.</b> Nome e sobrenome lado a lado (empilham abaixo de 360 px). Ajuda da senha visível antes do erro.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="reg-error" data-tab="none"></div>
+      <figcaption><b>Validação + servidor.</b> Email já cadastrado (409) no topo com atalho para entrar; senha curta no campo.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="reg" data-tab="none"></div></div>
+      <figcaption><b>≥ 768 px.</b> Cartão centralizado, largura 384 px.</figcaption></figure>
+  </div>
+</div>
+
+<template id="reg">
+  <div class="auth-wrap"><div class="auth">
+    <div class="navbar"><a class="back" href="login.html"><i data-i="chevron-left" data-s="24"></i>Entrar</a></div>
+    <div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">
+      <img class="app-icon" data-asset="app-icon.png" width="48" height="48" alt="">
+      <h1 class="large-title" style="margin:0">Criar conta</h1>
+    </div>
+    <p class="subtitle">Organize o dinheiro da sua família em um só lugar.</p>
+    <form>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label for="fn">Nome</label><input id="fn" class="input" autocomplete="given-name" value="Ana"></div>
+        <div class="field" style="margin-top:0"><label for="ln">Sobrenome</label><input id="ln" class="input" autocomplete="family-name" value="Silva"></div>
+      </div>
+      <div class="field"><label for="em">Email</label><input id="em" class="input" type="email" autocomplete="email" value="ana.silva@exemplo.com"></div>
+      <div class="field"><label for="pw">Senha</label>
+        <div class="input-wrap"><input id="pw" class="input focus" type="password" autocomplete="new-password" aria-describedby="pwh" value="••••••"><button type="button" class="icon-btn" aria-label="Mostrar senha"><i data-i="eye"></i></button></div>
+        <span class="hint" id="pwh">Mínimo de 8 caracteres.</span></div>
+      <button class="btn primary block" type="submit" style="margin-top:24px">Criar conta</button>
+    </form>
+    <div class="divider">ou</div>
+    <button class="google-btn" type="button"><i data-i="google"></i>Inscrever-se com o Google</button>
+  </div></div>
+</template>
+
+<template id="reg-error">
+  <div class="auth-wrap"><div class="auth">
+    <div class="navbar"><a class="back" href="login.html"><i data-i="chevron-left" data-s="24"></i>Entrar</a></div>
+    <h1 class="large-title">Criar conta</h1>
+    <div class="banner err" role="alert" style="margin:12px 0 16px"><i data-i="circle-alert" data-s="18"></i><span><b>Este email já está cadastrado</b>Se a conta é sua, <a class="link" style="min-height:0;color:inherit;text-decoration:underline" href="login.html">entre com ele</a>.</span></div>
+    <form>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label for="fn2">Nome</label><input id="fn2" class="input" value="Ana"></div>
+        <div class="field" style="margin-top:0"><label for="ln2">Sobrenome</label><input id="ln2" class="input" value="Silva"></div>
+      </div>
+      <div class="field"><label for="em2">Email</label><input id="em2" class="input invalid" aria-invalid="true" aria-describedby="em2e" value="ana.silva@exemplo.com"><span class="err" id="em2e"><i data-i="circle-alert" data-s="16"></i>Email já cadastrado.</span></div>
+      <div class="field"><label for="pw2">Senha</label>
+        <div class="input-wrap"><input id="pw2" class="input invalid" type="password" aria-invalid="true" aria-describedby="pw2e" value="•••••"><button type="button" class="icon-btn" aria-label="Mostrar senha"><i data-i="eye"></i></button></div>
+        <span class="err" id="pw2e"><i data-i="circle-alert" data-s="16"></i>A senha precisa ter pelo menos 8 caracteres.</span></div>
+      <button class="btn primary block" type="submit" style="margin-top:24px">Criar conta</button>
+    </form>
+  </div></div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Home — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Home <span class="muted" style="font-weight:400">· / · T032 · US1</span></h1>
+    <p>BalanceHero com o saldo total da pessoa (só carteiras de que ela é titular), cotação do bitcoin com horário, e as carteiras por família (A→Z) e depois "Avulsas". "Mesada do Pedro" aparece na seção Silva com o titular, mas não entra no total (Assumptions). Fixtures: Praia R$ 2.350,00 + Silva R$ 8.420,15 + Nubank R$ 1.234,56 + ₿ 0,00250000 × R$ 512.340,00 = R$ 1.280,85 → <b>R$ 13.285,56</b>.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="home" data-tab="home" data-fab></div>
+      <figcaption><b>Padrão.</b> Cabeçalho de seção da família é link para <code>/familias/:id</code> (ponto na cor de apoio por posição); "Avulsas" sem link. Valores nunca truncam — o nome trunca.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="home-noquote" data-tab="home" data-fab></div>
+      <figcaption><b>Sem cotação (FR-012, US1-6).</b> Total só com reais (R$ 12.004,71) e aviso <code>role="status"</code>; a carteira BTC mostra "sem cotação" no lugar do ≈.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="home-loading" data-tab="home" data-fab></div>
+      <figcaption><b>Carregando.</b> Skeletons no formato do hero e dos WalletCards; contêiner com <code>aria-busy</code> e "Carregando…" para leitor de tela. Shimmer desliga com movimento reduzido.</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="home-empty" data-tab="home" data-fab></div>
+      <figcaption><b>Vazio (US1-7).</b> R$ 0,00 + convite para criar a primeira carteira.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="home-error" data-tab="home" data-fab></div>
+      <figcaption><b>Erro de rede/500.</b> ErrorState com "Tentar novamente" (<code>role="alert"</code>).</figcaption></figure>
+    <figure class="shot"><div class="device phone w320" data-screen="home-long" data-tab="home" data-fab></div>
+      <figcaption><b>320 px + cotação desatualizada.</b> R$ 1.234.567,89 cabe com <code>text-hero</code> fluido (31 px); selo "desatualizada" com ícone e texto; nomes longos truncam.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="home" data-tab="home" data-fab></div></div>
+      <figcaption><b>≥ 768 px.</b> Sidebar de 240 px com a logo e as 3 entradas (Home ativa em <code>brand-tint</code>); conteúdo em coluna de 720 px centralizada; FAB 16 px à direita da coluna.</figcaption></figure>
+  </div>
+</div>
+
+<!-- ============ templates ============ -->
+<template id="home">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h-total">
+    <p class="label" id="h-total">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+
+  <section class="section" aria-labelledby="s1">
+    <a class="section-head" href="group.html"><span class="dot fam-0"></span><h2 id="s1">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html" aria-label="Casa de praia, Real, virtual, saldo R$ 2.350,00">
+        <span class="wicon"><i data-i="wallet"></i></span>
+        <span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span>
+        <span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="s2">
+    <a class="section-head" href="group.html"><span class="dot fam-1"></span><h2 id="s2">Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html" aria-label="Conta conjunta, Real, saldo R$ 8.420,15">
+        <span class="wicon"><i data-i="wallet"></i></span>
+        <span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real</span></span>
+        <span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i>
+      </a>
+      <a class="row r2 has-icon" href="wallet-statement.html" aria-label="Mesada do Pedro, Real, saldo R$ 100,00, de Pedro Silva">
+        <span class="wicon"><i data-i="wallet"></i></span>
+        <span class="row-main"><span class="row-title">Mesada do Pedro</span><span class="row-sub">Real · de Pedro Silva</span></span>
+        <span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="s3">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="s3">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="wallet-statement.html" aria-label="Nubank, Real, saldo R$ 1.234,56">
+        <span class="wicon"><i data-i="wallet"></i></span>
+        <span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span>
+        <span class="row-end"><span class="amount num">R$ 1.234,56</span></span><i data-i="chevron-right" data-s="18" class="chev"></i>
+      </a>
+      <a class="row r2 has-icon" href="wallet-statement.html" aria-label="Reserva BTC, Bitcoin, saldo 0,00250000 bitcoin, aproximadamente R$ 1.280,85">
+        <span class="wicon btc"><i data-i="bitcoin"></i></span>
+        <span class="row-main"><span class="row-title">Reserva BTC</span><span class="row-sub">Bitcoin</span></span>
+        <span class="row-end"><span class="amount num">₿ 0,00250000</span><span class="sec num">≈ R$ 1.280,85</span></span><i data-i="chevron-right" data-s="18" class="chev"></i>
+      </a>
+    </div>
+  </section>
+</template>
+
+<template id="home-noquote">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h-total2">
+    <p class="label" id="h-total2">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>12.004,71</p>
+    <div class="banner warn" role="status"><i data-i="triangle-alert" data-s="18"></i><span><b>Cotação do bitcoin indisponível</b>Suas carteiras em bitcoin não entraram no total.</span></div>
+  </section>
+  <section class="section" aria-labelledby="s4">
+    <a class="section-head" href="group.html"><span class="dot fam-0"></span><h2 id="s4">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="s5">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="s5">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Reserva BTC</span><span class="row-sub">Bitcoin</span></span><span class="row-end"><span class="amount num">₿ 0,00250000</span><span class="sec">sem cotação</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<template id="home-loading">
+  <div aria-busy="true">
+    <span class="sr-only">Carregando…</span>
+    <p class="greeting-date">Domingo, 1 de novembro</p>
+    <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+    <div class="hero" aria-hidden="true">
+      <span class="skel on-brand" style="width:96px;height:14px"></span>
+      <span class="skel on-brand" style="width:220px;height:40px;margin:14px 0 14px"></span>
+      <span class="skel on-brand" style="width:180px;height:12px"></span>
+    </div>
+    <div class="section" aria-hidden="true">
+      <span class="skel" style="width:80px;height:12px;margin:16px 16px 16px"></span>
+      <div class="list">
+        <div class="row r2 static"><span class="skel circle" style="width:36px;height:36px"></span><span class="row-main"><span class="skel" style="width:140px;height:14px"></span><span class="skel" style="width:80px;height:12px;margin-top:8px"></span></span><span class="skel" style="width:90px;height:16px"></span></div>
+        <div class="row r2 static"><span class="skel circle" style="width:36px;height:36px"></span><span class="row-main"><span class="skel" style="width:120px;height:14px"></span><span class="skel" style="width:60px;height:12px;margin-top:8px"></span></span><span class="skel" style="width:80px;height:16px"></span></div>
+      </div>
+    </div>
+    <div class="section" aria-hidden="true">
+      <span class="skel" style="width:64px;height:12px;margin:16px 16px 16px"></span>
+      <div class="list">
+        <div class="row r2 static"><span class="skel circle" style="width:36px;height:36px"></span><span class="row-main"><span class="skel" style="width:110px;height:14px"></span><span class="skel" style="width:70px;height:12px;margin-top:8px"></span></span><span class="skel" style="width:96px;height:16px"></span></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="home-empty">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h-total3">
+    <p class="label" id="h-total3">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>0,00</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+  <div class="state">
+    <span class="ic"><i data-i="wallet-cards" data-s="36"></i></span>
+    <h3>Você ainda não tem carteiras</h3>
+    <p>Crie uma carteira para começar a registrar entradas e saídas.</p>
+    <a class="btn primary sm" href="group-manage.html"><i data-i="plus"></i>Criar carteira</a>
+  </div>
+</template>
+
+<template id="home-error">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <div class="state" role="alert" style="padding-top:72px">
+    <span class="ic"><i data-i="wifi-off" data-s="36"></i></span>
+    <h3>Não foi possível conectar</h3>
+    <p>Verifique sua internet e tente de novo. Seus dados estão seguros.</p>
+    <button class="btn secondary sm"><i data-i="rotate-cw"></i>Tentar novamente</button>
+  </div>
+</template>
+
+<template id="home-long">
+  <h1 class="large-title" style="margin:12px 0 16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h-total4">
+    <p class="label" id="h-total4">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>1.234.567,89</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>09:05</span><span class="badge stale"><i data-i="clock" data-s="12"></i>desatualizada</span></p>
+  </section>
+  <section class="section" aria-labelledby="s6">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="s6">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Investimentos de longo prazo da família</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.171.316,40</span></span></a>
+      <a class="row r2 has-icon" href="#"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Cold wallet</span><span class="row-sub">Bitcoin</span></span><span class="row-end"><span class="amount num">₿ 0,12345678</span><span class="sec num">≈ R$ 63.251,49</span></span></a>
+    </div>
+  </section>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

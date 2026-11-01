@@ -1,0 +1,25 @@
+# Dependências e build
+node_modules/
+dist/
+dist-ssr/
+coverage/
+
+# Variáveis de ambiente reais. Versionados (sem segredos): .env.example e .env.development
+.env
+.env.local
+.env.*.local
+.env.production.local
+!.env.example
+!.env.development
+
+# Logs
+*.log
+logs
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sw?

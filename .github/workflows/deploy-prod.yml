@@ -1,0 +1,155 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch ou tag a publicar (ex.: main ou v1.2.0)"
+        required: true
+        default: main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Testes (backend e frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Backend — build e testes
+        working-directory: backend
+        run: |
+          dotnet restore Finami.sln
+          dotnet build Finami.sln --configuration Release --no-restore
+          dotnet test Finami.sln --configuration Release --no-build
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend — lint, testes e build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          npm run build
+
+  deploy:
+    name: Deploy via SSH
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.PROD_DOMAIN }}
+    steps:
+      - name: Deploy no servidor
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          password: ${{ secrets.PROD_SSH_PASSWORD }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          command_timeout: 30m
+          script: |
+            set -e
+
+            DEPLOY_DIR="/opt/finami"
+            REF="${{ inputs.ref }}"
+            GIT_TOKEN="${{ secrets.PROD_GIT_TOKEN }}"
+            # Repositório privado: PROD_GIT_TOKEN (fine-grained, só leitura de conteúdo)
+            if [ -n "$GIT_TOKEN" ]; then
+              REPO_URL="https://x-access-token:${GIT_TOKEN}@github.com/${{ github.repository }}.git"
+            else
+              REPO_URL="https://github.com/${{ github.repository }}.git"
+            fi
+
+            # Clona ou atualiza o repositório na ref pedida
+            if [ -d "$DEPLOY_DIR/.git" ]; then
+              echo "Atualizando repositório..."
+              cd "$DEPLOY_DIR"
+              git remote set-url origin "$REPO_URL"
+              git fetch --tags --force origin
+            else
+              echo "Clonando repositório..."
+              git clone "$REPO_URL" "$DEPLOY_DIR"
+              cd "$DEPLOY_DIR"
+            fi
+            if git show-ref --verify --quiet "refs/remotes/origin/$REF"; then
+              git checkout --force -B "$REF" "origin/$REF"
+            else
+              git checkout --force "$REF"
+            fi
+            git clean -fd
+            echo "Commit publicado: $(git rev-parse --short HEAD)"
+
+            # Gera o .env.prod a partir dos Secrets/Variables do GitHub
+            umask 077
+            cat > .env.prod <<'ENVEOF'
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            DOMAIN=${{ vars.PROD_DOMAIN }}
+            ACME_EMAIL=${{ vars.PROD_ACME_EMAIL }}
+            GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
+            ENVEOF
+            sed -i 's/^[[:space:]]*//' .env.prod
+
+            # Rede externa (integração com outros proxies/serviços do servidor)
+            docker network inspect finami-external >/dev/null 2>&1 || docker network create finami-external
+
+            COMPOSE="docker compose --env-file .env.prod -f docker-compose-prod.yml"
+
+            # Build antes de derrubar, para reduzir o tempo fora do ar
+            $COMPOSE build
+            $COMPOSE up -d --remove-orphans
+
+            # Aguarda a API ficar saudável (migrations rodam na subida)
+            echo "Aguardando a API..."
+            for i in $(seq 1 30); do
+              STATUS=$(docker inspect --format '{{.State.Health.Status}}' finami-api 2>/dev/null || echo "starting")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "API saudável."
+                break
+              fi
+              if [ "$i" = "30" ]; then
+                echo "A API não ficou saudável a tempo."
+                $COMPOSE ps
+                $COMPOSE logs --tail=100 api
+                exit 1
+              fi
+              sleep 5
+            done
+
+            $COMPOSE ps
+            docker image prune -f
+            echo "Deploy concluído."
+
+      - name: Resumo
+        run: |
+          echo "## Deploy de produção" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://${{ vars.PROD_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Ref: \`${{ inputs.ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Disparado por: \`${{ github.actor }}\`" >> $GITHUB_STEP_SUMMARY

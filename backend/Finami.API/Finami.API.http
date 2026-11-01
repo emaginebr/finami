@@ -1,0 +1,181 @@
+# Roteiro de validação do Finami (specs/001-finami-backend-core/quickstart.md).
+# Rode a API (dotnet run --project Finami.API), execute "login" e copie o token para @token.
+
+@baseUrl = http://localhost:5145
+@token = cole-o-token-aqui
+@nubank = 100
+@ledger = 101
+@mesada = 102
+@groupId = 1
+@pedroId = 2
+@transactionId = 1
+
+### 1. Cadastro (US1)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{ "firstName": "Ana", "lastName": "Silva", "email": "ana@exemplo.com", "password": "senha-segura-123" }
+
+### 1. Login (US1) — copie "token" para @token
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ana@exemplo.com", "password": "senha-segura-123" }
+
+### 1. Usuário autenticado
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 1. Login Google (ID token obtido no frontend)
+POST {{baseUrl}}/api/auth/google
+Content-Type: application/json
+
+{ "idToken": "<google-id-token>" }
+
+### 2. Usuário sem login (US4) — canLogin: false
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "firstName": "Pedro", "lastName": "Silva" }
+
+### 3. Grupo (US4)
+POST {{baseUrl}}/api/groups
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Família Silva" }
+
+### 3. Incluir membro
+POST {{baseUrl}}/api/groups/{{groupId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "userId": {{pedroId}} }
+
+### 4. Carteira em Real (US2)
+POST {{baseUrl}}/api/wallets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Nubank", "description": "Conta corrente", "currency": "BRL", "isVirtual": false }
+
+### 4. Carteira em Bitcoin
+POST {{baseUrl}}/api/wallets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Ledger", "currency": "BTC", "isVirtual": false }
+
+### 4. Carteira do Pedro, vinculada ao grupo (responsável cria)
+POST {{baseUrl}}/api/wallets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Mesada", "currency": "BRL", "isVirtual": true, "ownerUserId": {{pedroId}}, "groupId": {{groupId}} }
+
+### 4. Listar carteiras
+GET {{baseUrl}}/api/wallets
+Authorization: Bearer {{token}}
+
+### 5. Entrada externa (US2)
+POST {{baseUrl}}/api/transactions/income
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "walletId": {{nubank}}, "amount": 5000.00, "description": "Salário" }
+
+### 5. Saída externa
+POST {{baseUrl}}/api/transactions/expense
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "walletId": {{nubank}}, "amount": 150.00, "description": "Conta de luz" }
+
+### 6. Cotação do bitcoin (US5)
+GET {{baseUrl}}/api/quotes/btc
+Authorization: Bearer {{token}}
+
+### 7. Prévia da compra de BTC (US3)
+POST {{baseUrl}}/api/transactions/transfer/preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{ledger}}, "amount": 1000.00 }
+
+### 7. Compra de BTC
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{ledger}}, "amount": 1000.00, "description": "Aporte" }
+
+### 8. Venda de BTC
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{ledger}}, "destinationWalletId": {{nubank}}, "amount": 0.001 }
+
+### 9. Confirmar destino de outro usuário
+GET {{baseUrl}}/api/wallets/{{mesada}}/public
+Authorization: Bearer {{token}}
+
+### 9. Transferência para carteira de outro usuário
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amount": 100.00, "description": "Mesada" }
+
+### 10. Saldo insuficiente → 422
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amount": 999999.00 }
+
+### 11. Estorno (repetir → 409)
+POST {{baseUrl}}/api/transactions/{{transactionId}}/reverse
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "description": "Lançado errado" }
+
+### 12. Extrato da carteira (US6)
+GET {{baseUrl}}/api/statements/wallets/{{nubank}}?start=2026-01-01&end=2026-12-31
+Authorization: Bearer {{token}}
+
+### 12. Extrato do usuário
+GET {{baseUrl}}/api/statements/users/1?start=2026-01-01&end=2026-12-31
+Authorization: Bearer {{token}}
+
+### 12. Extrato do grupo
+GET {{baseUrl}}/api/statements/groups/{{groupId}}?start=2026-01-01&end=2026-12-31
+Authorization: Bearer {{token}}
+
+### 13. Visibilidade do extrato do grupo
+PUT {{baseUrl}}/api/groups/{{groupId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "statementVisibility": "MembersSummary" }
+
+### 14. Valor como string (feature 002, api-additions.md §1)
+POST {{baseUrl}}/api/transactions/income
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "walletId": {{ledger}}, "amount": "0.00000001", "description": "Aporte" }
+
+### 15. Saldo por membro do grupo (feature 002, api-additions.md §2) — não membro → 404
+GET {{baseUrl}}/api/groups/{{groupId}}/balances
+Authorization: Bearer {{token}}
+
+### 15. Carteiras do membro nas famílias (feature 002, api-additions.md §3)
+GET {{baseUrl}}/api/users/{{pedroId}}/group-balances
+Authorization: Bearer {{token}}
+
+### 15. Minhas carteiras nas famílias (lista vazia se não houver grupos)
+GET {{baseUrl}}/api/users/1/group-balances
+Authorization: Bearer {{token}}

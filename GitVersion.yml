@@ -1,0 +1,39 @@
+mode: ContinuousDelivery
+branches:
+  main:
+    increment: Patch
+    regex: ^master$|^main$
+    tag: ''
+    track-merge-target: false
+    source-branches: ['develop', 'release']
+    is-release-branch: true
+  develop:
+    increment: Minor
+    regex: ^dev(elop)?(ment)?$
+    tag: alpha
+  feature:
+    increment: Minor
+    regex: ^feat(ures?)?[/-]
+    tag: alpha
+  release:
+    increment: Patch
+    regex: ^releases?[/-]
+    tag: beta
+  hotfix:
+    increment: Patch
+    regex: ^(hot)?fix(es)?[/-]
+    tag: ''
+  pull-request:
+    increment: Inherit
+    regex: ^(pull|pull\-requests|pr)[/-]
+    tag: pr
+commit-message-incrementing: Enabled
+# Prefixo na primeira linha do commit (escopo opcional entre parênteses; `!` antes do `:` = breaking):
+#   major:/breaking: ou tipo!:  → major      feat:/feature:/minor: → minor      fix:/patch: → patch
+major-version-bump-message: '^((major|breaking)(\([^)]*\))?|[a-z]+(\([^)]*\))?!):'
+minor-version-bump-message: '^(feat|feature|minor)(\([^)]*\))?:'
+patch-version-bump-message: '^(fix|patch)(\([^)]*\))?:'
+no-bump-message: '\+semver:\s?(none|skip)'
+tag-prefix: '[vV]'
+ignore:
+  sha: []

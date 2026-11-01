@@ -1,0 +1,27 @@
+# Finami — proxy reverso de produção (TLS automático via Let's Encrypt)
+# DOMAIN e ACME_EMAIL vêm do .env.prod (injetado pela pipeline).
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# API (.NET) — o health interno não é publicado
+	handle /health {
+		respond 404
+	}
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# SPA (nginx no container web)
+	handle {
+		reverse_proxy web:80
+	}
+}

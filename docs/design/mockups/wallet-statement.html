@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Extrato da carteira — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Extrato da carteira <span class="muted" style="font-weight:400">· /carteiras/:walletId · T057 · US3</span></h1>
+    <p>Cabeçalho com nome, família/moeda/código, saldo atual e ações (editar, mais). PeriodPicker, StatementTotals e StatementEntryRow agrupados por dia (mais recente primeiro). Fixture de outubro: inicial R$ 4.512,90 + entradas R$ 7.545,90 − saídas R$ 3.638,65 = <b>final R$ 8.420,15</b>. FAB presente, com esta carteira pré-selecionada.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="st" data-tab="home" data-fab></div>
+      <figcaption><b>Mês passado.</b> Valores com sinal (+/−) e cor; compra de bitcoin mostra a cotação; selos "estornado" e "interna" com texto. Cada linha é um botão que abre o detalhe.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="st-custom" data-tab="home" data-fab></div>
+      <figcaption><b>Personalizado.</b> Dois <code>input type="date"</code> com rótulo; período &gt; 366 dias bloqueado com erro ligado aos campos (US3-2). Lista não recarrega até o período ser válido.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="st-empty" data-tab="home" data-fab></div>
+      <figcaption><b>Vazio (US3-4).</b> "Este mês" (padrão) sem lançamentos: inicial = final e EmptyState "Nenhum lançamento no período".</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="st-detail" data-tab="home" data-fab></div>
+      <figcaption><b>Detalhe do lançamento.</b> Sheet com todos os campos; "Estornar" (destrutivo) só quando a pessoa controla a carteira e o lançamento não foi estornado.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="st-confirm" data-tab="home" data-fab></div>
+      <figcaption><b>ConfirmModal · Estornar (US3-3).</b> <code>role="alertdialog"</code>, foco inicial em "Cancelar"; explica o efeito antes de confirmar.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="st-reversed" data-tab="home" data-fab></div>
+      <figcaption><b>Detalhe de lançamento já estornado.</b> Sem a ação "Estornar"; aviso informando qual lançamento o estornou.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="st" data-tab="home" data-fab></div></div>
+      <figcaption><b>≥ 768 px.</b> StatementTotals em 4 colunas; demais blocos na coluna de 720 px.</figcaption></figure>
+  </div>
+</div>
+
+
+<template id="st">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a>
+    <div class="right"><button class="icon-btn" aria-label="Editar carteira"><i data-i="pencil"></i></button><button class="icon-btn" aria-label="Mais ações" aria-haspopup="menu"><i data-i="ellipsis" data-s="24"></i></button></div></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <p class="subtitle" style="margin-bottom:12px"><span class="dot fam-1" style="display:inline-block;margin-right:6px"></span>Silva · Real · código <span class="num">1007</span> <button class="icon-btn" style="display:inline-grid;width:44px;height:44px;vertical-align:middle;margin:-12px 0" aria-label="Copiar código 1007"><i data-i="copy" data-s="16"></i></button></p>
+  <p class="foot muted" style="margin:0">Saldo atual</p>
+  <p class="num" style="font-size:34px;font-weight:700;margin:2px 0 20px;letter-spacing:-.01em">R$ 8.420,15</p>
+
+  <div class="seg" role="radiogroup" aria-label="Período"><button role="radio" aria-checked="false">Este mês</button><button role="radio" aria-checked="true">Mês passado</button><button role="radio" aria-checked="false" aria-label="Últimos 30 dias">30 dias</button><button role="radio" aria-checked="false">Personalizado</button></div>
+  <p class="foot muted center" style="margin:8px 0 16px"><i data-i="calendar" data-s="14"></i> <span class="num">01/10/2026 – 31/10/2026</span></p>
+
+  <dl class="totals">
+    <div><dt>Saldo inicial</dt><dd class="num">R$ 4.512,90</dd></div>
+    <div><dt><i data-i="arrow-down-left" data-s="14" class="pos"></i>Entradas</dt><dd class="num pos">+R$ 7.545,90</dd></div>
+    <div><dt><i data-i="arrow-up-right" data-s="14" class="neg"></i>Saídas</dt><dd class="num neg"><span class="sr-only">saídas de </span>−R$ 3.638,65</dd></div>
+    <div class="final"><dt>Saldo final</dt><dd class="num">R$ 8.420,15</dd></div>
+  </dl>
+
+  <h2 class="day-head">24 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm rev"><i data-i="undo-2" data-s="18"></i></span><span class="row-main"><span class="row-title">Estorno: Farmácia</span><span class="row-sub">10:12 · Estorno</span></span><span class="row-end"><span class="amount num pos">+R$ 45,90</span></span></button>
+  </div>
+  <h2 class="day-head">22 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm out"><i data-i="arrow-up-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Farmácia</span><span class="row-sub">18:40 · Saída <span class="badge neutral"><i data-i="undo-2" data-s="12"></i>estornado</span></span></span><span class="row-end"><span class="amount num neg" style="text-decoration:line-through;text-decoration-thickness:1px"><span class="sr-only">saída de </span>−R$ 45,90</span></span></button>
+  </div>
+  <h2 class="day-head">20 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Mesada de outubro</span><span class="row-sub">08:00 · Transferência → Mesada do Pedro <span class="badge neutral">interna</span></span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 100,00</span></span></button>
+  </div>
+  <h2 class="day-head">15 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm btc"><i data-i="bitcoin" data-s="18"></i></span><span class="row-main"><span class="row-title">Compra de bitcoin</span><span class="row-sub">14:05 · → Reserva BTC · <span class="num">₿ 1 = R$ 498.000,00</span></span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 500,00</span></span></button>
+  </div>
+  <h2 class="day-head">12 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm out"><i data-i="arrow-up-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Mercado</span><span class="row-sub">19:22 · Saída</span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 812,35</span></span></button>
+  </div>
+  <h2 class="day-head">6 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm out"><i data-i="arrow-up-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Aluguel</span><span class="row-sub">09:00 · Saída</span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 2.180,40</span></span></button>
+  </div>
+  <h2 class="day-head">5 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm in"><i data-i="arrow-down-left" data-s="18"></i></span><span class="row-main"><span class="row-title">Salário</span><span class="row-sub">07:30 · Entrada</span></span><span class="row-end"><span class="amount num pos">+R$ 7.500,00</span></span></button>
+  </div>
+</template>
+
+<template id="st-custom">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a>
+    <div class="right"><button class="icon-btn" aria-label="Editar carteira"><i data-i="pencil"></i></button><button class="icon-btn" aria-label="Mais ações"><i data-i="ellipsis" data-s="24"></i></button></div></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <p class="subtitle">Silva · Real · código <span class="num">1007</span></p>
+  <div class="seg" role="radiogroup" aria-label="Período"><button role="radio" aria-checked="false">Este mês</button><button role="radio" aria-checked="false">Mês passado</button><button role="radio" aria-checked="false">30 dias</button><button role="radio" aria-checked="true">Personalizado</button></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+    <div class="field"><label for="ds">De</label><input id="ds" class="input invalid num" value="01/01/2025" aria-invalid="true" aria-describedby="perr"></div>
+    <div class="field" style="margin-top:0"><label for="de">Até</label><input id="de" class="input invalid num" value="31/10/2026" aria-invalid="true" aria-describedby="perr"></div>
+  </div>
+  <p class="err" id="perr" role="alert" style="margin:8px 0 0"><i data-i="circle-alert" data-s="16"></i>O período máximo é de 366 dias.</p>
+  <div class="card" style="margin-top:20px;opacity:.5" aria-hidden="true">
+    <span class="skel" style="width:100%;height:14px;animation:none"></span>
+    <span class="skel" style="width:60%;height:14px;margin-top:10px;animation:none"></span>
+  </div>
+</template>
+
+<template id="st-empty">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a>
+    <div class="right"><button class="icon-btn" aria-label="Editar carteira"><i data-i="pencil"></i></button><button class="icon-btn" aria-label="Mais ações"><i data-i="ellipsis" data-s="24"></i></button></div></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <p class="subtitle">Silva · Real · código <span class="num">1007</span></p>
+  <div class="seg" role="radiogroup" aria-label="Período"><button role="radio" aria-checked="true">Este mês</button><button role="radio" aria-checked="false">Mês passado</button><button role="radio" aria-checked="false">30 dias</button><button role="radio" aria-checked="false">Personalizado</button></div>
+  <p class="foot muted center" style="margin:8px 0 16px"><span class="num">01/11/2026 – 30/11/2026</span></p>
+  <dl class="totals">
+    <div><dt>Saldo inicial</dt><dd class="num">R$ 8.420,15</dd></div>
+    <div><dt><i data-i="arrow-down-left" data-s="14" class="pos"></i>Entradas</dt><dd class="num">R$ 0,00</dd></div>
+    <div><dt><i data-i="arrow-up-right" data-s="14" class="neg"></i>Saídas</dt><dd class="num">R$ 0,00</dd></div>
+    <div class="final"><dt>Saldo final</dt><dd class="num">R$ 8.420,15</dd></div>
+  </dl>
+  <div class="state"><span class="ic"><i data-i="inbox" data-s="36"></i></span><h3>Nenhum lançamento no período</h3><p>Toque em + para registrar uma entrada ou saída.</p></div>
+</template>
+
+<template id="st-detail">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dt1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="dt1">Lançamento</h2><button class="back r" style="padding:0 8px">OK</button></div>
+      <div class="sheet-body">
+        <div class="flow" style="padding-top:4px"><span class="wicon btc" style="width:48px;height:48px;border-radius:14px"><i data-i="bitcoin" data-s="26"></i></span><span class="big neg" style="margin-top:8px"><span class="sr-only">saída de </span>−R$ 500,00</span><span class="foot muted">Compra de bitcoin</span></div>
+        <dl class="card">
+          <div class="kv"><dt>Data</dt><dd class="num">15/10/2026 14:05</dd></div>
+          <div class="kv"><dt>De</dt><dd>Conta conjunta</dd></div>
+          <div class="kv"><dt>Para</dt><dd>Reserva BTC</dd></div>
+          <div class="kv"><dt>Recebido</dt><dd class="num">₿ 0,00100401</dd></div>
+          <div class="kv"><dt>Cotação</dt><dd class="num">₿ 1 = R$ 498.000,00</dd></div>
+          <div class="kv"><dt>Descrição</dt><dd>Aporte mensal</dd></div>
+          <div class="kv"><dt>Código</dt><dd class="num">#58213</dd></div>
+        </dl>
+        <div class="list" style="margin-top:16px"><button class="row destructive" style="justify-content:center;font-weight:600"><i data-i="undo-2"></i>Estornar lançamento</button></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="st-confirm">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cm1" aria-describedby="cm1d">
+      <h2 id="cm1"><i data-i="triangle-alert" data-s="24" class="neg"></i>Estornar lançamento?</h2>
+      <p id="cm1d">Será registrado um estorno de <b class="num" style="color:var(--color-text)">R$ 500,00</b> que desfaz a compra de bitcoin de 15/10/2026. O lançamento original fica marcado como estornado.</p>
+      <div class="actions"><button class="btn destructive block">Estornar</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="st-reversed">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dt2">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="dt2">Lançamento</h2><button class="back r" style="padding:0 8px">OK</button></div>
+      <div class="sheet-body">
+        <div class="flow" style="padding-top:4px"><span class="wicon out" style="width:48px;height:48px;border-radius:14px"><i data-i="arrow-up-right" data-s="26"></i></span><span class="big neg" style="margin-top:8px;text-decoration:line-through;text-decoration-thickness:2px">−R$ 45,90</span><span class="foot muted">Saída · <span class="badge neutral"><i data-i="undo-2" data-s="12"></i>estornado</span></span></div>
+        <div class="banner info" style="margin-bottom:12px"><i data-i="info" data-s="18"></i><span>Estornado em 24/10/2026 às 10:12 (lançamento #58390).</span></div>
+        <dl class="card">
+          <div class="kv"><dt>Data</dt><dd class="num">22/10/2026 18:40</dd></div>
+          <div class="kv"><dt>De</dt><dd>Conta conjunta</dd></div>
+          <div class="kv"><dt>Para</dt><dd>Fora do Finami</dd></div>
+          <div class="kv"><dt>Descrição</dt><dd>Farmácia</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

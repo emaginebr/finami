@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Conta — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Conta <span class="muted" style="font-weight:400">· /conta · T087 · US6</span></h1>
+    <p>Lista agrupada no estilo Ajustes do iOS: dados pessoais, segurança ("Definir senha" ou "Trocar senha"), Google vinculado, "Pessoas que cadastrei" e "Sair" em destrutivo (FR-032). Sem FAB nesta aba (FR-009).</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="a" data-tab="account"></div>
+      <figcaption><b>Padrão (tem senha e Google).</b> Ícones de linha em quadrados coloridos como em Ajustes (texto sempre ao lado). "Sair" centralizado em rosa.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="a-edit" data-tab="account"></div>
+      <figcaption><b>Editar dados.</b> Sheet com nome, sobrenome e email; "Salvar" no rodapé com loading. Alteração aparece na hora (US6-1).</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="a-pass" data-tab="account"></div>
+      <figcaption><b>Trocar senha (US6-2).</b> Exige a senha atual; erro do servidor ligado ao campo.</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="a-google" data-tab="account"></div>
+      <figcaption><b>Só Google → "Definir senha" (US6-3).</b> Sem campo de senha atual; explica que passará a entrar também com email e senha.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="a-logout" data-tab="account"></div>
+      <figcaption><b>Sair (US6-4).</b> ConfirmModal destrutivo; foco inicial em "Cancelar". Ao confirmar, limpa <code>finami:auth</code> e volta para /entrar.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="a" data-tab="account"></div></div>
+      <figcaption><b>≥ 768 px.</b> Sidebar com "Conta" ativa; listas na coluna de 720 px.</figcaption></figure>
+  </div>
+</div>
+
+<template id="a">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-top:12px"><span class="avatar lg fam-0" aria-hidden="true">AS</span><div style="min-width:0"><div class="row-title">Ana Silva</div><div class="row-sub">ana.silva@exemplo.com</div></div></div>
+
+  <section class="section" aria-labelledby="ac1">
+    <div class="section-head"><h2 id="ac1">Dados pessoais</h2></div>
+    <div class="list">
+      <button class="row"><span class="row-main"><span class="row-title regular">Nome</span></span><span class="value-r">Ana</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+      <button class="row"><span class="row-main"><span class="row-title regular">Sobrenome</span></span><span class="value-r">Silva</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+      <button class="row"><span class="row-main"><span class="row-title regular">Email</span></span><span class="value-r" style="max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">ana.silva@exemplo.com</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ac2">
+    <div class="section-head"><h2 id="ac2">Segurança</h2></div>
+    <div class="list">
+      <button class="row has-icon"><span class="wicon set" style="background:var(--color-family-yellow)"><i data-i="key-round" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Trocar senha</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+      <div class="row has-icon static"><span class="wicon set" style="background:#f9f7f9"><i data-i="google"></i></span><span class="row-main"><span class="row-title regular">Google</span></span><span class="value-r" style="display:flex;align-items:center;gap:4px;color:var(--color-positive)"><i data-i="check" data-s="16" data-w="2.5"></i>Vinculado</span></div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ac3">
+    <div class="section-head"><h2 id="ac3">Pessoas que cadastrei</h2></div>
+    <div class="list">
+      <div class="row r2 has-icon static"><span class="avatar fam-2" style="width:36px;height:36px">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span><span class="row-sub">sem login · família Silva</span></span></div>
+      <div class="row r2 has-icon static"><span class="avatar fam-3" style="width:36px;height:36px">LS</span><span class="row-main"><span class="row-title">Lia Silva</span><span class="row-sub">sem login · família Silva</span></span></div>
+    </div>
+    <p class="list-foot">Pessoas sem login que você cadastrou para incluir nas famílias.</p>
+  </section>
+
+  <section class="section">
+    <div class="list"><button class="row destructive" style="justify-content:center;font-weight:600"><i data-i="log-out" data-s="18"></i>Sair</button></div>
+    <p class="list-foot center">Finami · versão 1.0.0</p>
+  </section>
+</template>
+
+<template id="a-edit">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ae">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="ae">Dados pessoais</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="field"><label for="an">Nome</label><input id="an" class="input" autocomplete="given-name" value="Ana"></div>
+        <div class="field"><label for="as">Sobrenome</label><input id="as" class="input focus" autocomplete="family-name" value="Silva Ramos"></div>
+        <div class="field"><label for="am">Email</label><input id="am" class="input" type="email" autocomplete="email" value="ana.silva@exemplo.com"></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Salvar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="a-pass">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ap">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="ap">Trocar senha</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="field"><label for="cp">Senha atual</label><div class="input-wrap"><input id="cp" class="input invalid" type="password" autocomplete="current-password" aria-invalid="true" aria-describedby="cpe" value="••••••••"><button type="button" class="icon-btn" aria-label="Mostrar senha"><i data-i="eye"></i></button></div>
+          <span class="err" id="cpe" role="alert"><i data-i="circle-alert" data-s="16"></i>Senha atual incorreta.</span></div>
+        <div class="field"><label for="np">Nova senha</label><div class="input-wrap"><input id="np" class="input" type="password" autocomplete="new-password" aria-describedby="nph" value="••••••••••••"><button type="button" class="icon-btn" aria-label="Mostrar senha"><i data-i="eye"></i></button></div>
+          <span class="hint" id="nph">Mínimo de 8 caracteres.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Trocar senha</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="a-google">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-top:12px"><span class="avatar lg fam-0" aria-hidden="true">AS</span><div><div class="row-title">Ana Silva</div><div class="row-sub">ana.silva@gmail.com</div></div></div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ag">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="ag">Definir senha</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="banner info" style="margin-bottom:16px"><i data-i="shield-check" data-s="18"></i><span>Você entra com o Google. Definindo uma senha, também poderá entrar com <b style="display:inline">ana.silva@gmail.com</b> e senha.</span></div>
+        <div class="field"><label for="gp">Nova senha</label><div class="input-wrap"><input id="gp" class="input focus" type="password" autocomplete="new-password" aria-describedby="gph"><button type="button" class="icon-btn" aria-label="Mostrar senha"><i data-i="eye"></i></button></div><span class="hint" id="gph">Mínimo de 8 caracteres.</span></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Definir senha</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="a-logout">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-top:12px"><span class="avatar lg fam-0" aria-hidden="true">AS</span><div><div class="row-title">Ana Silva</div><div class="row-sub">ana.silva@exemplo.com</div></div></div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="lo" aria-describedby="lod">
+      <h2 id="lo"><i data-i="log-out" data-s="24" class="neg"></i>Sair do Finami?</h2>
+      <p id="lod">Você precisará entrar de novo neste aparelho. Seus dados continuam salvos.</p>
+      <div class="actions"><button class="btn destructive block">Sair</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>
