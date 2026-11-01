@@ -1,1 +1,90 @@
-# finami
+# Finami
+
+Gestão financeira familiar: carteiras em Real e Bitcoin, famílias, transferências com compra e
+venda de bitcoin na cotação atual e extratos por período.
+
+| Pasta | Conteúdo |
+|---|---|
+| [`backend/`](backend/README.md) | API .NET 8 (Clean Architecture, EF Core + PostgreSQL, JWT) |
+| [`frontend/`](frontend/README.md) | SPA React 18 + Vite + Tailwind 4, mobile-first |
+| [`docs/design/`](docs/design/README.md) | Direção visual, tokens e mockups |
+| [`specs/`](specs/) | Especificações, planos e tarefas (Spec Kit) |
+
+## Ambientes
+
+| | **dev** | **homolog** | **prod** |
+|---|---|---|---|
+| Onde roda | Máquina do desenvolvedor | Docker local | Servidor remoto (Docker) |
+| `ASPNETCORE_ENVIRONMENT` | `Development` | `Docker` | `Production` |
+| Configuração da API | `appsettings.Development.json` (valores locais) | `appsettings.Docker.json` + `.env` | `appsettings.Production.json` + `.env.prod` |
+| Configuração do frontend | `frontend/.env.development` | build args no `docker-compose.yml` | build args no `docker-compose-prod.yml` |
+| Banco | PostgreSQL local (`finami_dev`) | Container `db` (porta 5433) | Container `db` (sem porta exposta) |
+| SSL | Não | Não | Sim — Caddy com Let's Encrypt |
+| Migrations | `dotnet ef database update` | Automáticas ao subir a API | Automáticas ao subir a API |
+| Como subir | `dotnet run` + `npm run dev` | `docker compose up --build -d` | Pipeline **Deploy Production** |
+
+### dev — desenvolvimento local
+
+Requer .NET SDK 8+, Node 22+ e um PostgreSQL local (`postgres`/`postgres` na porta 5432).
+
+```powershell
+cd backend
+# o dotnet ef lê a connection string só da variável de ambiente
+$env:ConnectionStrings__FinamiContext = "Host=localhost;Port=5432;Database=finami_dev;Username=postgres;Password=postgres"
+dotnet ef database update --project Finami.Infra --startup-project Finami.API
+dotnet run --project Finami.API          # http://localhost:5145 (Swagger em /swagger)
+
+cd ../frontend
+npm install
+npm run dev                              # http://localhost:5173
+```
+
+### homolog — Docker local
+
+```bash
+cp .env.example .env                     # ajuste senhas e segredo JWT
+docker compose up --build -d
+```
+
+- Frontend: http://localhost:8080 · API: http://localhost:5145 (health em `/health`) · Banco: `localhost:5433`
+- Dados persistem no volume `finami_homolog_pgdata` (`docker compose down -v` apaga).
+
+### prod — pipeline de produção
+
+Workflow [`Deploy Production`](.github/workflows/deploy-prod.yml), disparado manualmente
+(**Actions → Deploy Production → Run workflow**, informando a branch ou tag, ex.: `v1.2.0`):
+
+1. Roda build e testes do backend e lint/testes/build do frontend.
+2. Entra no servidor por SSH, atualiza o repositório em `/opt/finami` na ref escolhida, gera o
+   `.env.prod` a partir dos Secrets/Variables do GitHub e executa
+   `docker compose --env-file .env.prod -f docker-compose-prod.yml up --build -d`.
+3. Espera a API ficar saudável (as migrations rodam na subida) e mostra os logs se falhar.
+
+O Caddy publica tudo num único domínio com HTTPS: `/api/*` vai para a API e o resto para o
+frontend.
+
+**Pré-requisitos no servidor**: Docker Engine com o plugin Compose, Git, portas 80 e 443 abertas e
+o DNS do domínio apontando para o servidor.
+
+**Configuração no GitHub** (Settings → Environments → `production`):
+
+| Tipo | Nome | Descrição |
+|---|---|---|
+| Secret | `PROD_SSH_HOST` | IP ou hostname do servidor |
+| Secret | `PROD_SSH_USER` | Usuário SSH (precisa poder usar `docker`) |
+| Secret | `PROD_SSH_KEY` | Chave privada SSH (recomendado) — ou `PROD_SSH_PASSWORD` |
+| Secret | `PROD_SSH_PORT` | Porta SSH (opcional, padrão 22) |
+| Secret | `PROD_GIT_TOKEN` | Token só-leitura do repositório (necessário se ele for privado) |
+| Secret | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Credenciais do banco |
+| Secret | `JWT_SECRET` | Chave HMAC do JWT (64+ caracteres aleatórios) |
+| Variable | `PROD_DOMAIN` | Domínio público (ex.: `finami.exemplo.com.br`) |
+| Variable | `PROD_ACME_EMAIL` | Email para o Let's Encrypt |
+| Variable | `GOOGLE_CLIENT_ID` | OAuth Client ID (opcional; autorize `https://<domínio>`) |
+
+Evite `$` nas senhas: o Docker Compose interpreta `$` como variável dentro do `.env.prod`.
+
+## Versionamento
+
+Commits seguem o formato do [GitVersion](GitVersion.yml) (`feat:`, `fix:`, `feat(x)!:` …). Cada
+push no `main` gera uma tag `vX.Y.Z` e uma GitHub Release (`version-tag.yml` e
+`create-release.yml`).

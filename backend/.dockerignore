@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/*.suo
+**/.env
+**/.env.*
+**/appsettings.*.local.json
+**/*.log
+Finami.Tests/
+Dockerfile
+.dockerignore

@@ -1,0 +1,87 @@
+# Finami — ambiente de HOMOLOGAÇÃO (Docker local)
+#
+#   cp .env.example .env        # ajuste as senhas
+#   docker compose up --build -d
+#
+# Frontend: http://localhost:${WEB_PORT:-8080}
+# API:      http://localhost:${API_PORT:-5145}   (health: /health)
+# Banco:    localhost:${DB_PORT:-5433}
+#
+# Sem SSL. ASPNETCORE_ENVIRONMENT=Docker (appsettings.Docker.json).
+# As migrations são aplicadas pela API ao subir (Database__MigrateOnStartup).
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: finami-homolog-db
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - finami_homolog_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - finami-homolog
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: finami-api:homolog
+    container_name: finami-homolog-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-5145}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__FinamiContext: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: ${JWT_ISSUER:-finami}
+      Jwt__Audience: ${JWT_AUDIENCE:-finami}
+      Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Cors__AllowedOrigins__0: http://localhost:${WEB_PORT:-8080}
+      Database__MigrateOnStartup: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health >/dev/null 2>&1 || curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - finami-homolog
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:${API_PORT:-5145}
+        VITE_SITE_BASENAME: ""
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    image: finami-web:homolog
+    container_name: finami-homolog-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    networks:
+      - finami-homolog
+
+volumes:
+  finami_homolog_pgdata:
+
+networks:
+  finami-homolog:
+    driver: bridge
