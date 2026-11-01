@@ -64,6 +64,9 @@ Breakpoint único: **`md` = 768 px**. "Celular" = abaixo; "desktop" = a partir.
 - **Estados**: padrão `text-text-muted`; hover `bg-surface-2 text-text`; ativo
   `bg-brand-tint text-text font-semibold` com ícone `text-accent` e `aria-current="page"`.
   (Não usar `text-subtle` aqui — contraste insuficiente sobre `brand-tint`.)
+- **Topo (feature 003)**: linha `flex items-center justify-between gap-2` com a `Logo` à esquerda
+  e o `NotificationBell variant="sidebar"` à direita (ver §7). A logo (40 px de altura ≈ 140 px de
+  largura com o contêiner) + o sino de 44 px cabem nos 208 px úteis.
 
 ### LargeTitleHeader
 - **Anatomia**: linha de navegação de 44 px (voltar à esquerda, ação à direita) + título grande
@@ -77,6 +80,11 @@ Breakpoint único: **`md` = 768 px**. "Celular" = abaixo; "desktop" = a partir.
   backdrop-blur-xl`, hairline inferior e o título compacto `text-title-3` centralizado (fade
   `motion-safe`). Sem JS de rolagem disponível, o título grande simplesmente rola.
 - **Desktop**: sem modo compacto; título grande com `pt-8`.
+- **Prop nova (feature 003)**: `titleAccessory?: ReactNode` — elemento à direita do `<h1>`, na
+  mesma linha. Com ela, o bloco do título vira `flex items-start gap-2`, o `<h1>` fica
+  `min-w-0 flex-1` (o `line-clamp-3` continua) e o acessório `shrink-0`. Uso único hoje: o
+  `NotificationBell variant="header"` nas telas-raiz das abas (Home, Carteiras, Conta). Não usar
+  `actions` para o sino: isso criaria a linha de navegação de 44 px vazia acima do título.
 
 ### Fab
 - **Anatomia**: `<button aria-label="Novo lançamento">` circular 56 px, `bg-accent
@@ -188,6 +196,10 @@ Breakpoint único: **`md` = 768 px**. "Celular" = abaixo; "desktop" = a partir.
   `Undo2`), `interna` (`bg-surface-3 text-text-muted`), `Responsável`
   (`bg-positive-soft text-positive`, `Crown`), `inativa` (`bg-surface-3 text-text-muted`).
   Sempre com texto.
+- **Variantes novas (feature 003)** — estado final do convite em `NotificationItem`:
+  `InviteAccepted` "Você aceitou" (`bg-positive-soft text-positive`, `Check` traço 2,5 —
+  8,02:1), `InviteDeclined` "Você recusou" (`bg-surface-3 text-text-muted`, `X` — 7,05:1),
+  `InviteCanceled` "Convite cancelado" (`bg-surface-3 text-text-muted`, `Ban` — 7,05:1).
 
 ### ListGroup / ListRow (auxiliares, lista agrupada estilo Ajustes)
 - `ListGroup`: título opcional `text-footnote uppercase tracking-wide text-text-muted px-4 mb-2`,
@@ -352,9 +364,163 @@ Implementa data-model §6 sobre o `Sheet`. Ver `mockups/transaction-sheet.html`.
   Switch; família e titular com linha que abre seleção.
 - **MemberManager**: ListGroup "Membros" com avatar + nome + Badge `Responsável`; para o
   responsável, botão `ghost destructive` "Retirar" por linha (≥ 44 px, `aria-label="Retirar
-  {nome}"`) e ListGroup "Incluir membro" com busca por email (TextField + "Buscar", resultado
-  exato) e linha "Cadastrar pessoa sem login". Para quem não é responsável, essas partes **não
-  são renderizadas** (FR-028).
+  {nome}"`). Para quem não é responsável, essas partes **não são renderizadas** (FR-028).
+  **Feature 003**: o ListGroup "Incluir membro" (busca por email) e a linha "Cadastrar pessoa
+  sem login" **saem** do MemberManager; no lugar, rodapé `text-footnote text-text-muted` "Para
+  incluir pessoas, use "Adicionar membro" na tela da família." A inclusão passa a ser o
+  `AddMemberSheet` (§7).
 - Zona de perigo da carteira: ListGroup com "Desativar carteira" e "Excluir carteira"
   (`text-negative`); exclusão bloqueada mostra Modal "Esta carteira tem lançamentos e não pode
   ser excluída. Você pode desativá-la." com ação "Desativar".
+
+---
+
+## 7. Convites e notificações (feature 003)
+
+Mockups: [`add-member-sheet.html`](./mockups/add-member-sheet.html),
+[`notifications.html`](./mockups/notifications.html), [`group.html`](./mockups/group.html) e o
+sino em [`home.html`](./mockups/home.html), [`wallets.html`](./mockups/wallets.html),
+[`account.html`](./mockups/account.html). Textos de resultado e toasts:
+`specs/003-family-member-invites/contracts/ui.md` (os demais rótulos abaixo são propostas para
+`pt-BR.json`). Nenhum token novo: tudo usa cores já validadas em `tokens.css`.
+
+### NotificationBell
+- **Anatomia**: `<Link to="/notificacoes">` (é navegação, não `button`) com ícone `Bell`
+  (lucide, traço 1,75) centralizado num alvo de **44×44 px** `rounded-pill`, e selo numérico
+  sobreposto ao canto superior direito do ícone.
+- **Props**: `variant: "header" | "sidebar"`, `className?`. O número vem do
+  `NotificationContext` (`unread`); para testes, `count?: number` sobrescreve o contexto.
+- **Posição — celular (`variant="header"`)**: só nas três telas-raiz das abas (Home `/`,
+  Carteiras `/carteiras`, Conta `/conta`), via `LargeTitleHeader titleAccessory`. Fica **na linha
+  do título grande, à direita**, alinhado à primeira linha do `<h1>`: `-mt-0.5 -mr-2.5` (centro do
+  alvo de 44 px no centro da linha de 41 px do título; glifo rente à margem de 16 px). Na Home
+  continua abaixo da data ("DOMINGO, 1 DE NOVEMBRO") e ao lado de "Olá, Ana". Recebe `md:hidden`.
+  Rola junto com o título (não há barra compacta nas abas hoje). Telas de detalhe (família,
+  extrato, membro, notificações) **não** têm sino no celular — o "voltar" leva à aba.
+- **Posição — desktop (`variant="sidebar"`)**: no topo da `Sidebar`, na mesma linha da `Logo`,
+  alinhado à direita (`-mr-1.5`). Aparece em **todas** as telas ≥ 768 px, inclusive as de detalhe.
+- **Cores**: `header` → ícone `text-text` (18,74:1 sobre `bg`), hover `bg-surface-2`, pressed
+  `bg-surface-3`. `sidebar` → ícone `text-text-muted` (8,81:1 sobre `surface`), hover
+  `bg-surface-2 text-text`. Na rota `/notificacoes` o sino da sidebar fica **ativo**:
+  `aria-current="page"`, `bg-brand-tint text-accent` (7,64:1), como os itens da navegação.
+  Ícone 24 px no `header`, 22 px na `sidebar`.
+- **Selo (`NotificationBadge`, interno)**: `absolute top-[5px] left-[22px] h-[18px]
+  min-w-[18px] px-[5px] rounded-pill bg-accent text-on-accent text-tab font-bold leading-[18px]
+  tabular-nums text-center`, anel de 2 px na cor do fundo para separar do ícone
+  (`ring-2 ring-bg` no header, `ring-surface` na sidebar, `ring-brand-tint` quando ativo).
+  Texto: **1–9** com o número; **≥ 10 → "9+"**; **0 → sem selo** (só o sino). Contraste
+  `on-accent`/`accent` 11,68:1; selo contra o fundo ≥ 7,6:1 (≥ 3:1 exigido para não-texto).
+  O selo é `aria-hidden="true"` — a informação está no `aria-label` e o número é texto (não
+  depende de cor).
+- **`aria-label`** (com o número **real**, nunca "9+"): 0 → "Notificações"; 1 → "Notificações,
+  1 não lida"; N → "Notificações, N não lidas" (i18n com plural: `notifications.bellLabel_zero /
+  _one / _other`). Não é região viva: a contagem muda em silêncio (atualizada ao trocar de rota e
+  ao voltar à aba, research R-06); quem navega até o sino ouve o valor atual.
+- **Foco**: anel padrão `focus-visible:outline-2 outline-offset-2 outline-focus` em volta do
+  círculo de 44 px (≥ 9,08:1 sobre `bg`/`surface`/`surface-2`).
+- **Navegação**: ao tocar, `navigate("/notificacoes", { state: { tab, backTo, backLabel } })`
+  com a aba atual — a aba de origem continua ativa na TabBar/Sidebar e o "voltar" da tela diz
+  "Home"/"Carteiras"/"Conta".
+- **Movimento**: nenhuma animação no selo (sem pulso/balanço).
+
+### NotificationsPage (`/notificacoes`) e NotificationItem
+- **Página**: `LargeTitleHeader title="Notificações"` com `backTo/backLabel` da aba de origem;
+  lista `<ul class="bg-surface rounded-lg overflow-hidden" aria-label="Notificações">`; botão
+  "Carregar mais" (`Button variant="secondary" size="sm"`, centralizado, `pt-4`) quando
+  `nextBeforeId != null`; em loading, "Carregando…" com spinner e `aria-busy`. Ao carregar
+  mais, o foco vai para o primeiro item novo.
+- **Marcar como lidas**: ao exibir a primeira página (e cada página nova), chamar
+  `markRead(ids não lidos)`; o sino zera. O indicador de "não lida" do item **continua
+  visível enquanto a pessoa estiver na tela** (usa o `isRead` recebido), para mostrar o que era novo.
+- **Item (`<li>`)**: `flex gap-3 px-4 py-3.5`, separador hairline recuado 64 px. Esquerda:
+  bloco de ícone 36 px `rounded-[10px]` (mesmo `WalletIcon`/tile): convite recebido `UserPlus`
+  `bg-info-soft text-info` (6,94:1); aceito `UserCheck` `bg-positive-soft text-positive`;
+  recusado `UserX` `bg-surface-3 text-text-muted`. Centro: frase `text-subhead` com nomes de
+  pessoa e família em `font-semibold`; linha meta `text-footnote text-text-muted` com
+  `<time dateTime>` ("Hoje às 14:32", "Ontem às 19:05", senão "28 de out.") e, se houver, o
+  Badge de estado final.
+- **Não lida**: ponto 8 px `bg-accent` a 6 px da borda esquerda, na altura da 1ª linha
+  (`aria-hidden`) + `<span class="sr-only">Não lida. </span>` no começo da frase.
+- **Convite recebido pendente** (`invitation.status = Pending`): linha de ações `mt-3 flex
+  gap-2` com `Button secondary sm` "Recusar" e `Button primary sm` "Aceitar" (44 px; no celular
+  `flex-1` cada, no desktop `min-w-32`). `aria-label` com contexto: "Aceitar convite para a
+  família {família}" / "Recusar convite para a família {família}".
+  Enviando: o botão tocado em `loading` ("Aceitando…"/"Recusando…") e o outro `disabled`.
+  Sucesso ao aceitar: toast "Você agora faz parte de {família}.", item passa a "Você aceitou",
+  foco vai para a frase do item (`tabIndex=-1`), recarregar famílias e carteiras.
+  Recusar não pede confirmação (é reversível: o responsável pode convidar de novo).
+- **Estado final** (Accepted/Declined/Canceled): sem botões, Badge `InviteAccepted` /
+  `InviteDeclined` / `InviteCanceled` na linha meta.
+- **409 "Este convite não está mais disponível."**: `Banner tone="error" role="alert"` dentro do
+  item (`mt-2.5`), botões removidos, item recarregado com o estado final.
+- **Aceito/recusado (responsável)**: frase "{ator} aceitou o convite para {família}" /
+  "recusou". O de **aceito** é um `<Link>` para `/familias/:groupId` (o `<li>` inteiro, hover
+  `bg-surface-3`, `ChevronRight` 18 px `text-text-subtle`); o de **recusado** não navega.
+- **Vazio**: `EmptyState` com `BellOff`, título "Nenhuma notificação por enquanto" e apoio
+  opcional "Convites para famílias aparecem aqui.".
+- **Carregando / erro**: 4 skeletons no formato do item (tile 36 + 2 linhas + data) com
+  `aria-busy`; `ErrorState` padrão.
+
+### AddMemberSheet
+- **Gatilho**: `SectionHeaderAction` "Adicionar membro" na seção Membros da `GroupPage` (abaixo),
+  só para o responsável (FR-001). Ao fechar, o foco volta a esse botão.
+- **Sheet**: `tall`, título fixo **"Adicionar membro"** (`Dialog.Title`) em todos os passos.
+  Cabeçalho esquerdo: "Cancelar" no passo `email`; `ChevronLeft` "Voltar" nos demais (volta ao
+  passo `email` preservando o texto). Rodapé fixo com o botão do passo (`Button block`).
+  Cada passo (exceto `email`) começa com `<h3 tabIndex={-1} class="text-title-3 font-semibold
+  mt-2 mb-1">` que **recebe o foco** ao entrar no passo — o leitor de tela anuncia o resultado.
+- **Passos** (máquina de `data-model.md`):
+
+| Passo | Conteúdo | Rodapé |
+|---|---|---|
+| `email` | texto de apoio `text-subhead text-text-muted` "Comece pelo email. Se a pessoa já tiver conta no Finami, você envia um convite."; `TextField` "Email" (`type="email"`, `inputMode="email"`, `autoComplete="email"`, `autoCapitalize="none"`, `spellCheck={false}`, `data-autofocus`); divisor "ou" (`aria-hidden`); `ListRow` 60 px `UserPlus` "Adicionar sem email" / "Para quem não vai usar o app" com chevron | "Continuar" (sempre habilitado; Enter envia) |
+| `email` inválido | `TextField` com erro "Informe um email válido." (`errors.emailInvalid` existente), `aria-invalid`, foco volta ao campo | idem |
+| lookup em curso | campo e atalho `disabled` | "Verificando…" (loading) |
+| `available` → `newPersonForm` | h3 "Nova pessoa"; apoio "Esse email ainda não tem conta. A pessoa será cadastrada com ele e já entra na família {família}."; linha somente leitura "Email" com `Mail` 18 px (`bg-surface text-text-muted`, sem borda); `TextField` "Nome" e "Sobrenome" (`autoComplete="off"`, obrigatórios, até 120) | "Adicionar à família" |
+| `newPersonForm` sem email | h3 "Nova pessoa sem email"; apoio "A pessoa não vai entrar no app. Você poderá criar carteiras para ela, e ela aparece em "Pessoas que cadastrei"."; Nome e Sobrenome | "Adicionar à família" |
+| `registered` → `inviteConfirm` | h3 "Pessoa encontrada"; `PersonCard` (avatar neutro + nome + "Já tem conta no Finami" — FR-008: só nome); frase do contrato em `text-body text-text`; `Banner info` "A pessoa só entra na família depois de aceitar. O convite aparece nas notificações do app." (texto neutro — REVIEW-003 M-2) | "Convidar para a família" com ícone `Send` |
+| `alreadyMember` | h3 "Já faz parte"; `PersonCard` ("Membro da família {família}"); `Banner info role="status"` com `UserCheck` e o texto do contrato. Vale também para o próprio email do responsável | `secondary` "Usar outro email" (volta ao `email` com o texto selecionado) |
+| `pendingInvite` | h3 "Convite já enviado"; `PersonCard` com avatar `pending` e "Enviado em {data}"; `Banner tone={BannerTone.Warning} role="status"` com `Clock` e o texto do contrato; `Button variant={ButtonVariant.DestructiveGhost}` "Cancelar convite" (ícone `X`) → `ConfirmModal` (abaixo) → toast "Convite cancelado." e volta ao `email` | `secondary` "Usar outro email" |
+| `submitting` | campos `disabled`, "Voltar" desabilitado, `dismissible={false}`, `busy` | "Adicionando…" / "Enviando convite…" (loading) |
+| erro do servidor | `Banner tone="error" role="alert"` no topo do passo (`mb-4`), dados preservados, botão volta ao normal. 409 de email em `members/new` (corrida) não mostra faixa: refazer o lookup e ir para `registered` | — |
+| `done` | Sheet fecha; toast do contrato ("{nome} foi adicionado(a) à família." / "Convite enviado para {nome}."); recarregar saldos/membros e pendentes | — |
+
+- **`PersonCard`** (interno): `flex items-center gap-3 bg-surface rounded-lg px-4 py-3 mb-4`;
+  avatar 40 px — variante `neutral` (`bg-surface-3 text-text`, 14,01:1) para quem não é membro
+  ou cujo índice de cor não se conhece, `pending` para convite pendente; nome `text-headline`,
+  linha 2 `text-footnote text-text-muted`.
+
+### SectionHeaderAction ("Adicionar membro")
+- Botão no cabeçalho de seção da `GroupPage` (o `<h2>` MEMBROS vira `flex items-center` com o
+  botão em `ml-auto -mr-2`). Visual: pílula **36 px** `rounded-pill bg-surface-2 text-accent
+  px-3.5 pl-3 gap-1.5 text-subhead font-semibold normal-case tracking-normal`, ícone `UserPlus`
+  18 px. Alvo de toque **44 px** com `before:absolute before:inset-x-0 before:-inset-y-1`.
+  Hover/pressed `bg-surface-3`. Contraste `accent`/`surface-2` 9,98:1 (`surface-3` 8,73:1).
+- `type="button"`, `aria-haspopup="dialog"`; o texto visível é o nome acessível. Fica **fora**
+  do `<h2>` (irmão dele dentro do cabeçalho), para o título da seção continuar só "Membros".
+- Só para o responsável; quem não é responsável não recebe o botão (nem espaço reservado).
+
+### PendingInvitesSection / PendingInviteRow
+- Seção **"Convites pendentes"** logo abaixo de Membros e antes de "Carteiras da família", só
+  para o responsável e só quando há ao menos um pendente (sem pendentes, a seção não é
+  renderizada). Cabeçalho igual ao das outras seções (`text-footnote uppercase`).
+- Lista `<ul>` `bg-surface rounded-lg`; cada `<li>` `ListRow` 60 px estático: avatar 40 px
+  **`pending`** (`bg-transparent border-[1.5px] border-dashed border-border text-text-muted`,
+  borda 3,93:1 sobre `surface`) com as iniciais; nome `text-headline`; linha 2 "Enviado em
+  {30 de out.}" (`<time dateTime>`, `text-footnote text-text-muted`); à direita
+  `Button variant={ButtonVariant.DestructiveGhost} size={ButtonSize.Sm}` "Cancelar" com
+  `aria-label="Cancelar convite de {nome}"`.
+- Rodapé `text-footnote text-text-muted px-4 pt-2`: "Quem foi convidado só entra na família
+  depois de aceitar o convite."
+- **ConfirmModal do cancelamento** (FR-014): `tone="destructive"`, título "Cancelar o convite
+  de {nome}?", descrição "{nome} não poderá mais aceitar o convite para a família {família}.
+  Você pode convidar de novo depois.", `confirmLabel="Cancelar convite"`,
+  **`cancelLabel="Manter convite"`** (o padrão "Cancelar" ficaria ambíguo) com foco inicial
+  nele. Sucesso: toast "Convite cancelado.", linha removida, foco no próximo "Cancelar" ou, sem
+  pendentes, no botão "Adicionar membro".
+
+### Avatar — variantes novas
+- `neutral`: `bg-surface-3 text-text` (pessoa encontrada / sem índice de família).
+- `pending`: fundo transparente, borda tracejada `border-border` 1,5 px, iniciais
+  `text-text-muted` — sempre acompanhado de texto ("Enviado em …" ou a seção "Convites
+  pendentes"), nunca só a borda.

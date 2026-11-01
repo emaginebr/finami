@@ -52,6 +52,12 @@
     'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
     'chevrons-up-down': '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
     archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+    'bell-off': '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>',
+    'user-check': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>',
+    'user-x': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/>',
+    send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+    ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
   };
   const GOOGLE = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
 
@@ -70,15 +76,20 @@
     const app = document.createElement('div');
     app.className = 'app';
 
+    // NotificationBell (feature 003): data-bell="N" = não lidas; data-bell-active = rota /notificacoes
+    const unread = Number(device.dataset.bell || 0);
+    const bellActive = 'bellActive' in device.dataset;
+    const [userInitials, userName] = (device.dataset.user || 'AS|Ana Silva').split('|');
+
     if (tab !== 'none') {
       const items = tabs
         .map(([k, l, ic]) => `<a class="side-item" href="#" ${k === tab ? 'aria-current="page"' : ''}><i data-i="${ic}" data-s="20"></i>${l}</a>`)
         .join('');
       app.insertAdjacentHTML(
         'beforeend',
-        `<aside class="sidebar"><a class="brand" href="#"><img src="${ASSETS}logo.webp" alt="Finami"></a>
+        `<aside class="sidebar"><div class="side-top"><a class="brand" href="#"><img src="${ASSETS}logo.webp" alt="Finami"></a>${bell(unread, 'side', bellActive)}</div>
           <nav aria-label="Principal">${items}</nav>
-          <div class="side-foot"><span class="avatar fam-0" style="width:32px;height:32px;font-size:13px">AS</span>Ana Silva</div></aside>`,
+          <div class="side-foot"><span class="avatar fam-0" style="width:32px;height:32px;font-size:13px">${userInitials}</span>${userName}</div></aside>`,
       );
     }
 
@@ -89,6 +100,19 @@
     const inner = document.createElement('div');
     inner.className = 'main-inner';
     inner.appendChild(content);
+    // Telas-raiz das abas (sem .navbar): sino à direita do título grande, só no celular
+    if (tab !== 'none' && !inner.querySelector('.navbar') && !('noBell' in device.dataset)) {
+      const h1 = inner.querySelector('.large-title');
+      if (h1) {
+        const row = document.createElement('div');
+        row.className = 'title-row';
+        row.style.cssText = h1.style.cssText;
+        h1.style.cssText = '';
+        h1.replaceWith(row);
+        row.appendChild(h1);
+        row.insertAdjacentHTML('beforeend', bell(unread, 'head', false));
+      }
+    }
     main.appendChild(inner);
     app.appendChild(main);
 
@@ -116,6 +140,14 @@
     }
   }
 
+  // Selo: 1–9 com o número, acima de 9 "9+"; aria-label sempre com o número real
+  function bell(n, variant, active) {
+    const label = n === 0 ? 'Notificações' : n === 1 ? 'Notificações, 1 não lida' : `Notificações, ${n} não lidas`;
+    const badge = n > 0 ? `<span class="bell-badge" aria-hidden="true">${n > 9 ? '9+' : n}</span>` : '';
+    const size = variant === 'side' ? 22 : 24;
+    return `<a class="bell ${variant}" href="notifications.html" aria-label="${label}" ${active ? 'aria-current="page"' : ''}><i data-i="bell" data-s="${size}"></i>${badge}</a>`;
+  }
+
   function icons(root) {
     root.querySelectorAll('i[data-i]').forEach((el) => {
       const name = el.dataset.i;
@@ -132,6 +164,7 @@
     ['transaction-sheet.html', 'Folha de lançamento'], ['wallet-statement.html', 'Extrato'],
     ['wallets.html', 'Carteiras'], ['group-manage.html', 'Gestão de carteira/família'],
     ['group.html', 'Família'], ['member.html', 'Membro'], ['account.html', 'Conta'],
+    ['add-member-sheet.html', 'Adicionar membro'], ['notifications.html', 'Notificações'],
   ];
   const here = location.pathname.split('/').pop();
   document.querySelectorAll('nav[data-pages]').forEach((nav) => {

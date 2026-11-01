@@ -1,11 +1,15 @@
 import { cn } from "../../utils/cn";
 import { familyColorClass } from "../../utils/familyColors";
 
+import { AvatarVariant } from "./variants";
+
 export interface AvatarProps {
   /** Nome completo; as iniciais são calculadas */
   name: string;
-  /** Posição na lista (cor de apoio) */
-  colorIndex: number;
+  /** Posição na lista (cor de apoio, só na variante `family`) */
+  colorIndex?: number;
+  /** `neutral`: pessoa sem índice de família; `pending`: convite pendente (components.md §7) */
+  variant?: AvatarVariant | `${AvatarVariant}`;
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }
@@ -25,14 +29,31 @@ const initialsOf = (name: string): string => {
   return `${first}${last}`.toUpperCase();
 };
 
-/** Avatar de iniciais na cor de apoio por posição (decorativo: o nome aparece ao lado) */
-export const Avatar = ({ name, colorIndex, size = "md", className }: AvatarProps) => (
+const variantClasses = (variant: AvatarVariant, colorIndex: number): string => {
+  switch (variant) {
+    case AvatarVariant.Neutral:
+      return "bg-surface-3 text-text";
+    case AvatarVariant.Pending:
+      return "border-[1.5px] border-dashed border-border bg-transparent text-text-muted";
+    case AvatarVariant.Family:
+      return cn("text-on-family", familyColorClass(colorIndex));
+  }
+};
+
+/** Avatar de iniciais (decorativo: o nome aparece ao lado) */
+export const Avatar = ({
+  name,
+  colorIndex = 0,
+  variant = AvatarVariant.Family,
+  size = "md",
+  className,
+}: AvatarProps) => (
   <span
     aria-hidden="true"
     className={cn(
-      "grid shrink-0 place-items-center rounded-pill font-bold text-on-family",
+      "grid shrink-0 place-items-center rounded-pill font-bold",
       SIZE_CLASSES[size],
-      familyColorClass(colorIndex),
+      variantClasses(variant as AvatarVariant, colorIndex),
       className,
     )}
   >

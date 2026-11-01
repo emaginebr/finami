@@ -11,13 +11,14 @@
   <header>
     <h1>Conta <span class="muted" style="font-weight:400">· /conta · T087 · US6</span></h1>
     <p>Lista agrupada no estilo Ajustes do iOS: dados pessoais, segurança ("Definir senha" ou "Trocar senha"), Google vinculado, "Pessoas que cadastrei" e "Sair" em destrutivo (FR-032). Sem FAB nesta aba (FR-009).</p>
+    <p><b>Feature 003 (T003):</b> <code>NotificationBell</code> à direita do título grande (celular) e no topo da Sidebar, ao lado da logo (desktop). Selo com o número de não lidas (1–9; acima de 9, "9+"); sem não lidas, só o sino. Toque abre <a href="notifications.html" style="color:#c9f59a">/notificacoes</a>. Especificação em <code>components.md §7</code>.</p>
     <nav data-pages></nav>
   </header>
 
   <h2 class="group">Celular · 390 px</h2>
   <div class="stage">
-    <figure class="shot"><div class="device phone" data-screen="a" data-tab="account"></div>
-      <figcaption><b>Padrão (tem senha e Google).</b> Ícones de linha em quadrados coloridos como em Ajustes (texto sempre ao lado). "Sair" centralizado em rosa.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="a" data-tab="account" data-bell="12"></div>
+      <figcaption><b>Padrão (tem senha e Google) · 12 não lidas.</b> Selo "9+". Ícones de linha em quadrados coloridos como em Ajustes (texto sempre ao lado). "Sair" centralizado em rosa.</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="a-edit" data-tab="account"></div>
       <figcaption><b>Editar dados.</b> Sheet com nome, sobrenome e email; "Salvar" no rodapé com loading. Alteração aparece na hora (US6-1).</figcaption></figure>
     <figure class="shot"><div class="device phone" data-screen="a-pass" data-tab="account"></div>
@@ -32,7 +33,7 @@
 
   <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
   <div class="stage">
-    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="a" data-tab="account"></div></div>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="a" data-tab="account" data-bell="12"></div></div>
       <figcaption><b>≥ 768 px.</b> Sidebar com "Conta" ativa; listas na coluna de 720 px.</figcaption></figure>
   </div>
 </div>

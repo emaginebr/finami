@@ -11,8 +11,19 @@
   <header>
     <h1>Família <span class="muted" style="font-weight:400">· /familias/:groupId · T080 · US5</span></h1>
     <p>Total da família e MemberRow por membro (avatar de iniciais na cor de apoio por posição, nome, selo "Responsável", total em BRL e detalhe BRL/BTC). O que aparece depende de <code>detailLevel</code> devolvido pela API: <b>Full</b> (valores + carteiras), <b>Summary</b> (valores por membro, sem carteiras) e <b>Hidden</b> (só a lista de pessoas + explicação, FR-031). O botão de gerenciar (lápis) só existe para o responsável.</p>
+    <p><b>Feature 003 (T003):</b> só para o responsável, o cabeçalho da seção Membros ganha o botão <b>"Adicionar membro"</b> (abre a folha de <a href="add-member-sheet.html" style="color:#c9f59a">add-member-sheet.html</a>) e, abaixo de Membros, a seção <b>"Convites pendentes"</b> (nome, data do convite, "Cancelar" com ConfirmModal). "Gerenciar família" deixa de incluir pessoas (fica só retirar). Quem não é responsável não vê nenhum dos dois (Summary/Hidden abaixo).</p>
     <nav data-pages></nav>
   </header>
+
+  <h2 class="group">Feature 003 · Adicionar membro e convites pendentes</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="gf" data-tab="wallets"></div>
+      <figcaption><b>Responsável (Ana).</b> "Adicionar membro" à direita de MEMBROS: pílula <code>surface-2</code> de 36 px com área de toque de 44 px, ícone <code>UserPlus</code> + texto (FR-001). "Convites pendentes" com avatar tracejado (pendente, ainda não é membro), "Enviado em …" e "Cancelar" (<code>aria-label="Cancelar convite de Bruno Lima"</code>). O rodapé explica que só entram depois de aceitar.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="gf-cancel" data-tab="wallets"></div>
+      <figcaption><b>Cancelar convite (FR-014).</b> ConfirmModal destrutivo; foco inicial em "Manter convite" (o rótulo padrão "Cancelar" colidiria com a ação). Ao confirmar: toast "Convite cancelado." e a linha sai da seção; sem pendentes, a seção inteira some.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="gf-focus" data-tab="wallets"></div>
+      <figcaption><b>Foco por teclado + membro recém-adicionado.</b> Anel <code>focus</code> de 2 px com afastamento de 2 px em volta da pílula (9,08:1 sobre o fundo). Ordem de tabulação: voltar → lápis → Adicionar membro → membros → Cancelar de cada convite → carteiras. Rafael Silva (criado sem email) já aparece em Membros.</figcaption></figure>
+  </div>
 
   <h2 class="group">Celular · 390 px</h2>
   <div class="stage">
@@ -26,8 +37,8 @@
 
   <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
   <div class="stage">
-    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="gf" data-tab="wallets"></div></div>
-      <figcaption><b>≥ 768 px.</b> Mesmo conteúdo na coluna de 720 px, com as seções empilhadas para manter a leitura em lista.</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="gf" data-tab="wallets" data-bell="2"></div></div>
+      <figcaption><b>≥ 768 px.</b> Mesmo conteúdo na coluna de 720 px, com as seções empilhadas para manter a leitura em lista. Sino com selo "2" no topo da Sidebar, ao lado da logo (no desktop está em todas as telas, inclusive as de detalhe).</figcaption></figure>
   </div>
 </div>
 
@@ -43,13 +54,22 @@
   </section>
 
   <section class="section" aria-labelledby="gm">
-    <div class="section-head"><h2 id="gm">Membros</h2></div>
+    <div class="section-head"><h2 id="gm">Membros</h2><button class="head-action" type="button" aria-haspopup="dialog"><i data-i="user-plus" data-s="18"></i>Adicionar membro</button></div>
     <div class="list">
       <a class="row r2 has-icon" href="member.html" aria-label="Ana Silva, responsável, total R$ 8.420,15"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
       <a class="row r2 has-icon" href="member.html" aria-label="Carlos Souza, total R$ 3.150,00: R$ 2.900,00 e 0,00048796 bitcoin"><span class="avatar fam-1">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span><span class="row-sub num">R$ 2.900,00 · ₿ 0,00048796</span></span><span class="row-end"><span class="amount num">R$ 3.150,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
       <a class="row r2 has-icon" href="member.html" aria-label="Pedro Silva, total R$ 100,00"><span class="avatar fam-2">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span></span><span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
       <a class="row r2 has-icon" href="member.html" aria-label="Lia Silva, total R$ 0,00, sem carteiras"><span class="avatar fam-3">LS</span><span class="row-main"><span class="row-title">Lia Silva</span><span class="row-sub">sem carteiras</span></span><span class="row-end"><span class="amount num">R$ 0,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
     </div>
+  </section>
+
+  <section class="section" aria-labelledby="gp">
+    <div class="section-head"><h2 id="gp">Convites pendentes</h2></div>
+    <ul class="list notif-list">
+      <li class="row r2 has-icon static"><span class="avatar pending" aria-hidden="true">BL</span><span class="row-main"><span class="row-title">Bruno Lima</span><span class="row-sub">Enviado em <time datetime="2026-10-30">30 de out.</time></span></span><button class="btn ghost destructive sm" type="button" aria-label="Cancelar convite de Bruno Lima">Cancelar</button></li>
+      <li class="row r2 has-icon static"><span class="avatar pending" aria-hidden="true">MC</span><span class="row-main"><span class="row-title">Marina Costa</span><span class="row-sub">Enviado em <time datetime="2026-11-01">1 de nov.</time></span></span><button class="btn ghost destructive sm" type="button" aria-label="Cancelar convite de Marina Costa">Cancelar</button></li>
+    </ul>
+    <p class="list-foot">Quem foi convidado só entra na família depois de aceitar o convite.</p>
   </section>
 
   <section class="section" aria-labelledby="gw">
@@ -95,6 +115,46 @@
       <div class="row r2 has-icon static" aria-label="Ana Silva, você"><span class="avatar fam-2">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub">você</span></span><span class="value-r subtle" aria-hidden="true">—</span></div>
     </div>
   </section>
+</template>
+
+
+<template id="gf-cancel">
+  <div class="navbar"><a class="back" href="wallets.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><a class="icon-btn" href="group-manage.html" aria-label="Gerenciar família"><i data-i="pencil"></i></a></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle" style="margin-bottom:16px">4 membros · todos veem os extratos</p>
+  <section class="section" style="margin-top:8px">
+    <div class="section-head"><h2>Convites pendentes</h2></div>
+    <ul class="list notif-list">
+      <li class="row r2 has-icon static"><span class="avatar pending" aria-hidden="true">BL</span><span class="row-main"><span class="row-title">Bruno Lima</span><span class="row-sub">Enviado em 30 de out.</span></span><button class="btn ghost destructive sm" type="button">Cancelar</button></li>
+      <li class="row r2 has-icon static"><span class="avatar pending" aria-hidden="true">MC</span><span class="row-main"><span class="row-title">Marina Costa</span><span class="row-sub">Enviado em 1 de nov.</span></span><button class="btn ghost destructive sm" type="button">Cancelar</button></li>
+    </ul>
+  </section>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="gc1" aria-describedby="gc2">
+      <h2 id="gc1"><i data-i="triangle-alert" data-s="22" style="color:var(--color-negative)"></i>Cancelar o convite de Bruno Lima?</h2>
+      <p id="gc2">Bruno Lima não poderá mais aceitar o convite para a família Silva. Você pode convidar de novo depois.</p>
+      <div class="actions"><button class="btn destructive block">Cancelar convite</button><button class="btn secondary block is-focus">Manter convite</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="gf-focus">
+  <div class="navbar"><a class="back" href="wallets.html"><i data-i="chevron-left" data-s="24"></i>Carteiras</a>
+    <div class="right"><a class="icon-btn" href="group-manage.html" aria-label="Gerenciar família"><i data-i="pencil"></i></a></div></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle" style="margin-bottom:16px">5 membros · todos veem os extratos</p>
+  <section class="section" style="margin-top:8px">
+    <div class="section-head"><h2>Membros</h2><button class="head-action is-focus" type="button" aria-haspopup="dialog"><i data-i="user-plus" data-s="18"></i>Adicionar membro</button></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="member.html"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva <span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html"><span class="avatar fam-1">CS</span><span class="row-main"><span class="row-title">Carlos Souza</span></span><span class="row-end"><span class="amount num">R$ 3.150,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html"><span class="avatar fam-2">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span></span><span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html"><span class="avatar fam-3">LS</span><span class="row-main"><span class="row-title">Lia Silva</span><span class="row-sub">sem carteiras</span></span><span class="row-end"><span class="amount num">R$ 0,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html"><span class="avatar fam-0">RS</span><span class="row-main"><span class="row-title">Rafael Silva</span><span class="row-sub">sem carteiras</span></span><span class="row-end"><span class="amount num">R$ 0,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Rafael Silva foi adicionado(a) à família.</span></div></div>
 </template>
 
 <script src="mockup.js"></script>

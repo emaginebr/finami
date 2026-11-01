@@ -10,6 +10,7 @@
 <div class="page">
   <header>
     <h1>Gestão de carteiras e famílias <span class="muted" style="font-weight:400">· WalletForm · GroupForm · MemberManager · VisibilityPicker · T064 · US4</span></h1>
+    <p><b>Feature 003:</b> "Gerenciar família" deixa de incluir membros — fica só "Retirar". A inclusão passou para "Adicionar membro" na tela da família (<a href="add-member-sheet.html" style="color:#c9f59a">add-member-sheet.html</a>).</p>
     <p>Todos os formulários abrem como Sheet (celular) / modal (desktop). "Nova carteira" e "Nova família" vêm de <code>/carteiras</code>; "Gerenciar família" vem do botão de editar em <code>/familias/:id</code> (só para o responsável); "Editar carteira" vem do lápis no extrato. Ações sem permissão <b>não são renderizadas</b> (FR-028).</p>
     <nav data-pages></nav>
   </header>
@@ -109,12 +110,7 @@
           <div class="row r2 has-icon static"><span class="avatar fam-2">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span><span class="row-sub">sem login</span></span><button class="btn ghost destructive sm" aria-label="Retirar Pedro Silva">Retirar</button></div>
           <div class="row r2 has-icon static"><span class="avatar fam-3">LS</span><span class="row-main"><span class="row-title">Lia Silva</span><span class="row-sub">sem login</span></span><button class="btn ghost destructive sm" aria-label="Retirar Lia Silva">Retirar</button></div>
         </div>
-        <div class="section-head" style="margin-top:12px"><h3 style="font:inherit;margin:0">Incluir membro</h3></div>
-        <div class="card">
-          <div class="field"><label for="se">Email exato da pessoa</label><div style="display:flex;gap:8px"><input id="se" class="input" type="email" value="rafa@exemplo.com"><button class="btn secondary" aria-label="Buscar pessoa"><i data-i="search" data-s="18"></i></button></div></div>
-          <div class="row r2 has-icon static" style="padding:8px 0;margin-top:8px"><span class="avatar fam-0" style="width:36px;height:36px">RL</span><span class="row-main"><span class="row-title">Rafael Lima</span><span class="row-sub">Encontrado</span></span><button class="btn primary sm"><i data-i="user-plus" data-s="18"></i>Incluir</button></div>
-        </div>
-        <div class="list" style="margin-top:12px"><button class="row action has-icon"><span class="wicon sm" style="color:var(--color-accent)"><i data-i="user-plus" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Cadastrar pessoa sem login</span><span class="row-sub">Para crianças ou quem não usa o app</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+        <p class="list-foot">Para incluir pessoas, use "Adicionar membro" na tela da família.</p>
       </div>
     </div>
   </div>

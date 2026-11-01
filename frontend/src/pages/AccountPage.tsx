@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
+import { NotificationBell } from "../components/notification/NotificationBell";
+import { NotificationBellVariant } from "../components/ui/variants";
 import { Avatar } from "../components/ui/Avatar";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
@@ -74,7 +76,8 @@ const AccountPage = () => {
   }, [loadCreatedByMe]);
 
   const user = session?.user ?? null;
-  if (!user) return <LargeTitleHeader title={t("nav.account")} />;
+  const bell = <NotificationBell variant={NotificationBellVariant.Header} className="md:hidden" />;
+  if (!user) return <LargeTitleHeader title={t("nav.account")} titleAccessory={bell} />;
 
   const fullName = `${user.firstName} ${user.lastName}`.trim();
   const passwordTitle = user.hasPassword ? t("account.changePassword") : t("account.setPassword");
@@ -179,7 +182,7 @@ const AccountPage = () => {
 
   return (
     <>
-      <LargeTitleHeader title={t("nav.account")} />
+      <LargeTitleHeader title={t("nav.account")} titleAccessory={bell} />
 
       <div className="mt-3 flex items-center gap-4 rounded-lg bg-surface p-4">
         <Avatar name={fullName} colorIndex={0} size="lg" />

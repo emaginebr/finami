@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Notificações — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Notificações <span class="muted" style="font-weight:400">· /notificacoes · T002 · US2/US3</span></h1>
+    <p>Tela de detalhe (push) aberta pelo <code>NotificationBell</code>: "Voltar" leva à aba de origem, que continua ativa na TabBar/Sidebar. Lista da mais recente para a mais antiga (FR-020) numa lista agrupada; cada item é um <code>&lt;li&gt;</code> com ícone do tipo, frase com nomes em negrito, data em <code>&lt;time&gt;</code> e, conforme o caso, ações ou estado final. Ao abrir, a tela marca como lidas as notificações exibidas (FR-021) e o sino zera; o ponto verde de "não lida" continua visível <b>até sair da tela</b>, para mostrar o que era novo. Pessoa logada: Bruno Lima (convidado), exceto em "Responsável".</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px · convidado</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="n-list" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Convite pendente + histórico.</b> Pendente com "Recusar" (secundário) e "Aceitar" (primário), 44 px cada, <code>aria-label</code> com a família (botões repetidos na lista precisam de contexto). Estados finais sem botões, como selo com ícone + texto: "Convite cancelado", "Você aceitou", "Você recusou" (FR-019). Ponto verde + "Não lida." para leitor de tela.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="n-accepting" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Aceitando.</b> "Aceitando…" com spinner e <code>aria-busy</code>; "Recusar" desabilitado — evita duplo toque (FR-025). Mesmo padrão para "Recusando…".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="n-accepted" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Aceito (US2-4, SC-006: sino → Aceitar).</b> O item passa a "Você aceitou" na hora; toast do contrato. O app recarrega famílias e carteiras; o foco vai para o texto do item (os botões sumiram).</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="n-unavailable" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Convite indisponível (409, US2-7/US2-8).</b> Faixa <code>role="alert"</code> dentro do próprio item com o texto do contrato; o item é recarregado e mostra o estado final, sem botões.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="n-more" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>"Carregar mais".</b> Botão secundário centralizado no fim da lista (paginação por <code>beforeId</code>); enquanto carrega, "Carregando…". Novos itens entram no fim; o foco vai para o primeiro item novo. Sem próxima página, o botão some.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="n-empty" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Vazio (US3-6).</b> EmptyState com <code>BellOff</code> e o texto do contrato; linha de apoio opcional.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Celular · 390 px · responsável e estados de carga</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="n-resp" data-tab="home" data-bell-active data-user="AS|Ana Silva"></div>
+      <figcaption><b>Responsável (Ana) · US3-4.</b> "Bruno Lima aceitou o convite para Silva" é um link para <code>/familias/:id</code> com chevron (FR-022); "recusou" não navega. Ícones distintos (<code>UserCheck</code> verde / <code>UserX</code> neutro) além do verbo — não depende de cor.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="n-loading" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Carregando.</b> 4 skeletons no formato do item; <code>aria-busy</code> + "Carregando…" para leitor de tela.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="n-error" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div>
+      <figcaption><b>Erro.</b> ErrorState padrão com "Tentar novamente" (<code>role="alert"</code>).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="n-list" data-tab="home" data-bell-active data-user="BL|Bruno Lima"></div></div>
+      <figcaption><b>≥ 768 px.</b> Sino da Sidebar no estado ativo (<code>aria-current="page"</code>, fundo <code>brand-tint</code>, ícone <code>accent</code>) e já sem selo — abrir a tela zerou o contador. Botões com largura mínima de 128 px alinhados à esquerda.</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="n-resp" data-tab="home" data-bell-active data-user="AS|Ana Silva"></div></div>
+      <figcaption><b>≥ 768 px · responsável.</b> Item de "aceitou" com hover <code>surface-3</code> e chevron.</figcaption></figure>
+  </div>
+</div>
+
+<template id="n-list">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+      <li class="notif"><span class="unread-dot" aria-hidden="true"></span><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Ana Silva</b> convidou você para a família <b>Silva</b></p><div class="notif-meta"><time datetime="2026-11-01T14:32">Hoje às 14:32</time></div><div class="notif-actions"><button class="btn secondary sm" type="button" aria-label="Recusar convite para a família Silva">Recusar</button><button class="btn primary sm" type="button" aria-label="Aceitar convite para a família Silva">Aceitar</button></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Marta Souza</b> convidou você para a família <b>Avós</b></p><div class="notif-meta"><time datetime="2026-10-28T10:00">28 de out.</time><span class="badge neutral"><i data-i="ban" data-s="12" data-w="2.25"></i>Convite cancelado</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Carlos Souza</b> convidou você para a família <b>Praia</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Jorge Lima</b> convidou você para a família <b>Futebol</b></p><div class="notif-meta"><time datetime="2026-10-12T09:15">12 de out.</time><span class="badge neutral"><i data-i="x" data-s="12" data-w="2.5"></i>Você recusou</span></div></div></li>
+  </ul>
+  <div class="more"><button class="btn secondary sm" type="button">Carregar mais</button></div>
+</template>
+
+<template id="n-resp">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+      <li><a class="notif" href="group.html"><span class="unread-dot" aria-hidden="true"></span><span class="wicon in" aria-hidden="true"><i data-i="user-check" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Bruno Lima</b> aceitou o convite para <b>Silva</b></p><div class="notif-meta"><time datetime="2026-11-01T15:10">Hoje às 15:10</time></div></div><i data-i="chevron-right" data-s="18" class="chev"></i></a></li>
+      <li class="notif"><span class="unread-dot" aria-hidden="true"></span><span class="wicon rev" aria-hidden="true"><i data-i="user-x" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Marina Costa</b> recusou o convite para <b>Silva</b></p><div class="notif-meta"><time datetime="2026-10-31T19:05">Ontem às 19:05</time></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Carlos Souza</b> convidou você para a família <b>Praia</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+  </ul>
+</template>
+
+<template id="n-accepting">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+      <li class="notif"><span class="unread-dot" aria-hidden="true"></span><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Ana Silva</b> convidou você para a família <b>Silva</b></p><div class="notif-meta"><time datetime="2026-11-01T14:32">Hoje às 14:32</time></div><div class="notif-actions"><button class="btn secondary sm" type="button" disabled>Recusar</button><button class="btn primary sm" aria-busy="true" aria-disabled="true"><i data-i="loader" class="spin" data-s="18"></i>Aceitando…</button></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Marta Souza</b> convidou você para a família <b>Avós</b></p><div class="notif-meta"><time datetime="2026-10-28T10:00">28 de out.</time><span class="badge neutral"><i data-i="ban" data-s="12" data-w="2.25"></i>Convite cancelado</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Carlos Souza</b> convidou você para a família <b>Praia</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+  </ul>
+</template>
+
+<template id="n-accepted">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+      <li class="notif"><span class="unread-dot" aria-hidden="true"></span><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Ana Silva</b> convidou você para a família <b>Silva</b></p><div class="notif-meta"><time datetime="2026-11-01T14:32">Hoje às 14:32</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Marta Souza</b> convidou você para a família <b>Avós</b></p><div class="notif-meta"><time datetime="2026-10-28T10:00">28 de out.</time><span class="badge neutral"><i data-i="ban" data-s="12" data-w="2.25"></i>Convite cancelado</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Carlos Souza</b> convidou você para a família <b>Praia</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+  </ul>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Você agora faz parte de Silva.</span></div></div>
+</template>
+
+<template id="n-unavailable">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+      <li class="notif"><span class="unread-dot" aria-hidden="true"></span><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Ana Silva</b> convidou você para a família <b>Silva</b></p><div class="notif-meta"><time datetime="2026-11-01T14:32">Hoje às 14:32</time><span class="badge neutral"><i data-i="ban" data-s="12" data-w="2.25"></i>Convite cancelado</span></div><div class="banner err" role="alert"><i data-i="circle-alert" data-s="18"></i><span>Este convite não está mais disponível.</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Marta Souza</b> convidou você para a família <b>Avós</b></p><div class="notif-meta"><time datetime="2026-10-28T10:00">28 de out.</time><span class="badge neutral"><i data-i="ban" data-s="12" data-w="2.25"></i>Convite cancelado</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Carlos Souza</b> convidou você para a família <b>Praia</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+  </ul>
+</template>
+
+<template id="n-more">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Marta Souza</b> convidou você para a família <b>Avós</b></p><div class="notif-meta"><time datetime="2026-10-28T10:00">28 de out.</time><span class="badge neutral"><i data-i="ban" data-s="12" data-w="2.25"></i>Convite cancelado</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Carlos Souza</b> convidou você para a família <b>Praia</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Jorge Lima</b> convidou você para a família <b>Futebol</b></p><div class="notif-meta"><time datetime="2026-10-12T09:15">12 de out.</time><span class="badge neutral"><i data-i="x" data-s="12" data-w="2.5"></i>Você recusou</span></div></div></li>
+      <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Ana Silva</b> convidou você para a família <b>Viagem 2025</b></p><div class="notif-meta"><time datetime="2026-10-03T08:00">3 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+      <li><a class="notif" href="group.html"><span class="wicon in" aria-hidden="true"><i data-i="user-check" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Pedro Lima</b> aceitou o convite para <b>Futebol</b></p><div class="notif-meta"><time datetime="2026-10-01T21:00">1 de out.</time></div></div><i data-i="chevron-right" data-s="18" class="chev"></i></a></li>
+  </ul>
+  <div class="more"><button class="btn secondary sm" aria-busy="true" aria-disabled="true" style="color:var(--color-text)"><i data-i="loader" class="spin" data-s="18"></i>Carregando…</button></div>
+</template>
+
+<template id="n-empty">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <div class="state" style="padding-top:72px"><span class="ic" aria-hidden="true"><i data-i="bell-off" data-s="36"></i></span><h3>Nenhuma notificação por enquanto</h3><p>Convites para famílias aparecem aqui.</p></div>
+</template>
+
+<template id="n-loading">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <div aria-busy="true"><span class="sr-only" role="status">Carregando…</span>
+    <div class="list" aria-hidden="true"><div class="notif"><span class="skel circle" style="width:36px;height:36px;flex-shrink:0"></span><div class="notif-main"><span class="skel" style="height:14px;width:88%"></span><span class="skel" style="height:14px;width:60%;margin-top:6px"></span><span class="skel" style="height:12px;width:90px;margin-top:10px"></span></div></div><div class="notif"><span class="skel circle" style="width:36px;height:36px;flex-shrink:0"></span><div class="notif-main"><span class="skel" style="height:14px;width:88%"></span><span class="skel" style="height:14px;width:60%;margin-top:6px"></span><span class="skel" style="height:12px;width:90px;margin-top:10px"></span></div></div><div class="notif"><span class="skel circle" style="width:36px;height:36px;flex-shrink:0"></span><div class="notif-main"><span class="skel" style="height:14px;width:88%"></span><span class="skel" style="height:14px;width:60%;margin-top:6px"></span><span class="skel" style="height:12px;width:90px;margin-top:10px"></span></div></div><div class="notif"><span class="skel circle" style="width:36px;height:36px;flex-shrink:0"></span><div class="notif-main"><span class="skel" style="height:14px;width:88%"></span><span class="skel" style="height:14px;width:60%;margin-top:6px"></span><span class="skel" style="height:12px;width:90px;margin-top:10px"></span></div></div></div>
+  </div>
+</template>
+
+<template id="n-error">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <div class="state" role="alert" style="padding-top:72px"><span class="ic" aria-hidden="true"><i data-i="wifi-off" data-s="36"></i></span><h3>Não foi possível conectar</h3><p>Verifique a internet e tente de novo.</p><button class="btn secondary sm"><i data-i="rotate-cw" data-s="18"></i>Tentar novamente</button></div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

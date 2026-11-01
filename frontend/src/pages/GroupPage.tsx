@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { EyeOff, Pencil } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { EyeOff, Pencil, UserPlus } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { AddMemberSheet } from "../components/group/AddMemberSheet";
 import { GroupForm } from "../components/group/GroupForm";
 import { MemberManager } from "../components/group/MemberManager";
 import { MemberRow } from "../components/group/MemberRow";
+import { PendingInvitations } from "../components/group/PendingInvitations";
+import { SectionHeaderAction } from "../components/ui/SectionHeaderAction";
 import { VisibilityPicker } from "../components/group/VisibilityPicker";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab, readNavState } from "../components/layout/navigation";
@@ -18,11 +21,13 @@ import { WalletBalanceRow } from "../components/wallet/WalletBalanceRow";
 import { useAuth } from "../hooks/useAuth";
 import { useBalance } from "../hooks/useBalance";
 import { useGroup } from "../hooks/useGroup";
+import { useInvitation } from "../hooks/useInvitation";
 import { useTransaction } from "../hooks/useTransaction";
 import { ApiError, isApiError } from "../types/api";
 import { DetailLevel } from "../types/balance";
 import type { GroupBalancesResult, WalletBalanceInfo } from "../types/balance";
 import type { GroupInfo } from "../types/group";
+import type { GroupInvitationInfo } from "../types/invitation";
 import { StatementVisibility } from "../types/group";
 import { toCents } from "../utils/money";
 import { errorMessage, notifySuccess } from "../utils/notify";
@@ -53,10 +58,12 @@ const GroupPage = () => {
   const { session } = useAuth();
   const { groups, getGroup, updateGroup } = useGroup();
   const { getGroupBalances } = useBalance();
+  const { listPending } = useInvitation();
   const { ledgerVersion } = useTransaction();
   const renameFormId = useId();
   const membersHeadingId = useId();
   const walletsHeadingId = useId();
+  const addMemberRef = useRef<HTMLButtonElement>(null);
 
   const [balances, setBalances] = useState<GroupBalancesResult | null>(null);
   const [phase, setPhase] = useState<LoadPhase>(LoadPhase.Loading);
@@ -66,8 +73,21 @@ const GroupPage = () => {
   const [savingName, setSavingName] = useState(false);
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [manageError, setManageError] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  /** Remonta a folha a cada abertura (começa sempre pelo email) */
+  const [addKey, setAddKey] = useState(0);
+  const [pending, setPending] = useState<GroupInvitationInfo[]>([]);
 
   const group: GroupInfo | null = groups.find((g) => g.groupId === groupId) ?? null;
+
+  // Convites pendentes (só responsável); falha aqui não derruba a tela
+  const loadPending = useCallback(async () => {
+    try {
+      setPending(await listPending(groupId));
+    } catch {
+      setPending([]);
+    }
+  }, [listPending, groupId]);
 
   const load = useCallback(async () => {
     if (!validId) {
@@ -87,8 +107,11 @@ const GroupPage = () => {
       setLoadError(balancesResult.reason);
       setPhase(LoadPhase.Error);
     }
-    if (groupResult.status === "fulfilled") setVisibility(groupResult.value.statementVisibility);
-  }, [getGroup, getGroupBalances, groupId, validId, t]);
+    if (groupResult.status === "fulfilled") {
+      setVisibility(groupResult.value.statementVisibility);
+      if (groupResult.value.isResponsible) await loadPending();
+    }
+  }, [getGroup, getGroupBalances, groupId, validId, t, loadPending]);
 
   // Recarrega quando há lançamentos novos (ledgerVersion)
   useEffect(() => {
@@ -256,12 +279,28 @@ const GroupPage = () => {
           ) : null}
 
           <section aria-labelledby={membersHeadingId} className="mt-7">
-            <h2
-              id={membersHeadingId}
-              className="m-0 flex min-h-touch items-center px-4 text-footnote font-semibold tracking-wider text-text-muted uppercase"
-            >
-              {t("balances.members")}
-            </h2>
+            <div className="flex min-h-touch items-center gap-2 px-4">
+              <h2
+                id={membersHeadingId}
+                className="m-0 text-footnote font-semibold tracking-wider text-text-muted uppercase"
+              >
+                {t("balances.members")}
+              </h2>
+              {isResponsible ? (
+                <SectionHeaderAction
+                  ref={addMemberRef}
+                  aria-haspopup="dialog"
+                  className="-mr-2 ml-auto"
+                  icon={<UserPlus className="size-[18px]" strokeWidth={1.75} />}
+                  onClick={() => {
+                    setAddKey((key) => key + 1);
+                    setAddOpen(true);
+                  }}
+                >
+                  {t("groups.addMember.open")}
+                </SectionHeaderAction>
+              ) : null}
+            </div>
             <div className="overflow-hidden rounded-lg bg-surface">
               {balances.members.map((member, index) => (
                 <MemberRow
@@ -278,6 +317,18 @@ const GroupPage = () => {
               <p className="m-0 px-4 pt-2 text-footnote text-text-muted">{t("groups.members.onlyResponsible")}</p>
             ) : null}
           </section>
+
+          <PendingInvitations
+            groupId={groupId}
+            groupName={name}
+            isResponsible={isResponsible}
+            invitations={pending}
+            emptyFocusRef={addMemberRef}
+            onCanceled={(invitationId) => {
+              setPending((prev) => prev.filter((item) => item.invitationId !== invitationId));
+              void loadPending();
+            }}
+          />
 
           {familyWallets.length > 0 ? (
             <section aria-labelledby={walletsHeadingId} className="mt-7">
@@ -302,6 +353,18 @@ const GroupPage = () => {
           ) : null}
         </>
       )}
+
+      {isResponsible ? (
+        <AddMemberSheet
+          key={addKey}
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          groupId={groupId}
+          groupName={name}
+          pendingInvitations={pending}
+          onChanged={() => void load()}
+        />
+      ) : null}
 
       {isResponsible && group ? (
         <Sheet

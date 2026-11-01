@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
+import { NotificationBell } from "../components/notification/NotificationBell";
+import { NotificationBellVariant } from "../components/ui/variants";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorState } from "../components/ui/ErrorState";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -80,6 +82,7 @@ const HomePage = () => {
       <LargeTitleHeader
         eyebrow={formatLongDate()}
         title={session ? t("home.greeting", { name: session.user.firstName }) : t("nav.home")}
+        titleAccessory={<NotificationBell variant={NotificationBellVariant.Header} className="md:hidden" />}
       />
 
       {showSkeleton ? (

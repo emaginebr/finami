@@ -14,6 +14,7 @@ const WalletStatementPage = lazy(() => import("./pages/WalletStatementPage"));
 const GroupPage = lazy(() => import("./pages/GroupPage"));
 const MemberPage = lazy(() => import("./pages/MemberPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 const withSuspense = (element: ReactNode) => (
@@ -37,6 +38,7 @@ export const appRoutes: RouteObject[] = [
       { path: "familias/:groupId", element: <GroupPage /> },
       { path: "pessoas/:userId", element: <MemberPage /> },
       { path: "conta", element: <AccountPage /> },
+      { path: "notificacoes", element: <NotificationsPage /> },
     ],
   },
   { path: "*", element: withSuspense(<NotFoundPage />) },
