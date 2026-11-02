@@ -13,7 +13,7 @@ import { balanceAria } from "./walletAria";
 
 export interface WalletBalanceRowProps {
   wallet: WalletBalanceInfo;
-  /** Titular (lista "Carteiras da família") */
+  /** Titular da carteira (opcional) */
   ownerName?: string;
   /** Há cotação utilizável para o "≈ R$" das BTC */
   quoteAvailable: boolean;

@@ -6,6 +6,7 @@ import { PageLoading } from "./components/layout/PageLoading";
 import { RequireAuth } from "./components/layout/RequireAuth";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import { TransactionKind } from "./types/transaction";
 
 // Só Home e Login no bundle inicial (research R-16); o resto sob demanda
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -17,6 +18,7 @@ const AccountPage = lazy(() => import("./pages/AccountPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const AuthorizePage = lazy(() => import("./pages/AuthorizePage"));
+const TransactionPage = lazy(() => import("./pages/TransactionPage"));
 
 const withSuspense = (element: ReactNode) => (
   <Suspense fallback={<PageLoading fullScreen />}>{element}</Suspense>
@@ -40,6 +42,10 @@ export const appRoutes: RouteObject[] = [
       { path: "carteiras/:walletId", element: <WalletStatementPage /> },
       { path: "familias/:groupId", element: <GroupPage /> },
       { path: "pessoas/:userId", element: <MemberPage /> },
+      // Lançamentos (páginas, não modal); `key` separa o estado de cada tipo
+      { path: "depositar", element: <TransactionPage key="income" kind={TransactionKind.Income} /> },
+      { path: "sacar", element: <TransactionPage key="expense" kind={TransactionKind.Expense} /> },
+      { path: "transferir", element: <TransactionPage key="transfer" kind={TransactionKind.Transfer} /> },
       { path: "conta", element: <AccountPage /> },
       { path: "notificacoes", element: <NotificationsPage /> },
     ],

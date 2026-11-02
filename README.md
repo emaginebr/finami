@@ -81,8 +81,10 @@ o DNS do domínio apontando para o servidor.
 | Secret | `PROD_GIT_TOKEN` | Token só-leitura do repositório (necessário se ele for privado) |
 | Secret | `FINAMI_CONNECTION_STRING` | Connection string do PostgreSQL externo (ex.: `Host=…;Port=5432;Database=finami;Username=…;Password=…;SSL Mode=Require`) |
 | Secret | `FINAMI_JWT_SECRET` | Chave HMAC do JWT (64+ caracteres aleatórios) |
-| Variable | `FINAMI_DOMAIN` | Domínio público (ex.: `finami.exemplo.com.br`); define o CORS e os endereços do MCP/OAuth e da tela `/autorizar` (`https://<FINAMI_DOMAIN>`) |
 | Secret ou Variable | `FINAMI_GOOGLE_CLIENT_ID` | OAuth Client ID do Google, terminado em `.apps.googleusercontent.com`, usado pela API para validar o login Google (opcional). Não é o Client Secret (`GOCSPX-…`). O frontend recebe o mesmo valor no deploy dele |
+
+O domínio de produção é fixo: `https://finami.site` (CORS e endereços do MCP/OAuth e da tela
+`/autorizar`), definido em `backend/Finami.API/appsettings.Production.json`.
 
 Evite `$` nas senhas: o Docker Compose interpreta `$` como variável dentro do `.env.prod`.
 

@@ -34,6 +34,7 @@ const WALLETS = [
   makeWallet({ walletId: 2, name: "Nubank", balance: 1234.56 }),
   makeWallet({ walletId: 3, name: "Reserva BTC", currency: Currency.BTC, balance: 0.0025, estimatedBrl: 1280.85 }),
   makeWallet({ walletId: 4, name: "Poupança antiga", balance: 0, isActive: false }),
+  makeWallet({ walletId: 5, name: "Mesada do Pedro", balance: 50, groupId: 1, ownerUserId: 9, ownerName: "Pedro Silva" }),
 ];
 
 const QUOTE = { priceBrl: 512340, quotedAt: "2026-11-01T17:32:00Z", source: "coingecko", isStale: false };
@@ -63,16 +64,34 @@ const setup = (initialGroups: GroupInfo[] = [SILVA, PRAIA]) => {
 };
 
 describe("WalletsPage", () => {
-  it("lista famílias e carteiras; inativas ficam recolhidas", async () => {
+  it("lista Família → Pessoa → Carteira (todos links); inativas ficam recolhidas", async () => {
     const { user, container, fetchMock } = setup();
 
-    const families = await screen.findByRole("region", { name: "Famílias" });
-    expect(within(families).getByRole("link", { name: /^Silva/ })).toHaveAttribute("href", "/familias/1");
-    expect(within(families).getByRole("link", { name: /^Praia/ })).toHaveTextContent("Carlos Souza");
-    expect(within(families).getByText("Responsável")).toBeInTheDocument();
+    // Família: link para a página da família, com responsável
+    const silva = await screen.findByRole("region", { name: "Silva" });
+    expect(within(silva).getByRole("link", { name: /^Silva/ })).toHaveAttribute("href", "/familias/1");
+    expect(within(silva).getByText("Responsável")).toBeInTheDocument();
+    const praia = screen.getByRole("region", { name: "Praia" });
+    expect(within(praia).getByRole("link", { name: /^Praia/ })).toHaveTextContent("Carlos Souza");
+    expect(within(praia).getByText("Nenhuma carteira nesta família")).toBeInTheDocument();
 
-    expect(await screen.findByRole("link", { name: /^Conta conjunta/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Avulsas" })).toBeInTheDocument();
+    // Pessoas da família (a pessoa logada primeiro), cada uma com link para a página dela
+    const people = within(silva).getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(people).toEqual(["Ana Silva (você)", "Pedro Silva"]);
+    expect(within(silva).getByRole("link", { name: /^Pedro Silva/ })).toHaveAttribute("href", "/pessoas/9");
+
+    // Carteiras sob cada pessoa, sem repetir "de {titular}"
+    expect(within(silva).getByRole("link", { name: /^Conta conjunta/ })).toHaveAttribute("href", "/carteiras/1");
+    const mesada = within(silva).getByRole("link", { name: /^Mesada do Pedro/ });
+    expect(mesada).toHaveAttribute("href", "/carteiras/5");
+    expect(mesada).not.toHaveTextContent("de Pedro Silva");
+
+    // Avulsas também por pessoa
+    const loose = screen.getByRole("region", { name: "Avulsas" });
+    expect(within(loose).getByRole("link", { name: /^Ana Silva/ })).toHaveAttribute("href", `/pessoas/${USER_ID}`);
+    expect(within(loose).getByRole("link", { name: /^Nubank/ })).toBeInTheDocument();
+    expect(within(loose).getByRole("link", { name: /^Reserva BTC/ })).toBeInTheDocument();
+
     expect(screen.queryByRole("link", { name: /^Poupança antiga/ })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("includeInactive=true"))).toBe(true);
 

@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://${{ vars.FINAMI_DOMAIN }}
+      url: https://finami.site
     steps:
       - name: Deploy no servidor
         uses: appleboy/ssh-action@v1
@@ -93,11 +93,10 @@ jobs:
             cat > .env.prod <<'ENVEOF'
             FINAMI_CONNECTION_STRING=${{ secrets.FINAMI_CONNECTION_STRING }}
             FINAMI_JWT_SECRET=${{ secrets.FINAMI_JWT_SECRET }}
-            FINAMI_DOMAIN=${{ vars.FINAMI_DOMAIN }}
             FINAMI_GOOGLE_CLIENT_ID=${{ secrets.FINAMI_GOOGLE_CLIENT_ID || vars.FINAMI_GOOGLE_CLIENT_ID }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env.prod
-            for KEY in FINAMI_CONNECTION_STRING FINAMI_JWT_SECRET FINAMI_DOMAIN; do
+            for KEY in FINAMI_CONNECTION_STRING FINAMI_JWT_SECRET; do
               if ! grep -q "^$KEY=..*" .env.prod; then
                 echo "Secret/Variable $KEY não definido."
                 exit 1
@@ -138,6 +137,6 @@ jobs:
         run: |
           echo "## Deploy de produção" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- URL: https://${{ vars.FINAMI_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://finami.site" >> $GITHUB_STEP_SUMMARY
           echo "- Ref: \`${{ inputs.ref }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Disparado por: \`${{ github.actor }}\`" >> $GITHUB_STEP_SUMMARY

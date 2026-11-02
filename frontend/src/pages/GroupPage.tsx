@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { EyeOff, Pencil, UserPlus } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -18,7 +18,6 @@ import { Button } from "../components/ui/Button";
 import { ErrorState } from "../components/ui/ErrorState";
 import { Sheet, SheetHeaderButton } from "../components/ui/Sheet";
 import { BalanceHero, BalanceHeroSkeleton } from "../components/wallet/BalanceHero";
-import { WalletBalanceRow } from "../components/wallet/WalletBalanceRow";
 import { useAuth } from "../hooks/useAuth";
 import { useBalance } from "../hooks/useBalance";
 import { useGroup } from "../hooks/useGroup";
@@ -28,26 +27,19 @@ import { useOnReconnected } from "../hooks/useOnReconnected";
 import { useOnlineAction } from "../hooks/useOnlineAction";
 import { ApiError, isApiError, isOfflineError } from "../types/api";
 import { DetailLevel } from "../types/balance";
-import type { GroupBalancesResult, WalletBalanceInfo } from "../types/balance";
+import type { GroupBalancesResult } from "../types/balance";
 import type { GroupInfo } from "../types/group";
 import type { GroupInvitationInfo } from "../types/invitation";
 import { StatementVisibility } from "../types/group";
 import { toCents } from "../utils/money";
 import { errorMessage, notifySuccess } from "../utils/notify";
-import { isQuoteUsable, quoteStatusOf } from "../utils/quote";
+import { quoteStatusOf } from "../utils/quote";
 
 enum LoadPhase {
   Loading = "loading",
   Ready = "ready",
   Error = "error",
 }
-
-interface FamilyWallet {
-  wallet: WalletBalanceInfo;
-  ownerName: string;
-}
-
-const collator = new Intl.Collator("pt-BR");
 
 /** Família (rota `/familias/:groupId`): saldo por membro (US5) e gestão (US4) */
 const GroupPage = () => {
@@ -65,7 +57,6 @@ const GroupPage = () => {
   const { ledgerVersion } = useTransaction();
   const renameFormId = useId();
   const membersHeadingId = useId();
-  const walletsHeadingId = useId();
   const addMemberRef = useRef<HTMLButtonElement>(null);
   const onlineAction = useOnlineAction();
 
@@ -136,15 +127,6 @@ const GroupPage = () => {
   const responsible = balances?.members.find((m) => m.isResponsible) ?? null;
   const responsibleName = responsible ? `${responsible.firstName} ${responsible.lastName}` : "";
   const memberCount = balances?.members.length ?? group?.members.length ?? 0;
-
-  const familyWallets = useMemo<FamilyWallet[]>(() => {
-    if (!balances || balances.detailLevel !== DetailLevel.Full) return [];
-    return balances.members
-      .flatMap((member) =>
-        member.wallets.map((wallet) => ({ wallet, ownerName: `${member.firstName} ${member.lastName}` })),
-      )
-      .sort((a, b) => collator.compare(a.wallet.name, b.wallet.name));
-  }, [balances]);
 
   const fromHome = navState.tab === AppTab.Home;
   const backTo = navState.backTo ?? (fromHome ? "/" : "/carteiras");
@@ -353,27 +335,6 @@ const GroupPage = () => {
             }}
           />
 
-          {familyWallets.length > 0 ? (
-            <section aria-labelledby={walletsHeadingId} className="mt-7">
-              <h2
-                id={walletsHeadingId}
-                className="m-0 flex min-h-touch items-center px-4 text-footnote font-semibold tracking-wider text-text-muted uppercase"
-              >
-                {t("balances.familyWallets")}
-              </h2>
-              <div className="overflow-hidden rounded-lg bg-surface">
-                {familyWallets.map(({ wallet, ownerName }) => (
-                  <WalletBalanceRow
-                    key={wallet.walletId}
-                    wallet={wallet}
-                    ownerName={ownerName}
-                    quoteAvailable={isQuoteUsable(quoteStatus) && !balances.btcExcluded}
-                    linkState={childState}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
         </>
       )}
 

@@ -59,10 +59,10 @@ export default defineConfig({
         ],
         shortcuts: [
           {
-            name: "Novo lançamento",
-            short_name: "Lançar",
-            description: "Registrar uma entrada, saída ou transferência",
-            url: "/?acao=novo-lancamento",
+            name: "Depositar",
+            short_name: "Depositar",
+            description: "Registrar um depósito",
+            url: "/depositar",
             icons: [{ src: "/shortcut-new-transaction-96.png", sizes: "96x96", type: "image/png" }],
           },
           {

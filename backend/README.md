@@ -148,7 +148,7 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
 | `ConnectionStrings__FinamiContext` | Sim | Connection string do PostgreSQL |
 | `Jwt__Secret` | Sim | Chave HMAC do JWT, com pelo menos 32 bytes (a API não sobe sem ela) |
 | `Jwt__Issuer` / `Jwt__Audience` | Não | Padrão `finami` |
-| `Jwt__ExpirationMinutes` | Não | Validade do token; padrão 480 |
+| `Jwt__ExpirationMinutes` | Não | Validade do token em minutos; padrão 129600 (90 dias) |
 | `Google__ClientId` | Para login Google | OAuth Client ID (tipo Web) |
 | `BtcQuote__PrimaryUrl` / `BtcQuote__FallbackUrl` | Não | Fontes de cotação |
 | `BtcQuote__CacheSeconds` / `BtcQuote__StaleAfterSeconds` | Não | Padrão 60 / 300 |
