@@ -21,12 +21,16 @@ class NotificationService {
     }
     if (filters.limit !== undefined) params.set("limit", String(filters.limit));
     const query = params.toString();
-    return apiFetch<NotificationPage>(query ? `${API_BASE}?${query}` : API_BASE);
+    // Só a primeira página (sem cursor) fica guardada para uso offline (feature 005)
+    const firstPage = filters.beforeId === undefined || filters.beforeId === null;
+    return apiFetch<NotificationPage>(query ? `${API_BASE}?${query}` : API_BASE, {
+      cache: firstPage ? "network-first" : "none",
+    });
   }
 
   /** Quantidade de não lidas (`GET /api/notifications/unread-count`) */
   async unreadCount(): Promise<UnreadCountResult> {
-    return apiFetch<UnreadCountResult>(`${API_BASE}/unread-count`);
+    return apiFetch<UnreadCountResult>(`${API_BASE}/unread-count`, { cache: "network-first" });
   }
 
   /** Marca como lidas; ids de outros usuários são ignorados (`POST /api/notifications/read`) */

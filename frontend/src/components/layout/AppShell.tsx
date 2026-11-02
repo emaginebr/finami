@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useNotification } from "../../hooks/useNotification";
 import { useUi } from "../../hooks/useUi";
 import { cn } from "../../utils/cn";
+import { OfflineBanner } from "../pwa/OfflineBanner";
+import { UpdatePrompt } from "../pwa/UpdatePrompt";
 import { TransactionSheet } from "../transaction/TransactionSheet";
 import { Fab } from "./Fab";
 import { PageLoading } from "./PageLoading";
@@ -66,17 +68,23 @@ export const AppShell = () => {
           className={cn(
             // Margem lateral respeita o recorte da tela no iPhone deitado (REVIEW G-4)
             "mx-auto w-full max-w-content px-gutter-safe pt-safe md:pr-gutter-lg md:pl-gutter-lg md:py-8",
+            // + espaço do aviso de nova versão quando visível (`--update-prompt-h` + 12 px, components.md §9)
             fab.show
-              ? "pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+88px)]"
-              : "pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+24px)]",
-            "md:pb-24",
+              ? "pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+88px+var(--update-prompt-h,0px)+min(var(--update-prompt-h,0px),1px)*12)]"
+              : "pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+24px+var(--update-prompt-h,0px)+min(var(--update-prompt-h,0px),1px)*12)]",
+            // Desktop: o cartão de versão (canto inferior direito) não cobre as últimas linhas (M-6)
+            "md:pb-[calc(6rem+var(--update-prompt-h,0px)+min(var(--update-prompt-h,0px),1px)*24)]",
           )}
         >
+          {/* Feature 005: faixa "Sem internet" (região viva sempre montada) */}
+          <OfflineBanner />
           <Suspense fallback={<PageLoading />}>
             <Outlet />
           </Suspense>
         </div>
       </main>
+      {/* Aviso de nova versão: na ordem de foco depois do conteúdo e antes da TabBar (REVIEW-005 M-6) */}
+      <UpdatePrompt />
       <TabBar />
       {fab.show ? (
         <Fab expanded={transactionSheetOpen} onClick={() => openTransactionSheet(fab.walletId)} />

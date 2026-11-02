@@ -8,6 +8,7 @@ import { PeriodPicker } from "../components/statement/PeriodPicker";
 import { StatementEntryRow } from "../components/statement/StatementEntryRow";
 import { StatementTotals } from "../components/statement/StatementTotals";
 import { TransactionDetailSheet } from "../components/statement/TransactionDetailSheet";
+import { OfflineContent } from "../components/pwa/OfflineContent";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -23,7 +24,9 @@ import { useGroup } from "../hooks/useGroup";
 import { useStatement } from "../hooks/useStatement";
 import { useTransaction } from "../hooks/useTransaction";
 import { useWallet } from "../hooks/useWallet";
-import { ApiError, isApiError } from "../types/api";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useOnlineAction } from "../hooks/useOnlineAction";
+import { ApiError, isApiError, isOfflineError } from "../types/api";
 import { DetailLevel } from "../types/balance";
 import type { StatementEntryInfo, StatementPeriod, StatementResult } from "../types/statement";
 import type { WalletInfo } from "../types/wallet";
@@ -72,6 +75,7 @@ const WalletStatementPage = () => {
   const { getWalletStatement } = useStatement();
   const { ledgerVersion } = useTransaction();
   const editFormId = useId();
+  const onlineAction = useOnlineAction();
 
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [period, setPeriod] = useState<StatementPeriod>(() => ({
@@ -106,6 +110,12 @@ const WalletStatementPage = () => {
     void refreshWallet();
   }, [refreshWallet, ledgerVersion]);
 
+  // Conexão voltou: recarrega carteira e extrato (FR-012)
+  useOnReconnected(() => {
+    void refreshWallet();
+    setReloadKey((key) => key + 1);
+  });
+
   useEffect(() => {
     if (groups.length === 0) loadGroups().catch(() => undefined);
     // Só uma vez ao abrir
@@ -125,6 +135,7 @@ const WalletStatementPage = () => {
       .then((result) => {
         if (cancelled) return;
         setStatement(result);
+        setLoadError(null);
         setPhase(LoadPhase.Ready);
       })
       .catch((err: unknown) => {
@@ -235,11 +246,12 @@ const WalletStatementPage = () => {
     <button
       type="button"
       aria-label={t("wallets.edit")}
-      onClick={() => {
+      {...onlineAction.offlineProps}
+      onClick={onlineAction.guard(() => {
         setEditError(null);
         setEditOpen(true);
-      }}
-      className="grid size-11 place-items-center rounded-pill text-accent hover:bg-surface-2"
+      })}
+      className="grid size-11 place-items-center rounded-pill text-accent hover:bg-surface-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-disabled aria-disabled:hover:bg-transparent"
     >
       <Pencil aria-hidden="true" className="size-5" strokeWidth={1.75} />
     </button>
@@ -265,6 +277,17 @@ const WalletStatementPage = () => {
       </button>
     </span>
   ) : undefined;
+
+  // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
+  const offlineRetry = phase === LoadPhase.Loading && isOfflineError(loadError);
+  if ((phase === LoadPhase.Error || offlineRetry) && isOfflineError(loadError)) {
+    return (
+      <>
+        <LargeTitleHeader title={title} backTo={backTo} backLabel={backLabel} />
+        <OfflineContent retrying={offlineRetry} onRetry={() => setReloadKey((key) => key + 1)} />
+      </>
+    );
+  }
 
   if (phase === LoadPhase.Error) {
     return (

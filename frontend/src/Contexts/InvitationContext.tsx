@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { invitationService } from "../Services/invitationService";
 import type { GroupInfo } from "../types/group";
 import type { GroupInvitationInfo, MemberLookupResult, NewMemberInfo } from "../types/invitation";
+import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
 import { useOnUserChange } from "../hooks/useOnUserChange";
 
@@ -10,6 +11,8 @@ export interface InvitationContextType {
   // Estado
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
   // Métodos (lançam `ApiError`; quem chama decide como exibir)
   lookupMember: (groupId: number, email: string) => Promise<MemberLookupResult>;
   createMember: (groupId: number, info: NewMemberInfo) => Promise<GroupInfo>;
@@ -86,11 +89,13 @@ export const InvitationProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<InvitationContextType>(
     () => ({
       loading,
       error,
+      offline,
       lookupMember,
       createMember,
       invite,
@@ -100,7 +105,7 @@ export const InvitationProvider = ({ children }: { children: ReactNode }) => {
       decline,
       clearError,
     }),
-    [loading, error, lookupMember, createMember, invite, listPending, cancel, accept, decline, clearError],
+    [loading, error, offline, lookupMember, createMember, invite, listPending, cancel, accept, decline, clearError],
   );
 
   return <InvitationContext.Provider value={value}>{children}</InvitationContext.Provider>;

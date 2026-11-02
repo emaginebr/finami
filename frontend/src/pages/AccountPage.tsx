@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ConnectedAssistants } from "../components/account/ConnectedAssistants";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
+import { InstallAppItem } from "../components/pwa/InstallAppItem";
 import { AppTab } from "../components/layout/navigation";
 import { NotificationBell } from "../components/notification/NotificationBell";
 import { NotificationBellVariant } from "../components/ui/variants";
@@ -19,6 +20,8 @@ import { listRowClasses } from "../components/ui/listRow";
 import { useAuth } from "../hooks/useAuth";
 import { useGroup } from "../hooks/useGroup";
 import { useUser } from "../hooks/useUser";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useOnlineAction } from "../hooks/useOnlineAction";
 import { isApiError } from "../types/api";
 import { cn } from "../utils/cn";
 import { errorMessage, notifySuccess } from "../utils/notify";
@@ -67,6 +70,12 @@ const AccountPage = () => {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const onlineAction = useOnlineAction();
+
+  // Conexão voltou: recarrega as pessoas cadastradas (FR-012)
+  useOnReconnected(() => {
+    loadCreatedByMe().catch(() => undefined);
+  });
 
   useEffect(() => {
     loadCreatedByMe().catch(() => undefined);
@@ -83,21 +92,22 @@ const AccountPage = () => {
   const fullName = `${user.firstName} ${user.lastName}`.trim();
   const passwordTitle = user.hasPassword ? t("account.changePassword") : t("account.setPassword");
 
-  const openProfile = () => {
+  // Editar dados e senha exige internet (feature 005); sair funciona offline
+  const openProfile = onlineAction.guard(() => {
     setProfile({ firstName: user.firstName, lastName: user.lastName, email: user.email ?? "" });
     setProfileErrors(NO_PROFILE_ERRORS);
     setProfileError(null);
     setProfileOpen(true);
-  };
+  });
 
-  const openPassword = () => {
+  const openPassword = onlineAction.guard(() => {
     setCurrentPassword("");
     setNewPassword("");
     setCurrentError(null);
     setNewError(null);
     setPasswordError(null);
     setPasswordOpen(true);
-  };
+  });
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -173,7 +183,8 @@ const AccountPage = () => {
     <button
       type="button"
       onClick={openProfile}
-      className={listRowClasses({ interactive: true })}
+      {...onlineAction.offlineProps}
+      className={cn(listRowClasses({ interactive: true }), "aria-disabled:cursor-not-allowed")}
     >
       <span className="min-w-0 flex-1 text-body">{label}</span>
       <span className="max-w-[55%] truncate text-body text-text-muted">{value}</span>
@@ -218,7 +229,8 @@ const AccountPage = () => {
           <button
             type="button"
             onClick={openPassword}
-            className={listRowClasses({ withIcon: true, interactive: true })}
+            {...onlineAction.offlineProps}
+            className={cn(listRowClasses({ withIcon: true, interactive: true }), "aria-disabled:cursor-not-allowed")}
           >
             <span aria-hidden="true" className="grid size-[30px] shrink-0 place-items-center rounded-sm bg-family-yellow text-on-accent">
               <KeyRound className="size-[18px]" strokeWidth={1.75} />
@@ -293,6 +305,9 @@ const AccountPage = () => {
           {createdByMe.length > 0 ? t("account.peopleHint") : t("account.peopleEmpty")}
         </p>
       </section>
+
+      {/* Feature 005: seção "App" com "Instalar o Finami" (some quando instalado ou sem suporte) */}
+      <InstallAppItem />
 
       <section className="mt-7">
         <div className="overflow-hidden rounded-lg bg-surface">

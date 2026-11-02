@@ -12,6 +12,7 @@ import { VisibilityPicker } from "../components/group/VisibilityPicker";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab, readNavState } from "../components/layout/navigation";
 import type { NavState } from "../components/layout/navigation";
+import { OfflineContent } from "../components/pwa/OfflineContent";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -23,7 +24,9 @@ import { useBalance } from "../hooks/useBalance";
 import { useGroup } from "../hooks/useGroup";
 import { useInvitation } from "../hooks/useInvitation";
 import { useTransaction } from "../hooks/useTransaction";
-import { ApiError, isApiError } from "../types/api";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useOnlineAction } from "../hooks/useOnlineAction";
+import { ApiError, isApiError, isOfflineError } from "../types/api";
 import { DetailLevel } from "../types/balance";
 import type { GroupBalancesResult, WalletBalanceInfo } from "../types/balance";
 import type { GroupInfo } from "../types/group";
@@ -64,6 +67,7 @@ const GroupPage = () => {
   const membersHeadingId = useId();
   const walletsHeadingId = useId();
   const addMemberRef = useRef<HTMLButtonElement>(null);
+  const onlineAction = useOnlineAction();
 
   const [balances, setBalances] = useState<GroupBalancesResult | null>(null);
   const [phase, setPhase] = useState<LoadPhase>(LoadPhase.Loading);
@@ -102,6 +106,7 @@ const GroupPage = () => {
     ]);
     if (balancesResult.status === "fulfilled") {
       setBalances(balancesResult.value);
+      setLoadError(null);
       setPhase(LoadPhase.Ready);
     } else {
       setLoadError(balancesResult.reason);
@@ -117,6 +122,11 @@ const GroupPage = () => {
   useEffect(() => {
     void load();
   }, [load, ledgerVersion]);
+
+  // Conexão voltou: recarrega saldos, família e pendentes (FR-012)
+  useOnReconnected(() => {
+    void load();
+  });
 
   const userId = session?.user.userId ?? null;
   const name = balances?.name ?? group?.name ?? t("groups.familyFallback");
@@ -194,6 +204,17 @@ const GroupPage = () => {
   // Render
   // ---------------------------------------------------------------------------
 
+  // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
+  const offlineRetry = phase === LoadPhase.Loading && isOfflineError(loadError);
+  if ((phase === LoadPhase.Error || offlineRetry) && isOfflineError(loadError)) {
+    return (
+      <>
+        <LargeTitleHeader title={name} backTo={backTo} backLabel={backLabel} />
+        <OfflineContent retrying={offlineRetry} onRetry={() => void load()} />
+      </>
+    );
+  }
+
   if (phase === LoadPhase.Error) {
     const notFound = isApiError(loadError) && (loadError.status === 404 || loadError.status === 403);
     return (
@@ -221,12 +242,13 @@ const GroupPage = () => {
     <button
       type="button"
       aria-label={t("groups.manage")}
-      onClick={() => {
+      {...onlineAction.offlineProps}
+      onClick={onlineAction.guard(() => {
         setManageError(null);
         setVisibility(currentVisibility);
         setManageOpen(true);
-      }}
-      className="grid size-11 place-items-center rounded-pill text-accent hover:bg-surface-2"
+      })}
+      className="grid size-11 place-items-center rounded-pill text-accent hover:bg-surface-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-disabled aria-disabled:hover:bg-transparent"
     >
       <Pencil aria-hidden="true" className="size-5" strokeWidth={1.75} />
     </button>
@@ -292,10 +314,11 @@ const GroupPage = () => {
                   aria-haspopup="dialog"
                   className="-mr-2 ml-auto"
                   icon={<UserPlus className="size-[18px]" strokeWidth={1.75} />}
-                  onClick={() => {
+                  {...onlineAction.offlineProps}
+                  onClick={onlineAction.guard(() => {
                     setAddKey((key) => key + 1);
                     setAddOpen(true);
-                  }}
+                  })}
                 >
                   {t("groups.addMember.open")}
                 </SectionHeaderAction>

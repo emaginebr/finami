@@ -3,6 +3,7 @@ import { ChevronRight, UserCheck, UserPlus, UserX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
+import { useOnlineAction } from "../../hooks/useOnlineAction";
 import { GroupInvitationStatus, InvitationResponse } from "../../types/invitation";
 import { NotificationType } from "../../types/notification";
 import type { NotificationInfo } from "../../types/notification";
@@ -65,6 +66,8 @@ export const NotificationItem = ({
   linkState,
 }: NotificationItemProps) => {
   const { t } = useTranslation();
+  // Aceitar/Recusar exigem internet (feature 005)
+  const onlineAction = useOnlineAction();
   const { type, invitation, group, actor, isRead, createdAt, notificationId } = notification;
   const tile = TILES[type] ?? TILES[NotificationType.GroupInvitationReceived];
   const Icon = tile.icon;
@@ -129,7 +132,8 @@ export const NotificationItem = ({
               loading={pendingResponse === InvitationResponse.Decline}
               loadingLabel={t("notifications.declining")}
               disabled={disabled}
-              onClick={() => onRespond(notification, InvitationResponse.Decline)}
+              {...onlineAction.offlineProps}
+              onClick={onlineAction.guard(() => onRespond(notification, InvitationResponse.Decline))}
             >
               {t("notifications.decline")}
             </Button>
@@ -141,7 +145,8 @@ export const NotificationItem = ({
               loading={pendingResponse === InvitationResponse.Accept}
               loadingLabel={t("notifications.accepting")}
               disabled={disabled}
-              onClick={() => onRespond(notification, InvitationResponse.Accept)}
+              {...onlineAction.offlineProps}
+              onClick={onlineAction.guard(() => onRespond(notification, InvitationResponse.Accept))}
             >
               {t("notifications.accept")}
             </Button>

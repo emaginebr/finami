@@ -2,11 +2,14 @@ import { createContext, useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { balanceService } from "../Services/balanceService";
 import type { GroupBalancesResult, UserGroupBalancesResult } from "../types/balance";
+import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
 
 export interface BalanceContextType {
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
   getGroupBalances: (groupId: number) => Promise<GroupBalancesResult>;
   getUserGroupBalances: (userId: number) => Promise<UserGroupBalancesResult>;
   clearError: () => void;
@@ -54,10 +57,11 @@ export const BalanceProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<BalanceContextType>(
-    () => ({ loading, error, getGroupBalances, getUserGroupBalances, clearError }),
-    [loading, error, getGroupBalances, getUserGroupBalances, clearError],
+    () => ({ loading, error, offline, getGroupBalances, getUserGroupBalances, clearError }),
+    [loading, error, offline, getGroupBalances, getUserGroupBalances, clearError],
   );
 
   return <BalanceContext.Provider value={value}>{children}</BalanceContext.Provider>;

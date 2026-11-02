@@ -22,7 +22,7 @@ class UserService {
 
   /** Uma pessoa (`GET /api/users/{id}`) */
   async get(userId: number): Promise<UserInfo> {
-    return apiFetch<UserInfo>(`${API_BASE}/${userId}`);
+    return apiFetch<UserInfo>(`${API_BASE}/${userId}`, { cache: "network-first" });
   }
 
   /** Atualiza nome, sobrenome e email (`PUT /api/users/{id}`) */
@@ -37,7 +37,7 @@ class UserService {
 
   /** Pessoas cadastradas por quem está logado (`GET /api/users/created-by-me`) */
   async createdByMe(): Promise<UserInfo[]> {
-    return apiFetch<UserInfo[]>(`${API_BASE}/created-by-me`);
+    return apiFetch<UserInfo[]>(`${API_BASE}/created-by-me`, { cache: "network-first" });
   }
 
   /** Busca exata por email; `null` quando não encontra (`GET /api/users/search?email=`) */

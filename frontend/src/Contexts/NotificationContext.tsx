@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 import { notificationService } from "../Services/notificationService";
 import type { GroupInvitationStatus } from "../types/invitation";
 import type { NotificationInfo } from "../types/notification";
+import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
+import { useOnReconnected } from "../hooks/useOnReconnected";
 import { useOnUserChange } from "../hooks/useOnUserChange";
 
 /** Atualização automática do contador (só com a aba visível) — research R-06 */
@@ -25,6 +27,8 @@ export interface NotificationContextType {
   nextBeforeId: number | null;
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
   // Métodos
   /** Busca o contador agora; nunca lança */
   refreshUnread: () => Promise<void>;
@@ -94,6 +98,11 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [userId, refreshUnread, refreshUnreadIfStale]);
 
+  // Conexão voltou: o sino fica em dia (a lista é recarregada pela própria tela)
+  useOnReconnected(() => {
+    void refreshUnread();
+  });
+
   const loadPage = useCallback(async (beforeId: number | null): Promise<NotificationInfo[]> => {
     try {
       setLoading(true);
@@ -149,6 +158,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<NotificationContextType>(
     () => ({
@@ -157,6 +167,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       nextBeforeId,
       loading,
       error,
+      offline,
       refreshUnread,
       refreshUnreadIfStale,
       loadFirstPage,
@@ -171,6 +182,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       nextBeforeId,
       loading,
       error,
+      offline,
       refreshUnread,
       refreshUnreadIfStale,
       loadFirstPage,

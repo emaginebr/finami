@@ -8,12 +8,14 @@ import { apiFetch } from "./apiHelpers";
 class BalanceService {
   /** Saldo de cada membro da família (`GET /api/groups/{id}/balances`) */
   async getGroupBalances(groupId: number): Promise<GroupBalancesResult> {
-    return apiFetch<GroupBalancesResult>(`/api/groups/${groupId}/balances`);
+    return apiFetch<GroupBalancesResult>(`/api/groups/${groupId}/balances`, { cache: "network-first" });
   }
 
   /** Carteiras de uma pessoa nas famílias visíveis (`GET /api/users/{id}/group-balances`) */
   async getUserGroupBalances(userId: number): Promise<UserGroupBalancesResult> {
-    return apiFetch<UserGroupBalancesResult>(`/api/users/${userId}/group-balances`);
+    return apiFetch<UserGroupBalancesResult>(`/api/users/${userId}/group-balances`, {
+      cache: "network-first",
+    });
   }
 }
 

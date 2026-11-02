@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { AUTH_STORAGE_KEY } from "../Services/apiHelpers";
 import type { AuthResult, AuthSession } from "../types/auth";
 import type { UserInfo } from "../types/user";
+import { offlineCache } from "../utils/offlineCache";
 
 const USER: UserInfo = {
   userId: 7,
@@ -153,6 +154,67 @@ describe("AuthContext", () => {
     await expectStatus("anonymous");
     expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBeNull();
     expect(screen.getByTestId("reason")).toBeEmptyDOMElement();
+  });
+
+  it("logout apaga os dados guardados para uso offline (IndexedDB)", async () => {
+    storeSession({ token: "jwt", expiresAt: FUTURE, user: USER });
+    await offlineCache.set(USER.userId, "/api/wallets", [{ walletId: 1 }]);
+    const user = userEvent.setup();
+
+    renderWithAuth();
+    await expectStatus("authenticated");
+    await user.click(screen.getByRole("button", { name: "sair" }));
+
+    await expectStatus("anonymous");
+    await waitFor(async () => {
+      expect(await offlineCache.get(USER.userId, "/api/wallets")).toBeUndefined();
+    });
+  });
+
+  it("sessão que vence com o app aberto apaga os dados guardados", async () => {
+    await offlineCache.set(USER.userId, "/api/wallets", [{ walletId: 1 }]);
+    // Vence logo depois de restaurada
+    storeSession({ token: "jwt", expiresAt: new Date(Date.now() + 400).toISOString(), user: USER });
+
+    renderWithAuth();
+    await expectStatus("authenticated");
+
+    await expectStatus("anonymous");
+    expect(screen.getByTestId("reason")).toHaveTextContent(SESSION_EXPIRED_MESSAGE);
+    await waitFor(async () => {
+      expect(await offlineCache.get(USER.userId, "/api/wallets")).toBeUndefined();
+    });
+  });
+
+  it("me offline com dado guardado mantém a pessoa logada com os dados guardados", async () => {
+    storeSession({ token: "jwt", expiresAt: FUTURE, user: USER });
+    await offlineCache.set(USER.userId, "/api/auth/me", { ...USER, firstName: "Ana guardada" });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const user = userEvent.setup();
+
+    renderWithAuth();
+    await expectStatus("authenticated");
+    await user.click(screen.getByRole("button", { name: "atualizar" }));
+
+    await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("Ana guardada"));
+    expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
+  });
+
+  it("me offline sem dado guardado não derruba a sessão", async () => {
+    storeSession({ token: "jwt", expiresAt: FUTURE, user: USER });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const user = userEvent.setup();
+
+    renderWithAuth();
+    await expectStatus("authenticated");
+    await user.click(screen.getByRole("button", { name: "atualizar" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("error")).toHaveTextContent("Este conteúdo não está disponível sem internet."),
+    );
+    expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
+    expect(screen.getByTestId("user")).toHaveTextContent("Ana");
+    expect(localStorage.getItem(AUTH_STORAGE_KEY)).not.toBeNull();
   });
 
   it("401 em requisição autenticada leva a anonymous com o motivo", async () => {

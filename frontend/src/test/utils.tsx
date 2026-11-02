@@ -16,6 +16,8 @@ import { WalletProvider } from "../Contexts/WalletContext";
 import { InvitationProvider } from "../Contexts/InvitationContext";
 import { NotificationProvider } from "../Contexts/NotificationContext";
 import { OAuthConnectionProvider } from "../Contexts/OAuthConnectionContext";
+import { ConnectivityProvider } from "../Contexts/ConnectivityContext";
+import { InstallProvider } from "../Contexts/InstallContext";
 
 /** axe sem as regras que dependem da página inteira ou de CSS real (jsdom) */
 export const axe = configureAxe({
@@ -101,31 +103,35 @@ export const requestsTo = (fetchMock: ReturnType<typeof mockFetch>, key: string)
 // Render com providers e rotas
 // ---------------------------------------------------------------------------
 
-/** Providers na ordem de main.tsx (data-model §10) */
+/** Providers na ordem de main.tsx (data-model §10; Connectivity/Install da feature 005) */
 export const AppProviders = ({ children }: { children: ReactNode }) => (
-  <AuthProvider>
-    <QuoteProvider>
-      <UserProvider>
-        <GroupProvider>
-          <WalletProvider>
-            <TransactionProvider>
-              <StatementProvider>
-                <BalanceProvider>
-                  <InvitationProvider>
-                    <NotificationProvider>
-                      <OAuthConnectionProvider>
-                        <UiProvider>{children}</UiProvider>
-                      </OAuthConnectionProvider>
-                    </NotificationProvider>
-                  </InvitationProvider>
-                </BalanceProvider>
-              </StatementProvider>
-            </TransactionProvider>
-          </WalletProvider>
-        </GroupProvider>
-      </UserProvider>
-    </QuoteProvider>
-  </AuthProvider>
+  <ConnectivityProvider>
+    <InstallProvider>
+      <AuthProvider>
+        <QuoteProvider>
+          <UserProvider>
+            <GroupProvider>
+              <WalletProvider>
+                <TransactionProvider>
+                  <StatementProvider>
+                    <BalanceProvider>
+                      <InvitationProvider>
+                        <NotificationProvider>
+                          <OAuthConnectionProvider>
+                            <UiProvider>{children}</UiProvider>
+                          </OAuthConnectionProvider>
+                        </NotificationProvider>
+                      </InvitationProvider>
+                    </BalanceProvider>
+                  </StatementProvider>
+                </TransactionProvider>
+              </WalletProvider>
+            </GroupProvider>
+          </UserProvider>
+        </QuoteProvider>
+      </AuthProvider>
+    </InstallProvider>
+  </ConnectivityProvider>
 );
 
 type MemoryRouterOptions = NonNullable<Parameters<typeof createMemoryRouter>[1]>;

@@ -1,10 +1,11 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { quoteService } from "../Services/quoteService";
-import { isApiError } from "../types/api";
+import { OFFLINE_CONTENT_MESSAGE, isApiError } from "../types/api";
 import { QuoteStatus } from "../types/quote";
 import type { BtcQuoteInfo } from "../types/quote";
 import { errorMessage } from "../utils/notify";
+import { useOnReconnected } from "../hooks/useOnReconnected";
 import { useOnUserChange } from "../hooks/useOnUserChange";
 
 /** Intervalo de atualização automática da cotação (só com a aba visível) */
@@ -15,6 +16,10 @@ export interface QuoteContextType {
   status: QuoteStatus;
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
+  /** A cotação exibida veio do cache local (sem internet) — mostrar a data dela (T042) */
+  cached: boolean;
   /** Busca a cotação; nunca lança (o estado reflete a falha) */
   loadQuote: () => Promise<void>;
   clearError: () => void;
@@ -27,6 +32,7 @@ export const QuoteProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<QuoteStatus>(QuoteStatus.Loading);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cached, setCached] = useState(false);
   const quoteRef = useRef<BtcQuoteInfo | null>(null);
 
   const userId = useOnUserChange(() => {
@@ -34,16 +40,22 @@ export const QuoteProvider = ({ children }: { children: ReactNode }) => {
     setQuote(null);
     setStatus(QuoteStatus.Loading);
     setError(null);
+    setCached(false);
   });
 
   const loadQuote = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
-      const result = await quoteService.getBtc();
+      let fromCache = false;
+      const result = await quoteService.getBtc((info) => {
+        fromCache = info.stale;
+      });
       quoteRef.current = result;
       setQuote(result);
-      setStatus(result.isStale ? QuoteStatus.Stale : QuoteStatus.Available);
+      setCached(fromCache);
+      // Cotação guardada (sem internet) é sempre tratada como desatualizada
+      setStatus(result.isStale || fromCache ? QuoteStatus.Stale : QuoteStatus.Available);
     } catch (err) {
       setError(errorMessage(err));
       if (isApiError(err) && err.status === 503) {
@@ -75,11 +87,17 @@ export const QuoteProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [userId, loadQuote]);
 
+  // Conexão voltou: cotação em dia (a do cache fica marcada como desatualizada até lá)
+  useOnReconnected(() => {
+    if (userId !== null) void loadQuote();
+  });
+
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<QuoteContextType>(
-    () => ({ quote, status, loading, error, loadQuote, clearError }),
-    [quote, status, loading, error, loadQuote, clearError],
+    () => ({ quote, status, loading, error, offline, cached, loadQuote, clearError }),
+    [quote, status, loading, error, offline, cached, loadQuote, clearError],
   );
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;

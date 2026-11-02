@@ -18,6 +18,7 @@ import type {
   RegisterInfo,
 } from "../types/auth";
 import type { UserInfo } from "../types/user";
+import { offlineCache } from "../utils/offlineCache";
 
 /** Motivo exibido na tela de entrada quando a sessão cai por 401 ou expiração */
 export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente.";
@@ -76,16 +77,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     throw err;
   }, []);
 
-  /** Encerra a sessão sem ação da pessoa (401 ou expiração) */
+  /** Encerra a sessão sem ação da pessoa (401 ou expiração); apaga os dados offline (FR-015) */
   const expireSession = useCallback(() => {
     clearStoredSession();
+    void offlineCache.clearAll();
     applySession(null);
     setLogoutReason(SESSION_EXPIRED_MESSAGE);
   }, [applySession]);
 
   // Restaura a sessão salva (descarta vencida ou corrompida)
   useEffect(() => {
-    applySession(readStoredSession());
+    const stored = readStoredSession();
+    // Sem sessão válida (venceu com o app fechado, corrompida): nenhum dado offline pode ficar
+    if (!stored) void offlineCache.clearAll();
+    applySession(stored);
   }, [applySession]);
 
   // Qualquer 401 em requisição autenticada derruba a sessão
@@ -162,6 +167,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(() => {
     clearStoredSession();
+    // Dados guardados para uso offline saem junto com a sessão (FR-015)
+    void offlineCache.clearAll();
     setError(null);
     setLogoutReason(null);
     applySession(null);

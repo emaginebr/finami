@@ -2,11 +2,14 @@ import { createContext, useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { statementService } from "../Services/statementService";
 import type { StatementResult } from "../types/statement";
+import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
 
 export interface StatementContextType {
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
   getWalletStatement: (walletId: number, start: string, end: string) => Promise<StatementResult>;
   getUserStatement: (userId: number, start: string, end: string) => Promise<StatementResult>;
   getGroupStatement: (groupId: number, start: string, end: string) => Promise<StatementResult>;
@@ -57,10 +60,11 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<StatementContextType>(
-    () => ({ loading, error, getWalletStatement, getUserStatement, getGroupStatement, clearError }),
-    [loading, error, getWalletStatement, getUserStatement, getGroupStatement, clearError],
+    () => ({ loading, error, offline, getWalletStatement, getUserStatement, getGroupStatement, clearError }),
+    [loading, error, offline, getWalletStatement, getUserStatement, getGroupStatement, clearError],
   );
 
   return <StatementContext.Provider value={value}>{children}</StatementContext.Provider>;

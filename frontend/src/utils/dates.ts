@@ -275,6 +275,14 @@ export const formatRelativeOrDate = (value: string | Date, now: Date = new Date(
   return formatDate(date);
 };
 
+/** `dd/MM` no fuso de São Paulo (indicador "Sem internet · dados de 01/11 às 18:42") */
+export const formatDayMonth = (value: string | Date): string => {
+  const date = parseApiDate(value);
+  if (!date) return "";
+  const { month, day } = partsInSaoPaulo(date);
+  return `${pad(day)}/${pad(month)}`;
+};
+
 /** `dd/MM/yyyy HH:mm` no fuso de São Paulo */
 export const formatDateTime = (value: string | Date): string => {
   const date = parseApiDate(value);

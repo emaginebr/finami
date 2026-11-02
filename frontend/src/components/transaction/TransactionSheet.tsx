@@ -6,7 +6,8 @@ import { useGroup } from "../../hooks/useGroup";
 import { useTransaction } from "../../hooks/useTransaction";
 import { useWallet } from "../../hooks/useWallet";
 import { useAuth } from "../../hooks/useAuth";
-import { Currency, isApiError } from "../../types/api";
+import { OfflineActionKind, useOnlineAction } from "../../hooks/useOnlineAction";
+import { Currency, isApiError, isUnconfirmedWriteError } from "../../types/api";
 import { TransactionKind, TransactionType } from "../../types/transaction";
 import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../../types/transaction";
 import type { WalletInfo } from "../../types/wallet";
@@ -42,6 +43,7 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
   const pickerLabelId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
+  const onlineAction = useOnlineAction(OfflineActionKind.Transaction);
 
   const [step, setStep] = useState<SheetStep>(SheetStep.ChooseType);
   const [kind, setKind] = useState<TransactionKind>(TransactionKind.Income);
@@ -286,7 +288,12 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
       notifySuccess(successMessage(result));
       onOpenChange(false);
     } catch (err) {
-      if (step === SheetStep.Preview && isApiError(err) && err.status === 503) {
+      if (isUnconfirmedWriteError(err)) {
+        // A rede caiu com o envio em andamento: o lançamento pode ter sido gravado.
+        // Nunca reenviar sozinho (FR-011); a pessoa confere o extrato (T041).
+        setServerError(t("pwa.offline.writeUnconfirmed"));
+        setStep(SheetStep.Form);
+      } else if (step === SheetStep.Preview && isApiError(err) && err.status === 503) {
         setPreviewBlocked(true);
       } else {
         setServerError(errorMessage(err));
@@ -300,6 +307,8 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
 
   const onPrimary = () => {
     if (submittingRef.current) return;
+    // Sem internet: avisa e não envia (feature 005, R-05)
+    if (onlineAction.blockIfOffline()) return;
     if (step === SheetStep.Preview) {
       void send();
       return;
@@ -394,6 +403,7 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
         loading={submitting}
         loadingLabel={t("transaction.submit.sending")}
         disabled={primaryDisabled}
+        {...onlineAction.offlineProps}
         onClick={onPrimary}
       >
         {primaryLabel}

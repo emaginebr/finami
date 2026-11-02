@@ -462,6 +462,49 @@
       "retry": "Tentar de novo"
     }
   },
+  "pwa": {
+    "offline": {
+      "banner": "Sem internet",
+      "staleData": "dados de {{date}} às {{time}}",
+      "reconnected": "Conexão restabelecida.",
+      "writeBlockedTransaction": "Sem internet. Conecte-se para fazer lançamentos.",
+      "writeBlocked": "Sem internet. Conecte-se para fazer alterações.",
+      "writeUnconfirmed": "Não foi possível confirmar o lançamento. Verifique o extrato quando a conexão voltar.",
+      "contentUnavailable": "Este conteúdo não está disponível sem internet.",
+      "contentUnavailableHint": "Abra esta tela de novo quando a conexão voltar.",
+      "retry": "Tentar de novo",
+      "pageTitle": "Sem internet",
+      "pageDocumentTitle": "Sem internet — Finami",
+      "pageBody": "Conecte-se para usar o Finami pela primeira vez neste aparelho.",
+      "checking": "Verificando conexão…",
+      "quoteFrom": "cotação de {{date}} às {{time}}"
+    },
+    "update": {
+      "available": "Nova versão disponível",
+      "update": "Atualizar",
+      "updating": "Atualizando…",
+      "notNow": "Agora não",
+      "failed": "Não foi possível atualizar. Tente de novo."
+    },
+    "install": {
+      "section": "App",
+      "title": "Instalar o Finami",
+      "description": "Use o Finami como um app, direto da tela inicial.",
+      "installed": "Finami instalado.",
+      "browserMenuHint": "Use o ícone de instalar na barra de endereço ou o menu do navegador.",
+      "iosTitle": "Instalar no iPhone",
+      "iosTitleIpad": "Instalar no iPad",
+      "iosIntro": "No Safari, são 3 toques para ter o Finami na tela de início.",
+      "iosStepShare": "Toque em <b>Compartilhar</b>.",
+      "iosStepShareHint": "Fica na barra do Safari; no iOS 26, dentro do menu ⋯.",
+      "iosStepAddToHome": "Toque em <b>Adicionar à Tela de Início</b>.",
+      "iosStepAddToHomeHint": "Role a lista se não aparecer de cara.",
+      "iosStepConfirm": "Toque em <b>Adicionar</b>, no canto superior direito.",
+      "iosDone": "Entendi",
+      "inviteAction": "Instalar",
+      "inviteDismiss": "Dispensar convite de instalação"
+    }
+  },
   "transaction": {
     "title": "Novo lançamento",
     "typeGroup": "Tipo de lançamento",

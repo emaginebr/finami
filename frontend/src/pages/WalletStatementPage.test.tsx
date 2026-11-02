@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WalletStatementPage from "./WalletStatementPage";
 import { Currency } from "../types/api";
 import { TransactionType } from "../types/transaction";
-import { makeWallet, storeSession } from "../test/fixtures";
+import { USER_ID, makeWallet, storeSession } from "../test/fixtures";
+import { reportOffline, reportOnline } from "../utils/connectivity";
+import { offlineCache } from "../utils/offlineCache";
 import { apiError, axe, mockFetch, renderWithProviders, requestsTo } from "../test/utils";
 import type { MockRequest, MockResponse } from "../test/utils";
 
@@ -199,6 +201,65 @@ describe("WalletStatementPage", () => {
     });
     renderPage();
     expect(await screen.findByText("Não encontrado")).toBeInTheDocument();
+  });
+
+  describe("sem internet (feature 005)", () => {
+    const failNetwork = () => {
+      throw new TypeError("Failed to fetch");
+    };
+
+    it("sem dado guardado mostra OfflineContent", async () => {
+      fixClock();
+      storeSession();
+      mockFetch({
+        "GET /api/wallets/1": failNetwork,
+        "GET /api/statements/wallets/1": failNetwork,
+      });
+
+      renderPage();
+
+      expect(
+        await screen.findByRole("heading", { name: "Este conteúdo não está disponível sem internet." }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
+      expect(screen.queryByText("Não foi possível conectar")).not.toBeInTheDocument();
+    });
+
+    it("com dado guardado mostra o extrato guardado", async () => {
+      fixClock();
+      storeSession();
+      const path = "/api/statements/wallets/1?start=2026-11-01&end=2026-11-15";
+      const saved = statement({ method: "GET", path, search: "?start=2026-11-01&end=2026-11-15", body: undefined });
+      await offlineCache.set(USER_ID, path, saved.body);
+      await offlineCache.set(USER_ID, "/api/wallets/1", WALLET);
+      mockFetch({
+        "GET /api/wallets/1": failNetwork,
+        "GET /api/statements/wallets/1": failNetwork,
+      });
+
+      renderPage();
+
+      expect(await screen.findByText("Mercado")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Conta conjunta" })).toBeInTheDocument();
+    });
+
+    it("ao reconectar recarrega o extrato", async () => {
+      fixClock();
+      storeSession();
+      const fetchMock = mockFetch({
+        "GET /api/wallets/1": { body: WALLET },
+        "GET /api/statements/wallets/1": (request) => statement(request),
+      });
+
+      renderPage();
+      await screen.findByText("Mercado");
+      const before = statementSearches(fetchMock).length;
+
+      act(() => reportOffline());
+      act(() => reportOnline());
+
+      await waitFor(() => expect(statementSearches(fetchMock).length).toBeGreaterThan(before));
+    });
   });
 
   it("mostra o estado vazio sem lançamentos", async () => {

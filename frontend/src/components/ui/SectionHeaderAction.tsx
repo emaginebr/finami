@@ -22,6 +22,8 @@ export const SectionHeaderAction = forwardRef<HTMLButtonElement, SectionHeaderAc
         "text-subhead font-semibold tracking-normal text-accent normal-case",
         "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
         "hover:bg-surface-3 active:bg-surface-3 motion-safe:transition-colors",
+        // Indisponível sem internet (feature 005): continua focável
+        "aria-disabled:cursor-not-allowed aria-disabled:text-text-disabled aria-disabled:hover:bg-surface-2 aria-disabled:active:bg-surface-2",
         className,
       )}
       {...props}

@@ -36,9 +36,9 @@ class AuthService {
     });
   }
 
-  /** Dados atualizados da pessoa autenticada (`GET /api/auth/me`). */
+  /** Dados atualizados da pessoa autenticada (`GET /api/auth/me`); guardado para uso offline. */
   async me(): Promise<UserInfo> {
-    return apiFetch<UserInfo>(`${API_BASE}/me`);
+    return apiFetch<UserInfo>(`${API_BASE}/me`, { cache: "network-first" });
   }
 }
 

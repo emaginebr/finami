@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, WalletCards } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
 import { NotificationBell } from "../components/notification/NotificationBell";
+import { InstallInvite } from "../components/pwa/InstallInvite";
+import { OfflineContent } from "../components/pwa/OfflineContent";
 import { NotificationBellVariant } from "../components/ui/variants";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -15,11 +17,18 @@ import { WalletSection } from "../components/wallet/WalletSection";
 import { useAuth } from "../hooks/useAuth";
 import { useGroup } from "../hooks/useGroup";
 import { useQuote } from "../hooks/useQuote";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useUi } from "../hooks/useUi";
+import { isOfflineError } from "../types/api";
 import { useWallet } from "../hooks/useWallet";
 import { QuoteStatus } from "../types/quote";
 import { formatLongDate } from "../utils/dates";
 import { computeHomeTotal } from "../utils/totals";
 import { groupWallets } from "../utils/walletGrouping";
+
+/** Parâmetro do atalho do manifest (`/?acao=novo-lancamento`) */
+const ACTION_PARAM = "acao";
+const NEW_TRANSACTION_ACTION = "novo-lancamento";
 
 enum LoadPhase {
   Loading = "loading",
@@ -33,14 +42,15 @@ const HomePage = () => {
   const { session } = useAuth();
   const { wallets, loaded: walletsLoaded, loadWallets } = useWallet();
   const { groups, loadGroups } = useGroup();
-  const { quote, status: quoteStatus, loadQuote } = useQuote();
+  const { quote, status: quoteStatus, cached: quoteCached, loadQuote } = useQuote();
   const [phase, setPhase] = useState<LoadPhase>(LoadPhase.Loading);
   const [loadError, setLoadError] = useState<unknown>(null);
 
   // Carteiras, famílias e cotação em paralelo (SC-001); a cotação nunca derruba a tela
   const load = useCallback(async () => {
     setPhase(LoadPhase.Loading);
-    setLoadError(null);
+    // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
+    setLoadError((previous: unknown) => (isOfflineError(previous) ? previous : null));
     const [walletsResult, groupsResult] = await Promise.allSettled([
       loadWallets(),
       loadGroups(),
@@ -53,6 +63,7 @@ const HomePage = () => {
       setLoadError(failure.reason);
       setPhase(LoadPhase.Error);
     } else {
+      setLoadError(null);
       setPhase(LoadPhase.Ready);
     }
   }, [loadWallets, loadGroups, loadQuote]);
@@ -60,6 +71,35 @@ const HomePage = () => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Conexão voltou: recarrega o que a Home mostra (FR-012)
+  useOnReconnected(() => {
+    void load();
+  });
+
+  // Atalho do app instalado "Novo lançamento" (research R-10): abre a folha e limpa o parâmetro
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { openTransactionSheet } = useUi();
+  const shortcutHandled = useRef(false);
+  const action = searchParams.get(ACTION_PARAM);
+  useEffect(() => {
+    if (action !== NEW_TRANSACTION_ACTION) {
+      shortcutHandled.current = false;
+      return;
+    }
+    // StrictMode roda o efeito duas vezes antes de o parâmetro sumir
+    if (shortcutHandled.current) return;
+    shortcutHandled.current = true;
+    openTransactionSheet(null);
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params);
+        next.delete(ACTION_PARAM);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [action, openTransactionSheet, setSearchParams]);
 
   const userId = session?.user.userId ?? null;
   const activeWallets = useMemo(() => wallets.filter((w) => w.isActive), [wallets]);
@@ -73,7 +113,9 @@ const HomePage = () => {
     [activeWallets, groups, t],
   );
 
-  const showSkeleton = phase === LoadPhase.Loading && !walletsLoaded;
+  const offlineRetry = phase === LoadPhase.Loading && isOfflineError(loadError);
+  const showOffline = (phase === LoadPhase.Error || offlineRetry) && isOfflineError(loadError);
+  const showSkeleton = phase === LoadPhase.Loading && !walletsLoaded && !offlineRetry;
   const familySectionIndex = (key: string) =>
     sections.filter((s) => s.groupId !== null).findIndex((s) => s.key === key);
 
@@ -99,6 +141,8 @@ const HomePage = () => {
             </div>
           </div>
         </div>
+      ) : showOffline ? (
+        <OfflineContent className="pt-16" retrying={offlineRetry} onRetry={() => void load()} />
       ) : phase === LoadPhase.Error ? (
         <ErrorState className="pt-16" error={loadError} onRetry={() => void load()} />
       ) : (
@@ -108,7 +152,11 @@ const HomePage = () => {
             btcExcluded={total.btcExcluded}
             quote={quote}
             quoteStatus={quoteStatus}
+            quoteFromCache={quoteCached}
           />
+
+          {/* Convite de instalação (feature 005): só depois de os dados carregarem */}
+          {phase === LoadPhase.Ready ? <InstallInvite /> : null}
 
           {sections.length === 0 ? (
             <EmptyState
