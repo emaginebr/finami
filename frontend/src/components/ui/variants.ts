@@ -62,3 +62,11 @@ export enum AppIconSize {
   Md = "md",
   Lg = "lg",
 }
+
+/** Onde o aviso de nova versão é exibido (feature 005, REVIEW-005 M-6) */
+export enum UpdatePromptPlacement {
+  /** No `AppShell`: acima da barra de abas (celular) / acima do FAB (desktop) */
+  Shell = "shell",
+  /** Telas sem abas (entrada, cadastro, autorização, sem internet): perto da borda inferior */
+  Bare = "bare",
+}

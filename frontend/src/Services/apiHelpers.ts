@@ -3,8 +3,14 @@ import {
   GENERIC_ERROR_MESSAGE,
   NETWORK_ERROR_MESSAGE,
   NETWORK_ERROR_STATUS,
+  OFFLINE_CONTENT_MESSAGE,
+  OFFLINE_WRITE_MESSAGE,
 } from "../types/api";
 import type { AuthSession } from "../types/auth";
+import { ConnectivityStatus } from "../types/connectivity";
+import type { FreshnessInfo } from "../types/connectivity";
+import { getStatus, reportFreshness, reportOffline, reportOnline } from "../utils/connectivity";
+import { offlineCache } from "../utils/offlineCache";
 
 /** URL base da API, sem barra no final */
 export const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
@@ -134,7 +140,11 @@ export const handleResponse = async <T>(
   const body = await response.text();
 
   if (!response.ok) {
-    if (response.status === 401 && notifyUnauthorized) unauthorizedHandler?.();
+    if (response.status === 401 && notifyUnauthorized) {
+      // Sessão rejeitada: os dados guardados para uso offline saem junto (FR-015)
+      void offlineCache.clearAll();
+      unauthorizedHandler?.();
+    }
     throw buildApiError(response.status, body);
   }
 
@@ -147,6 +157,9 @@ export const handleResponse = async <T>(
   }
 };
 
+/** Tempo máximo sem resposta antes de tratar a chamada como falha de rede (research R-04) */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
 /** Opções de `apiFetch` */
 export interface ApiFetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
@@ -155,26 +168,97 @@ export interface ApiFetchOptions {
   /** Envia o Bearer da sessão (padrão `true`) */
   authenticated?: boolean;
   signal?: AbortSignal;
+  /** `"network-first"`: só para GET autenticado de consulta (lista em contracts/offline-cache.md). Padrão `"none"`. */
+  cache?: "network-first" | "none";
+  /** Recebe a procedência do dado (para o indicador de dados antigos) */
+  onFreshness?: (info: FreshnessInfo) => void;
 }
+
+const isAbortError = (err: unknown): boolean =>
+  err instanceof DOMException && err.name === "AbortError";
+
+/**
+ * `fetch` com timeout de `REQUEST_TIMEOUT_MS` combinado com o `signal` do chamador.
+ * Feito com AbortController + setTimeout (sem `AbortSignal.timeout/any`, ausentes no jsdom
+ * e incompatíveis com timers falsos). Abort do chamador é relançado como está; falha de rede
+ * ou timeout viram `null` (o chamador decide o que fazer).
+ */
+const fetchWithTimeout = async (url: string, init: RequestInit, signal?: AbortSignal): Promise<Response | null> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const abortFromCaller = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", abortFromCaller, { once: true });
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (signal?.aborted && isAbortError(err)) throw err;
+    return null;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abortFromCaller);
+  }
+};
 
 /**
  * Faz a chamada à API (`API_URL + path`) e trata a resposta com `handleResponse`.
- * Falhas de rede viram `ApiError` com status 0 e mensagem genérica.
+ * - Falhas de rede (ou 10 s sem resposta) viram `ApiError` com status 0 e mensagem genérica
+ *   e marcam a conectividade como offline; qualquer resposta HTTP marca online.
+ * - Escrita autenticada com a conectividade offline é recusada antes do `fetch` (R-05).
+ * - `cache: "network-first"` (GET autenticado): grava a resposta 2xx no cache da sessão e,
+ *   sem rede, devolve o dado guardado como antigo (`stale`).
  * O handler de 401 só é acionado em requisições autenticadas.
  */
 export const apiFetch = async <T>(path: string, options: ApiFetchOptions = {}): Promise<T> => {
-  const { method = "GET", body, authenticated = true, signal } = options;
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}${path}`, {
+  const { method = "GET", body, authenticated = true, signal, onFreshness } = options;
+  const networkFirst = options.cache === "network-first" && method === "GET" && authenticated;
+
+  // Login/cadastro (anônimos) seguem para a rede e mostram o erro de rede atual (T043)
+  if (method !== "GET" && authenticated && getStatus() === ConnectivityStatus.Offline) {
+    throw new ApiError(NETWORK_ERROR_STATUS, OFFLINE_WRITE_MESSAGE, [], { offline: true });
+  }
+
+  const userId = networkFirst ? (readStoredSession()?.user.userId ?? null) : null;
+
+  const response = await fetchWithTimeout(
+    `${API_URL}${path}`,
+    {
       method,
       headers: getHeaders(authenticated),
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    },
+    signal,
+  );
+
+  if (response === null) {
+    reportOffline();
+    if (networkFirst) {
+      const entry = userId !== null ? await offlineCache.get(userId, path) : undefined;
+      if (entry) {
+        const info: FreshnessInfo = { stale: true, fetchedAt: entry.fetchedAt };
+        reportFreshness(info);
+        onFreshness?.(info);
+        return entry.data as T;
+      }
+      throw new ApiError(NETWORK_ERROR_STATUS, OFFLINE_CONTENT_MESSAGE, [], { offline: true });
+    }
     throw new ApiError(NETWORK_ERROR_STATUS, NETWORK_ERROR_MESSAGE);
   }
-  return handleResponse<T>(response, authenticated);
+
+  reportOnline();
+  const data = await handleResponse<T>(response, authenticated);
+
+  if (networkFirst) {
+    const info: FreshnessInfo = { stale: false, fetchedAt: new Date().toISOString() };
+    reportFreshness(info);
+    onFreshness?.(info);
+    // Só grava se a sessão continua a mesma (logout durante a chamada não deixa dado para trás).
+    // Gravação "dispara e esquece": o IndexedDB nunca atrasa a resposta.
+    if (userId !== null && data !== undefined && readStoredSession()?.user.userId === userId) {
+      void offlineCache.set(userId, path, data);
+    }
+  }
+
+  return data;
 };

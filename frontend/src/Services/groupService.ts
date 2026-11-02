@@ -10,12 +10,12 @@ const API_BASE = "/api/groups";
 class GroupService {
   /** Famílias de que a pessoa participa (`GET /api/groups`) */
   async list(): Promise<GroupInfo[]> {
-    return apiFetch<GroupInfo[]>(API_BASE);
+    return apiFetch<GroupInfo[]>(API_BASE, { cache: "network-first" });
   }
 
   /** Uma família (`GET /api/groups/{id}`) */
   async get(groupId: number): Promise<GroupInfo> {
-    return apiFetch<GroupInfo>(`${API_BASE}/${groupId}`);
+    return apiFetch<GroupInfo>(`${API_BASE}/${groupId}`, { cache: "network-first" });
   }
 
   /** Cria uma família; a pessoa vira responsável (`POST /api/groups`) */

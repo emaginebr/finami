@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TransactionSheet } from "./TransactionSheet";
 import { Currency } from "../../types/api";
@@ -8,11 +8,12 @@ import type { TransactionInfo } from "../../types/transaction";
 import { makeWallet, storeSession } from "../../test/fixtures";
 import { apiError, axe, mockFetch, renderWithProviders, requestsTo } from "../../test/utils";
 import type { MockHandler, MockResponse } from "../../test/utils";
-import { notifySuccess } from "../../utils/notify";
+import { notifySuccess, notifyWarning } from "../../utils/notify";
+import { reportOffline } from "../../utils/connectivity";
 
 vi.mock("../../utils/notify", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../utils/notify")>();
-  return { ...actual, notifySuccess: vi.fn(), notifyError: vi.fn() };
+  return { ...actual, notifySuccess: vi.fn(), notifyError: vi.fn(), notifyWarning: vi.fn() };
 });
 
 const WALLETS = [
@@ -78,6 +79,42 @@ describe("TransactionSheet", () => {
     ]);
     expect(notifySuccess).toHaveBeenCalledWith(expect.stringContaining("Entrada de R$"));
     expect(notifySuccess).toHaveBeenCalledWith(expect.stringContaining("Nubank"));
+  });
+
+  it("rede cai durante o envio: avisa para conferir o extrato e não reenvia (feature 005)", async () => {
+    let calls = 0;
+    const { onOpenChange, user } = setup({
+      "POST /api/transactions/income": () => {
+        calls += 1;
+        throw new TypeError("Failed to fetch");
+      },
+    });
+
+    await chooseType(user, "Entrada");
+    await user.type(screen.getByLabelText("Valor"), "100,00");
+    await user.click(screen.getByRole("button", { name: "Registrar entrada" }));
+
+    expect(
+      await screen.findByText(
+        /Não foi possível confirmar o lançamento\. Verifique o extrato quando a conexão voltar\./,
+      ),
+    ).toBeInTheDocument();
+    expect(calls).toBe(1);
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("sem internet o envio fica aria-disabled e não chama a API (feature 005)", async () => {
+    const { fetchMock, user } = setup();
+
+    await chooseType(user, "Entrada");
+    await user.type(screen.getByLabelText("Valor"), "100,00");
+    act(() => reportOffline());
+    const submit = screen.getByRole("button", { name: "Registrar entrada" });
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    await user.click(submit);
+
+    expect(notifyWarning).toHaveBeenCalledWith("Sem internet. Conecte-se para fazer lançamentos.");
+    expect(requestsTo(fetchMock, "POST /api/transactions/income")).toHaveLength(0);
   });
 
   it("bloqueia o envio de 0,001 em reais", async () => {

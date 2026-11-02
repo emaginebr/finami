@@ -1,4 +1,5 @@
 import type { BtcQuoteInfo } from "../types/quote";
+import type { FreshnessInfo } from "../types/connectivity";
 import { apiFetch } from "./apiHelpers";
 
 /**
@@ -7,8 +8,9 @@ import { apiFetch } from "./apiHelpers";
  */
 class QuoteService {
   /** Cotação atual (ou última conhecida, com `isStale`) — `GET /api/quotes/btc` */
-  async getBtc(): Promise<BtcQuoteInfo> {
-    return apiFetch<BtcQuoteInfo>("/api/quotes/btc");
+  async getBtc(onFreshness?: (info: FreshnessInfo) => void): Promise<BtcQuoteInfo> {
+    // Guardada para uso offline; `onFreshness` diz se veio do cache (T042)
+    return apiFetch<BtcQuoteInfo>("/api/quotes/btc", { cache: "network-first", onFreshness });
   }
 }
 

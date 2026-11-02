@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useInvitation } from "../../hooks/useInvitation";
+import { useOnlineAction } from "../../hooks/useOnlineAction";
 import type { GroupInvitationInfo } from "../../types/invitation";
 import { formatShortDate, toIsoInstant } from "../../utils/dates";
 import { notifyError, notifySuccess } from "../../utils/notify";
@@ -47,6 +48,8 @@ export const PendingInvitations = ({
   /** Posição do convite cancelado, para levar o foco ao próximo "Cancelar" */
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const buttonRefs = useRef(new Map<number, HTMLButtonElement>());
+  // Cancelar convite exige internet (feature 005)
+  const onlineAction = useOnlineAction();
 
   // Depois que o modal fecha e a lista muda, o foco vai para o próximo "Cancelar"
   // (ou para "Adicionar membro" sem pendentes). `setTimeout` roda depois de o modal devolver o foco.
@@ -114,7 +117,8 @@ export const PendingInvitations = ({
                 // `px-3` (≈ 70 px) mantém o alvo ≥ 44 × 44 e libera espaço para a data (REVIEW M-1)
                 className="shrink-0 px-3!"
                 aria-label={t("groups.invitations.cancelAria", { name })}
-                onClick={() => setTarget(invitation)}
+                {...onlineAction.offlineProps}
+                onClick={onlineAction.guard(() => setTarget(invitation))}
               >
                 {t("groups.invitations.cancel")}
               </Button>

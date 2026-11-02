@@ -6,6 +6,7 @@ import { GroupForm } from "../components/group/GroupForm";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
 import { NotificationBell } from "../components/notification/NotificationBell";
+import { OfflineContent } from "../components/pwa/OfflineContent";
 import { NotificationBellVariant } from "../components/ui/variants";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -22,6 +23,9 @@ import { useAuth } from "../hooks/useAuth";
 import { useGroup } from "../hooks/useGroup";
 import { useQuote } from "../hooks/useQuote";
 import { useWallet } from "../hooks/useWallet";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useOnlineAction } from "../hooks/useOnlineAction";
+import { isOfflineError } from "../types/api";
 import type { GroupInfo } from "../types/group";
 import { cn } from "../utils/cn";
 import { familyColorClass } from "../utils/familyColors";
@@ -48,6 +52,7 @@ const WalletsPage = () => {
   const groupFormId = useId();
   const inactiveListId = useId();
   const familiesHeadingId = useId();
+  const onlineAction = useOnlineAction();
 
   const [phase, setPhase] = useState<LoadPhase>(LoadPhase.Loading);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -71,6 +76,7 @@ const WalletsPage = () => {
       setLoadError(failure.reason);
       setPhase(LoadPhase.Error);
     } else {
+      setLoadError(null);
       setPhase(LoadPhase.Ready);
     }
   }, [loadWallets, loadGroups, loadQuote]);
@@ -78,6 +84,11 @@ const WalletsPage = () => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Conexão voltou: recarrega a lista (FR-012)
+  useOnReconnected(() => {
+    void load();
+  });
 
   const userId = session?.user.userId ?? null;
   const quoteAvailable = isQuoteUsable(quoteStatus);
@@ -97,15 +108,16 @@ const WalletsPage = () => {
     return responsible ? `${responsible.firstName} ${responsible.lastName}` : "";
   };
 
-  const openWalletSheet = () => {
+  // Criar carteira/família exige internet (feature 005): aria-disabled + aviso
+  const openWalletSheet = onlineAction.guard(() => {
     setFormError(null);
     setWalletSheetOpen(true);
-  };
+  });
 
-  const openGroupSheet = () => {
+  const openGroupSheet = onlineAction.guard(() => {
     setFormError(null);
     setGroupSheetOpen(true);
-  };
+  });
 
   const submitWallet = async (values: WalletFormValues) => {
     setSaving(true);
@@ -145,7 +157,10 @@ const WalletsPage = () => {
   const familySectionIndex = (groupId: number | null) =>
     sections.filter((s) => s.groupId !== null).findIndex((s) => s.groupId === groupId);
 
-  const showSkeleton = phase === LoadPhase.Loading && !walletsLoaded;
+  // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
+  const offlineRetry = phase === LoadPhase.Loading && isOfflineError(loadError);
+  const showOffline = (phase === LoadPhase.Error || offlineRetry) && isOfflineError(loadError);
+  const showSkeleton = phase === LoadPhase.Loading && !walletsLoaded && !offlineRetry;
 
   return (
     <>
@@ -155,10 +170,22 @@ const WalletsPage = () => {
       />
 
       <div className="mt-3 mb-1 flex flex-wrap gap-3">
-        <Button variant="secondary" size="sm" icon={<Plus className="size-5" strokeWidth={1.75} />} onClick={openWalletSheet}>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Plus className="size-5" strokeWidth={1.75} />}
+          {...onlineAction.offlineProps}
+          onClick={openWalletSheet}
+        >
           {t("wallets.new")}
         </Button>
-        <Button variant="secondary" size="sm" icon={<Users className="size-5" strokeWidth={1.75} />} onClick={openGroupSheet}>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Users className="size-5" strokeWidth={1.75} />}
+          {...onlineAction.offlineProps}
+          onClick={openGroupSheet}
+        >
           {t("groups.new")}
         </Button>
       </div>
@@ -176,6 +203,8 @@ const WalletsPage = () => {
             </div>
           </div>
         </div>
+      ) : showOffline ? (
+        <OfflineContent className="pt-16" retrying={offlineRetry} onRetry={() => void load()} />
       ) : phase === LoadPhase.Error ? (
         <ErrorState className="pt-16" error={loadError} onRetry={() => void load()} />
       ) : (
@@ -201,6 +230,7 @@ const WalletsPage = () => {
                       variant="secondary"
                       size="sm"
                       icon={<Plus className="size-5" strokeWidth={1.75} />}
+                      {...onlineAction.offlineProps}
                       onClick={openGroupSheet}
                     >
                       {t("groups.new")}

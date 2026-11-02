@@ -47,7 +47,7 @@ class TransactionService {
 
   /** Um lançamento (`GET /api/transactions/{id}`) */
   async get(transactionId: number): Promise<TransactionInfo> {
-    return apiFetch<TransactionInfo>(`${API_BASE}/${transactionId}`);
+    return apiFetch<TransactionInfo>(`${API_BASE}/${transactionId}`, { cache: "network-first" });
   }
 }
 

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Clock, Mail, Send, UserCheck, UserPlus, X } 
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/useAuth";
 import { useInvitation } from "../../hooks/useInvitation";
+import { useOnlineAction } from "../../hooks/useOnlineAction";
 import { isApiError } from "../../types/api";
 import { MemberLookupStatus } from "../../types/invitation";
 import type { GroupInvitationInfo, MemberLookupResult, NewMemberInfo, UserSummaryInfo } from "../../types/invitation";
@@ -97,6 +98,8 @@ export const AddMemberSheet = ({
   const { lookupMember, createMember, invite, cancel } = useInvitation();
   const { session } = useAuth();
   const formId = useId();
+  // Convidar e cancelar convite exigem internet (feature 005)
+  const onlineAction = useOnlineAction();
 
   const [step, setStep] = useState<Step>(Step.Email);
   const [email, setEmail] = useState("");
@@ -455,7 +458,8 @@ export const AddMemberSheet = ({
           icon={<Send className="size-5" strokeWidth={1.75} />}
           loading={busy === Busy.Invite}
           loadingLabel={t("groups.addMember.inviting")}
-          onClick={() => void invitePerson()}
+          {...onlineAction.offlineProps}
+          onClick={onlineAction.guard(() => void invitePerson())}
         >
           {t("groups.addMember.invite")}
         </Button>
@@ -494,7 +498,8 @@ export const AddMemberSheet = ({
               variant={ButtonVariant.DestructiveGhost}
               className="mt-2 -ml-1 px-1!"
               icon={<X className="size-[18px]" strokeWidth={1.75} />}
-              onClick={() => setCancelOpen(true)}
+              {...onlineAction.offlineProps}
+              onClick={onlineAction.guard(() => setCancelOpen(true))}
             >
               {t("groups.addMember.cancelInvite")}
             </Button>

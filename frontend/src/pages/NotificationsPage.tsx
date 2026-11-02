@@ -8,6 +8,7 @@ import { AppTab, NOTIFICATIONS_PATH, readNavState } from "../components/layout/n
 import type { NavState } from "../components/layout/navigation";
 import { NotificationItem } from "../components/notification/NotificationItem";
 import { focusNotification } from "../components/notification/notificationFocus";
+import { OfflineContent } from "../components/pwa/OfflineContent";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -17,7 +18,8 @@ import { useGroup } from "../hooks/useGroup";
 import { useInvitation } from "../hooks/useInvitation";
 import { useNotification } from "../hooks/useNotification";
 import { useWallet } from "../hooks/useWallet";
-import { isApiError } from "../types/api";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { isApiError, isOfflineError } from "../types/api";
 import { InvitationResponse } from "../types/invitation";
 import type { NotificationInfo } from "../types/notification";
 import { errorMessage, notifySuccess } from "../utils/notify";
@@ -70,9 +72,11 @@ const NotificationsPage = () => {
 
   const load = useCallback(async () => {
     setPhase(LoadPhase.Loading);
-    setLoadError(null);
+    // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
+    setLoadError((previous: unknown) => (isOfflineError(previous) ? previous : null));
     try {
       const firstPage = await loadFirstPage();
+      setLoadError(null);
       setPhase(LoadPhase.Ready);
       // Abrir a área marca as exibidas como lidas (FR-021)
       void markRead(unreadIds(firstPage));
@@ -85,6 +89,11 @@ const NotificationsPage = () => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Conexão voltou: recarrega a primeira página (FR-012)
+  useOnReconnected(() => {
+    void load();
+  });
 
   // Foco no item depois de responder ou de carregar mais
   useEffect(() => {
@@ -143,7 +152,10 @@ const NotificationsPage = () => {
   };
 
   let content: ReactNode;
-  if (phase === LoadPhase.Error) {
+  const offlineRetry = phase === LoadPhase.Loading && isOfflineError(loadError);
+  if ((phase === LoadPhase.Error || offlineRetry) && isOfflineError(loadError)) {
+    content = <OfflineContent className="pt-16" retrying={offlineRetry} onRetry={() => void load()} />;
+  } else if (phase === LoadPhase.Error) {
     content = <ErrorState className="pt-16" error={loadError} onRetry={() => void load()} />;
   } else if (phase === LoadPhase.Loading) {
     content = (

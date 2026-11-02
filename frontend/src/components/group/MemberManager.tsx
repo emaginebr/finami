@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGroup } from "../../hooks/useGroup";
+import { useOnlineAction } from "../../hooks/useOnlineAction";
 import type { GroupInfo, GroupMemberInfo } from "../../types/group";
 import { notifyError, notifySuccess } from "../../utils/notify";
 import { Avatar } from "../ui/Avatar";
@@ -26,6 +27,8 @@ export const MemberManager = ({ group, currentUserId }: MemberManagerProps) => {
   const { t } = useTranslation();
   const { removeMember } = useGroup();
   const canManage = group.isResponsible;
+  // Retirar membro exige internet (feature 005)
+  const onlineAction = useOnlineAction();
 
   const [removing, setRemoving] = useState<GroupMemberInfo | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
@@ -82,7 +85,8 @@ export const MemberManager = ({ group, currentUserId }: MemberManagerProps) => {
                     variant="destructiveGhost"
                     size="sm"
                     aria-label={t("groups.members.removeAria", { name: fullName(member) })}
-                    onClick={() => setRemoving(member)}
+                    {...onlineAction.offlineProps}
+                    onClick={onlineAction.guard(() => setRemoving(member))}
                   >
                     {t("groups.members.remove")}
                   </Button>

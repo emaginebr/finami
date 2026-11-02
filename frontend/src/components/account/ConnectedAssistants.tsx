@@ -10,6 +10,7 @@ import { TextField } from "../ui/TextField";
 import { listRowClasses } from "../ui/listRow";
 import { BadgeVariant, ButtonVariant, ConfirmTone } from "../ui/variants";
 import { useOAuthConnection } from "../../hooks/useOAuthConnection";
+import { useOnlineAction } from "../../hooks/useOnlineAction";
 import { isApiError } from "../../types/api";
 import type { OAuthConnectionInfo } from "../../types/oauthConnection";
 import { hasWriteScope } from "../../types/oauthRequest";
@@ -49,6 +50,8 @@ export const ConnectedAssistants = () => {
   const emptyHeadingRef = useRef<HTMLHeadingElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
   const pendingFocus = useRef<PendingFocus>(null);
+  // Desconectar exige internet (feature 005)
+  const onlineAction = useOnlineAction();
 
   // O erro só sai no sucesso: em "Tentar de novo" a faixa (e o botão focado) continua montada
   const load = useCallback(async () => {
@@ -305,7 +308,8 @@ export const ConnectedAssistants = () => {
                     className="px-4"
                     aria-label={t("oauth.connections.disconnectAria", { name: connection.clientName })}
                     aria-haspopup="dialog"
-                    onClick={() => askDisconnect(connection)}
+                    {...onlineAction.offlineProps}
+                    onClick={onlineAction.guard(() => askDisconnect(connection))}
                   >
                     {t("oauth.connections.disconnect")}
                   </Button>
@@ -320,8 +324,12 @@ export const ConnectedAssistants = () => {
             <button
               type="button"
               aria-haspopup="dialog"
-              onClick={askDisconnectAll}
-              className={cn(listRowClasses({ withIcon: true, interactive: true }), "font-semibold")}
+              {...onlineAction.offlineProps}
+              onClick={onlineAction.guard(askDisconnectAll)}
+              className={cn(
+                listRowClasses({ withIcon: true, interactive: true }),
+                "font-semibold aria-disabled:cursor-not-allowed",
+              )}
             >
               <Unplug aria-hidden="true" className="size-5 shrink-0 text-negative" strokeWidth={1.75} />
               <span className="text-negative">{t("oauth.connections.disconnectAll")}</span>

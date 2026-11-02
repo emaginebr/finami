@@ -3,7 +3,8 @@
 SPA mobile-first do Finami: saldo total da família, carteiras por família e avulsas, extratos,
 saldo por membro e lançamentos (entrada, saída, transferência e compra/venda de bitcoin).
 Tema escuro estilo iOS. No celular a navegação fica numa barra inferior; a partir de 768 px, numa
-barra lateral. Pode ser instalada na tela inicial do iPhone (manifest + ícone).
+barra lateral. É um PWA: instalável (Android, desktop e iPhone/iPad), abre sem internet com os
+últimos dados vistos e avisa quando há versão nova (veja [PWA](#pwa-feature-005)).
 
 Feature: [`specs/002-finami-frontend-mobile/`](../specs/002-finami-frontend-mobile/) — spec,
 plano, pesquisa (decisões R-01…R-18), modelo de dados, contratos e tarefas.
@@ -24,6 +25,8 @@ plano, pesquisa (decisões R-01…R-18), modelo de dados, contratos e tarefas.
 | Fetch API | nativa | HTTP (sem Axios) |
 | Vitest + Testing Library + vitest-axe | 3 / 16 / 0.1 | Testes unitários, de componentes e de acessibilidade (jsdom) |
 | sharp | 0.35 | Geração dos ícones (`npm run icons`) |
+| vite-plugin-pwa + workbox-window | 2.0 / 7.4 | Service worker (precache da casca) e manifest gerados no build |
+| fake-indexeddb | 6 | IndexedDB nos testes (cache offline) |
 
 Estado global só com Context API: um Context por entidade (Auth, Quote, User, Group, Wallet,
 Transaction, Statement, Balance) e um `UiContext` para abrir a folha de lançamento.
@@ -80,7 +83,8 @@ docker build -t finami-frontend:homolog \
 
 O `nginx.conf` faz:
 - fallback da SPA (`try_files $uri $uri/ /index.html`);
-- `Cache-Control: no-cache` em `index.html` e `manifest.webmanifest`;
+- `Cache-Control: no-cache` em `index.html`, `manifest.webmanifest`, `sw.js`, `registerSW.js` e
+  `workbox-*.js` (o service worker precisa ser revalidado para achar versões novas);
 - cache de 1 ano (`immutable`) em `/assets/`, cujos nomes levam hash;
 - gzip para js/css/json/svg;
 - cabeçalhos `X-Content-Type-Options`, `Referrer-Policy` e `X-Frame-Options`;
@@ -128,14 +132,47 @@ JavaScript autorizadas", junto com a origem de homolog e a de produção (o dom�
 | `npm test` | Vitest uma vez (`vitest run`) |
 | `npm run test:watch` | Vitest em modo observação |
 | `npm run icons` | Gera os ícones a partir de `docs/logos/logo.png` (ver abaixo) |
+| `npm run check:pwa` | Depois do `npm run build`: confere o `dist/manifest.webmanifest`, ícones, atalhos, screenshots, telas de abertura e o `dist/sw.js` |
 
 ### Ícones
 
 `scripts/generate-icons.mjs` (Node + sharp) recorta a casa da logo e grava:
-- em `public/`: `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png` (maskable) e `favicon-32.png`;
+- em `public/`: `icon-any-192.png` e `icon-any-512.png` (`purpose: "any"`),
+  `icon-maskable-192.png` e `icon-maskable-512.png` (`purpose: "maskable"`, zona segura),
+  `shortcut-new-transaction-96.png` e `shortcut-wallets-96.png` (atalhos do app instalado),
+  `apple-touch-icon.png` (180), `favicon-32.png` e `splash/*.png` (telas de abertura do iOS, com
+  as tags prontas em `splash/splash-links.txt`, já coladas no `index.html`);
 - em `src/assets/`: `app-icon.png` (512) e `logo.webp` (largura 640).
 
-Rode o script só quando a logo mudar e confira o recorte. As imagens geradas são versionadas.
+Os screenshots da janela de instalação (`public/screenshots/home-narrow.png`,
+`wallets-narrow.png` e `home-wide.png`) vêm dos mockups. Rode o script só quando a logo mudar e
+confira o recorte. As imagens geradas são versionadas.
+
+## PWA (feature 005)
+
+Spec: [`specs/005-pwa-webapp/`](../specs/005-pwa-webapp/).
+
+- **Service worker só no build.** O `vite-plugin-pwa` (`generateSW`, `registerType: "prompt"`)
+  gera `sw.js` e `manifest.webmanifest` no `npm run build`; em `npm run dev` nada é registrado
+  (`devOptions.enabled: false`). O SW só faz precache da casca (JS, CSS, HTML, fontes, ícones) e
+  o fallback de navegação para `index.html`; **nunca** intercepta `/api/`, `/mcp`, `/oauth/`,
+  `/.well-known/` nem `/health*`.
+- **Como testar**: `npm run build && npm run preview` (ou a imagem Docker) e, no Chrome,
+  DevTools → Application → Manifest / Service Workers; Network → Offline para o modo sem internet.
+  `npm run check:pwa` valida o resultado do build.
+- **Dados offline** ficam na camada do app, não no SW: o `apiFetch` com `cache: "network-first"`
+  (só nos GETs de consulta listados em `contracts/offline-cache.md`) grava as respostas 2xx no
+  IndexedDB `finami-cache`, por pessoa (`{userId}:{path}`). Sem rede (ou 10 s sem resposta)
+  devolve o último dado guardado e a faixa "Sem internet · dados de …" aparece.
+- **Escritas** nunca vão para fila: offline, os botões ficam `aria-disabled` e o toque avisa;
+  se a rede cair durante um lançamento, a mensagem pede para conferir o extrato (sem reenvio).
+- **Limpeza do cache**: o `finami-cache` é apagado no logout, em qualquer 401, quando a sessão
+  vence, ao abrir sem sessão válida e quando outra pessoa entra no mesmo aparelho. O token
+  continua só em `localStorage["finami:auth"]`.
+- **Atualização**: o app procura versão nova a cada 60 min e ao voltar para a aba; o aviso
+  "Nova versão disponível · Atualizar · Agora não" nunca recarrega sozinho.
+- **Instalação**: Conta → "Instalar o Finami" (diálogo nativo no Chrome/Edge; passo a passo no
+  iPhone/iPad) e um convite dispensável na Home (`finami:install-dismissed-at`, 30 dias).
 
 ## Estrutura de pastas
 
@@ -144,9 +181,9 @@ maiúscula, `hooks/` e `types/` com minúscula.
 
 ```text
 frontend/
-├── index.html              # lang="pt-BR", viewport-fit=cover, manifest, apple-touch-icon
-├── public/                 # manifest.webmanifest + ícones gerados
-├── scripts/                # generate-icons.mjs
+├── index.html              # lang="pt-BR", viewport-fit=cover, apple-touch-icon, telas de abertura iOS
+├── public/                 # ícones, atalhos, screenshots/ e splash/ (o manifest é gerado no build)
+├── scripts/                # generate-icons.mjs, check-pwa-build.mjs
 └── src/
     ├── main.tsx            # providers (data-model §10) + Toaster
     ├── App.tsx             # createBrowserRouter (basename de VITE_SITE_BASENAME)
@@ -163,13 +200,14 @@ frontend/
     │   │                   # ConfirmModal, Badge, Banner, Skeleton, EmptyState, ErrorState, …
     │   ├── layout/         # AppShell, TabBar, Sidebar, LargeTitleHeader, Fab, RequireAuth
     │   ├── brand/          # Logo, AppIcon
+    │   ├── pwa/            # OfflineBanner, OfflineContent, UpdatePrompt, InstallAppItem, InstallInvite, InstallIosSheet
     │   ├── wallet/         # BalanceHero, WalletCard, WalletSection, WalletForm, …
     │   ├── group/          # MemberRow, MemberManager, GroupForm, VisibilityPicker
     │   ├── statement/      # PeriodPicker, StatementTotals, StatementEntryRow, detalhe
     │   └── transaction/    # TransactionSheet (TypeStep, FormStep, PreviewStep)
     ├── pages/              # Login, Register, Home, Wallets, WalletStatement, Group, Member,
     │                       # Account, NotFound (+ *.test.tsx)
-    ├── utils/              # money, dates, totals, walletGrouping, notify, validation, …
+    ├── utils/              # money, dates, totals, walletGrouping, notify, validation, offlineCache, connectivity, …
     └── test/               # setup.ts, utils.tsx (render com providers, fetch simulado), fixtures
 ```
 

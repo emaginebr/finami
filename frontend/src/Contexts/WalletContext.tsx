@@ -8,6 +8,7 @@ import type {
   WalletPublicInfo,
   WalletUpdateInfo,
 } from "../types/wallet";
+import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
 import { useOnUserChange } from "../hooks/useOnUserChange";
 
@@ -19,6 +20,8 @@ export interface WalletContextType {
   loaded: boolean;
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
   // Métodos
   loadWallets: (filters?: WalletListFilters) => Promise<void>;
   /** Recarrega com os mesmos filtros da última listagem */
@@ -176,6 +179,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<WalletContextType>(
     () => ({
@@ -183,6 +187,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       loaded,
       loading,
       error,
+      offline,
       loadWallets,
       refreshWallets,
       getWallet,
@@ -199,6 +204,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       loaded,
       loading,
       error,
+      offline,
       loadWallets,
       refreshWallets,
       getWallet,

@@ -7,6 +7,7 @@ import { AUTH_STORAGE_KEY } from "../Services/apiHelpers";
 import { SESSION_EXPIRED_MESSAGE } from "../Contexts/AuthContext";
 import { makeUser } from "../test/fixtures";
 import { apiError, axe, mockFetch, renderWithProviders } from "../test/utils";
+import { reportOffline } from "../utils/connectivity";
 
 const AUTH_RESULT = {
   token: "novo-jwt",
@@ -98,6 +99,26 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText("Senha")).toHaveValue("");
     expect(screen.getByLabelText("Senha")).toHaveAttribute("aria-invalid", "true");
     expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBeNull();
+  });
+
+  it("offline mostra a mensagem de erro de rede atual, tentando a rede (feature 005, T043)", async () => {
+    reportOffline();
+    const fetchMock = mockFetch({
+      "POST /api/auth/login": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    const user = userEvent.setup();
+
+    renderLogin();
+    await user.type(await screen.findByLabelText("Email"), "ana@ex.com");
+    await user.type(screen.getByLabelText("Senha"), "segredo123");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(
+      await screen.findByText(/Não foi possível conectar ao servidor\. Verifique sua conexão\./),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("mostra 'Sua sessão expirou' quando o motivo vem no state", async () => {

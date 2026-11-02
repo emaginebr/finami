@@ -41,6 +41,7 @@ class InvitationService {
   async listPending(groupId: number): Promise<GroupInvitationInfo[]> {
     return apiFetch<GroupInvitationInfo[]>(
       `${GROUPS_BASE}/${groupId}/invitations?status=${GroupInvitationStatus.Pending}`,
+      { cache: "network-first" },
     );
   }
 

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab, readNavState } from "../components/layout/navigation";
 import type { NavState } from "../components/layout/navigation";
+import { OfflineContent } from "../components/pwa/OfflineContent";
 import { Avatar } from "../components/ui/Avatar";
 import { Button } from "../components/ui/Button";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -21,7 +22,9 @@ import { useGroup } from "../hooks/useGroup";
 import { useQuote } from "../hooks/useQuote";
 import { useTransaction } from "../hooks/useTransaction";
 import { useWallet } from "../hooks/useWallet";
-import { ApiError, isApiError } from "../types/api";
+import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useOnlineAction } from "../hooks/useOnlineAction";
+import { ApiError, isApiError, isOfflineError } from "../types/api";
 import { DetailLevel } from "../types/balance";
 import type { UserGroupBalancesResult } from "../types/balance";
 import { familyColorClass } from "../utils/familyColors";
@@ -44,11 +47,13 @@ const MemberPage = () => {
   const { getUserGroupBalances } = useBalance();
   const { groups, loadGroups } = useGroup();
   const { createWallet } = useWallet();
-  const { quote, status: quoteStatus, loadQuote } = useQuote();
+  const { quote, status: quoteStatus, cached: quoteCached, loadQuote } = useQuote();
   const { ledgerVersion } = useTransaction();
   const walletFormId = useId();
+  const onlineAction = useOnlineAction();
   const [result, setResult] = useState<UserGroupBalancesResult | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
+  const [retrying, setRetrying] = useState(false);
   const [walletSheetOpen, setWalletSheetOpen] = useState(false);
   /** Remonta o formulário a cada abertura */
   const [walletSheetKey, setWalletSheetKey] = useState(0);
@@ -60,17 +65,28 @@ const MemberPage = () => {
       setLoadError(new ApiError(404, t("errors.notFound")));
       return;
     }
-    setLoadError(null);
+    // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
+    setLoadError((previous: unknown) => (isOfflineError(previous) ? previous : null));
+    setRetrying(true);
     try {
       setResult(await getUserGroupBalances(userId));
+      setLoadError(null);
     } catch (err) {
       setLoadError(err);
+    } finally {
+      setRetrying(false);
     }
   }, [getUserGroupBalances, userId, validId, t]);
 
   useEffect(() => {
     void load();
   }, [load, ledgerVersion]);
+
+  // Conexão voltou: recarrega saldos e famílias (FR-012)
+  useOnReconnected(() => {
+    void load();
+    loadGroups().catch(() => undefined);
+  });
 
   useEffect(() => {
     void loadQuote();
@@ -84,6 +100,15 @@ const MemberPage = () => {
   const backTo = navState.backTo ?? "/carteiras";
   const backLabel = navState.backLabel ?? t("nav.wallets");
   const quoteAvailable = isQuoteUsable(quoteStatus) && !(result?.btcExcluded ?? false);
+
+  if (loadError && isOfflineError(loadError)) {
+    return (
+      <>
+        <LargeTitleHeader title={t("balances.memberFallback")} backTo={backTo} backLabel={backLabel} />
+        <OfflineContent retrying={retrying} onRetry={() => void load()} />
+      </>
+    );
+  }
 
   if (loadError) {
     const notFound = isApiError(loadError) && (loadError.status === 404 || loadError.status === 403);
@@ -143,11 +168,11 @@ const MemberPage = () => {
   ).sort((a, b) => collator.compare(a.name, b.name));
   const canAddWallet = isSelf || formGroups.length > 0;
 
-  const openWalletSheet = () => {
+  const openWalletSheet = onlineAction.guard(() => {
     setFormError(null);
     setWalletSheetKey((key) => key + 1);
     setWalletSheetOpen(true);
-  };
+  });
 
   const submitWallet = async (values: WalletFormValues) => {
     setSaving(true);
@@ -178,6 +203,7 @@ const MemberPage = () => {
       aria-label={isSelf ? undefined : t("wallets.addFor", { name })}
       className="mr-2"
       icon={<Plus className="size-[18px]" strokeWidth={1.75} />}
+      {...onlineAction.offlineProps}
       onClick={openWalletSheet}
     >
       {t("wallets.add")}
@@ -202,6 +228,7 @@ const MemberPage = () => {
         btcExcluded={result.btcExcluded}
         quote={quote}
         quoteStatus={quoteStatus}
+        quoteFromCache={quoteCached}
         btcExcludedBody={t("balances.btcExcludedBody")}
       />
 

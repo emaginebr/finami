@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Currency } from "../../types/api";
 import { QuoteStatus } from "../../types/quote";
 import type { QuoteSnapshot } from "../../types/quote";
-import { formatTime } from "../../utils/dates";
+import { formatDayMonth, formatTime, toIsoInstant } from "../../utils/dates";
 import { EMPTY_VALUE, currencySymbol, formatBrl, formatMoneyParts, fromCents } from "../../utils/money";
 import { Badge } from "../ui/Badge";
 import { Skeleton } from "../ui/Skeleton";
@@ -20,6 +20,8 @@ export interface BalanceHeroProps {
   label?: string;
   /** Texto do aviso de BTC fora do total (padrão: o da Home) */
   btcExcludedBody?: string;
+  /** A cotação veio do cache local (sem internet): mostra dia e hora dela (feature 005, T042) */
+  quoteFromCache?: boolean;
 }
 
 const heroClasses =
@@ -34,6 +36,7 @@ export const BalanceHero = ({
   quoteStatus,
   label,
   btcExcludedBody,
+  quoteFromCache = false,
 }: BalanceHeroProps) => {
   const { t } = useTranslation();
   const labelId = useId();
@@ -67,7 +70,18 @@ export const BalanceHero = ({
           <span className="tabular-nums">{t("home.quote", { price: formatBrl(quote.priceBrl) })}</span>
           <span aria-hidden="true">·</span>
           <span>
-            {stale ? formatTime(quote.quotedAt) : t("home.updatedAt", { time: formatTime(quote.quotedAt) })}
+            {quoteFromCache ? (
+              <time dateTime={toIsoInstant(quote.quotedAt)}>
+                {t("pwa.offline.quoteFrom", {
+                  date: formatDayMonth(quote.quotedAt),
+                  time: formatTime(quote.quotedAt),
+                })}
+              </time>
+            ) : stale ? (
+              formatTime(quote.quotedAt)
+            ) : (
+              t("home.updatedAt", { time: formatTime(quote.quotedAt) })
+            )}
           </span>
           {stale ? <Badge variant="stale">{t("badges.stale")}</Badge> : null}
         </p>

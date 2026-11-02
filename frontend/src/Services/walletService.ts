@@ -26,12 +26,12 @@ const toQuery = (filters: WalletListFilters): string => {
 class WalletService {
   /** Carteiras que a pessoa controla (`GET /api/wallets`) */
   async list(filters: WalletListFilters = {}): Promise<WalletInfo[]> {
-    return apiFetch<WalletInfo[]>(`${API_BASE}${toQuery(filters)}`);
+    return apiFetch<WalletInfo[]>(`${API_BASE}${toQuery(filters)}`, { cache: "network-first" });
   }
 
   /** Uma carteira (`GET /api/wallets/{id}`) */
   async get(walletId: number): Promise<WalletInfo> {
-    return apiFetch<WalletInfo>(`${API_BASE}/${walletId}`);
+    return apiFetch<WalletInfo>(`${API_BASE}/${walletId}`, { cache: "network-first" });
   }
 
   /** Cria uma carteira (`POST /api/wallets`) */

@@ -174,12 +174,18 @@
     background-color: var(--color-bg);
     -webkit-text-size-adjust: 100%;
     /* O elemento focado nunca fica atrás da TabBar e da FAB (REVIEW G-1, WCAG 2.4.11) */
-    scroll-padding-bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom) + 88px);
+    scroll-padding-bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom) + 88px + var(--update-prompt-h, 0px));
+    /* Feature 005: nem atrás da faixa "Sem internet" (sticky no topo) */
+    scroll-padding-top: var(--offline-banner-h, 0px);
+    /* Alturas publicadas pelo OfflineBanner e pelo UpdatePrompt (components.md §9) */
+    --offline-banner-h: 0px;
+    --update-prompt-h: 0px;
   }
 
   @media (width >= 48rem) {
     html {
-      scroll-padding-bottom: 96px;
+      /* + cartão de nova versão no canto inferior direito (REVIEW-005 M-6) */
+      scroll-padding-bottom: calc(96px + var(--update-prompt-h, 0px));
     }
   }
 

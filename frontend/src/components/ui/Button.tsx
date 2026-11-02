@@ -39,6 +39,13 @@ const DISABLED_CLASSES =
   "disabled:bg-surface-2 disabled:text-text-disabled disabled:border-transparent disabled:cursor-not-allowed disabled:hover:bg-surface-2";
 
 /**
+ * `aria-disabled="true"` (ação indisponível sem internet, feature 005): mesmo visual do
+ * desabilitado, mas o botão continua focável e o clique mostra o aviso (components.md §9).
+ */
+const ARIA_DISABLED_CLASSES =
+  "aria-disabled:bg-surface-2 aria-disabled:text-text-disabled aria-disabled:border-transparent aria-disabled:cursor-not-allowed aria-disabled:hover:bg-surface-2 aria-disabled:active:bg-surface-2 aria-disabled:hover:opacity-100 aria-disabled:active:opacity-100";
+
+/**
  * Estilo "ocupado" (durante `loading`) por variante: o rótulo de progresso continua legível
  * em vez de cair no visual de desabilitado. Variantes sem entrada usam `DISABLED_CLASSES`.
  */
@@ -87,6 +94,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           SIZE_CLASSES[size as ButtonSize],
           block && "flex w-full",
           busyClasses ?? DISABLED_CLASSES,
+          !loading && ARIA_DISABLED_CLASSES,
           className,
         )}
         {...props}

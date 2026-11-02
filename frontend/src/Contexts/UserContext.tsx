@@ -8,6 +8,7 @@ import type {
   UserSearchInfo,
   UserUpdateInfo,
 } from "../types/user";
+import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
 import { useOnUserChange } from "../hooks/useOnUserChange";
 
@@ -17,6 +18,8 @@ export interface UserContextType {
   createdByMe: UserInfo[];
   loading: boolean;
   error: string | null;
+  /** O último erro foi "sem internet e sem dado guardado" (feature 005) */
+  offline: boolean;
   // Métodos
   loadCreatedByMe: () => Promise<void>;
   createUser: (data: UserInsertInfo) => Promise<UserInfo>;
@@ -108,12 +111,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const clearError = useCallback(() => setError(null), []);
+  const offline = error === OFFLINE_CONTENT_MESSAGE;
 
   const value = useMemo<UserContextType>(
     () => ({
       createdByMe,
       loading,
       error,
+      offline,
       loadCreatedByMe,
       createUser,
       updateUser,
@@ -121,7 +126,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       searchByEmail,
       clearError,
     }),
-    [createdByMe, loading, error, loadCreatedByMe, createUser, updateUser, changePassword, searchByEmail, clearError],
+    [createdByMe, loading, error, offline, loadCreatedByMe, createUser, updateUser, changePassword, searchByEmail, clearError],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

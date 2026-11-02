@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Undo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { OfflineActionKind, useOnlineAction } from "../../hooks/useOnlineAction";
 import { useTransaction } from "../../hooks/useTransaction";
+import { isUnconfirmedWriteError } from "../../types/api";
 import { TransactionType } from "../../types/transaction";
 import type { TransactionInfo } from "../../types/transaction";
 import type { StatementEntryInfo } from "../../types/statement";
 import { cn } from "../../utils/cn";
 import { formatDate, formatDateTime } from "../../utils/dates";
 import { formatBrl, formatMoney, formatSigned } from "../../utils/money";
-import { errorMessage, notifyError, notifySuccess } from "../../utils/notify";
+import { errorMessage, notifyError, notifyErrorMessage, notifySuccess } from "../../utils/notify";
 import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Button } from "../ui/Button";
@@ -37,6 +39,8 @@ export const TransactionDetailSheet = ({ entry, onClose, canControl }: Transacti
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reversing, setReversing] = useState(false);
+  // Estornar é um lançamento: exige internet (feature 005)
+  const onlineAction = useOnlineAction(OfflineActionKind.Transaction);
   const transactionId = entry?.transactionId ?? null;
 
   useEffect(() => {
@@ -74,7 +78,9 @@ export const TransactionDetailSheet = ({ entry, onClose, canControl }: Transacti
       notifySuccess(t("statement.reverseSuccess"));
       onClose();
     } catch (err) {
-      notifyError(err);
+      // Rede caiu durante o envio: o estorno pode ter sido gravado — não reenviar (T041)
+      if (isUnconfirmedWriteError(err)) notifyErrorMessage(t("pwa.offline.writeUnconfirmed"));
+      else notifyError(err);
       throw err;
     } finally {
       setReversing(false);
@@ -173,7 +179,8 @@ export const TransactionDetailSheet = ({ entry, onClose, canControl }: Transacti
             block
             className="mt-4 bg-surface"
             icon={<Undo2 className="size-5" strokeWidth={1.75} />}
-            onClick={() => setConfirmOpen(true)}
+            {...onlineAction.offlineProps}
+            onClick={onlineAction.guard(() => setConfirmOpen(true))}
           >
             {t("statement.reverse")}
           </Button>
