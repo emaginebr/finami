@@ -4,9 +4,8 @@
 #   docker compose --env-file .env.prod -f docker-compose-prod.yml up --build -d
 #
 # Só a API sobe aqui. O frontend (SPA) é publicado pelo deploy de outro projeto, cujo proxy
-# HTTPS deve encaminhar /api/*, /mcp*, /oauth/* e /.well-known/oauth-* para esta API:
-#   - proxy no host:        http://127.0.0.1:80
-#   - proxy em container:   http://finami-api:8080 pela rede externa `emagine-network`
+# HTTPS (em container na rede externa `emagine-network`) deve encaminhar /api/*, /mcp*, /oauth/* e
+# /.well-known/oauth-* para http://finami-api:8080. Nenhuma porta é publicada no host.
 # repassando X-Forwarded-Proto/For e sem buffer em /mcp (text/event-stream).
 # O PostgreSQL é EXTERNO: a connection string vem do secret FINAMI_CONNECTION_STRING.
 # ASPNETCORE_ENVIRONMENT=Production. O domínio público (https://finami.site: CORS e endereços
@@ -31,8 +30,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    ports:
-      - "80:8080"
     networks:
       - emagine-network
 

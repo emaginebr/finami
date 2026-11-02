@@ -62,8 +62,8 @@ Workflow [`Deploy Production`](.github/workflows/deploy-prod.yml), disparado man
 
 Este deploy sobe **só a API** (o banco é externo). O frontend é publicado pelo deploy de outro
 projeto, cujo proxy HTTPS termina o TLS do domínio e encaminha `/api/*`, `/mcp*`, `/oauth/*` e
-`/.well-known/oauth-*` para a API na porta 80 do servidor (publicada pelo compose) ou, se o
-proxy roda em container, em `http://finami-api:8080` pela rede `emagine-network`. Ele deve repassar
+`/.well-known/oauth-*` para a API em `http://finami-api:8080` pela rede `emagine-network` (o compose
+não publica nenhuma porta no host). Ele deve repassar
 `X-Forwarded-Proto`/`X-Forwarded-For` e não bufferizar `/mcp` (respostas em `text/event-stream`).
 App e API ficam no mesmo domínio (requisito do MCP/OAuth e do PWA).
 
