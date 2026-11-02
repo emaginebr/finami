@@ -9,7 +9,7 @@ Direção visual: **Noite Roxa** (iOS Dark Grouped tingido com a marca). Apenas 
 | [`tokens.css`](./tokens.css) | Bloco `@theme` do Tailwind 4 com tabela de contraste — copiar para `frontend/src/index.css` | T008 |
 | [`components.md`](./components.md) | Anatomia, variantes, estados, medidas e a11y de cada componente (nomes de `contracts/ui-routes.md`) | T009 |
 | [`../../frontend/scripts/generate-icons.mjs`](../../frontend/scripts/generate-icons.mjs) | Gera ícones a partir de `docs/logos/logo.png` (`npm run icons`) | T010 |
-| `frontend/public/apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `favicon-32.png` | Ícones iOS / maskable / favicon | T010 |
+| `frontend/public/apple-touch-icon.png`, `favicon-32.png` | Ícones iOS / favicon (os antigos `icon-192.png`/`icon-512.png` foram substituídos pelos `icon-any-*`/`icon-maskable-*` da feature 005) | T010 |
 | `frontend/src/assets/app-icon.png`, `logo.webp` | AppIcon (512) e Logo (largura 640) usados no app | T010 |
 | `frontend/src/assets/app-icon.webp` | AppIcon leve (288 px, 6,4 KB) — substitui o PNG no import do `AppIcon` | T091 |
 | [`../../frontend/public/manifest.webmanifest`](../../frontend/public/manifest.webmanifest) | Manifest PWA (`standalone`, `#12021C`, ícones maskable) | T011 |
@@ -47,6 +47,22 @@ Nenhum token novo: todas as combinações usam cores já validadas na tabela de 
 | [`components.md` §8](./components.md#8-assistentes-de-ia--oauth-e-conexões-feature-004) | `OAuthConsentPage`, `AccountCard`, `ScopeChoice`, `ConnectedAssistantsSection`, `ConnectionItem`, `ScopeBadge`, `McpAddressCard`, `OAuthErrorPage` | T004 |
 
 Nenhum token novo. Ícones lucide novos: `Bot`, `Unplug`, `ExternalLink`.
+
+## Feature `005-pwa-webapp` — app instalável (PWA)
+
+| Artefato | Propósito | Tarefa |
+|---|---|---|
+| [`mockups/pwa-states.html`](./mockups/pwa-states.html) | OfflineBanner, toast de reconexão, FAB desabilitado + toast, OfflineContent, OfflinePage, UpdatePrompt (e "Atualizando…"), InstallInvite, item "Instalar o Finami" na Conta, folha "Instalar no iPhone" (390, 320 e 1440 px) | T007 |
+| [`components.md` §9](./components.md#9-pwa-feature-005) | Especificação de `OfflineBanner`, `UpdatePrompt`, `InstallInvite`, `InstallAppItem`, `InstallIosSheet`, `OfflineContent`, `OfflinePage`, `Fab` offline, área segura | T007 |
+| [`../../frontend/scripts/generate-icons.mjs`](../../frontend/scripts/generate-icons.mjs) | Passa a gerar ícones `any`/`maskable` separados, ícones de atalho e telas de abertura do iOS | T008 |
+| `frontend/public/icon-any-192.png`, `icon-any-512.png` | Manifest `purpose: "any"` — cartão roxo arredondado, cantos transparentes | T008 |
+| `frontend/public/icon-maskable-192.png`, `icon-maskable-512.png` | Manifest `purpose: "maskable"` — fundo `#12021C`, casa na zona segura de 80 % | T008 |
+| `frontend/public/shortcut-new-transaction-96.png`, `shortcut-wallets-96.png` | Ícones dos atalhos "Novo lançamento" e "Carteiras" | T008 |
+| `frontend/public/splash/apple-splash-*.png` + [`splash-links.txt`](../../frontend/public/splash/splash-links.txt) | 18 telas de abertura do iOS (retrato, iPhone e iPad) e as tags `<link rel="apple-touch-startup-image">` para o `index.html` | T008 |
+| `frontend/public/screenshots/home-narrow.png`, `wallets-narrow.png` (1080×1920), `home-wide.png` (1920×1080) | Screenshots da janela de instalação (`form_factor` `narrow`/`wide`) | T050 |
+
+Nenhum token novo (a faixa de aviso usa `warning-soft`/`warning`/`text`). Ícones lucide novos:
+`Download`, `Share`, `SquarePlus`, `RefreshCw`, `Wifi`.
 
 ## Como ver os mockups
 

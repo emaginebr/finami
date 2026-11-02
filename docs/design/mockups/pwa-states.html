@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · PWA (offline, atualização, instalação) — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+<style>
+/* =============================================================================
+   Feature 005 — PWA. Estilos só destes estados; o resto vem de mockup.css.
+   Equivalentes Tailwind em docs/design/components.md §9.
+   ============================================================================= */
+
+/* ---------- OfflineBanner ---------- */
+/* Celular: gruda no topo; o fundo âmbar cobre a área da barra de status (safe-area-top)
+   e o texto fica logo abaixo dela. Telas push: a linha de navegação vem DEPOIS da faixa. */
+.offline-bar {
+  position: sticky; top: calc(var(--sat) * -1); z-index: 25;
+  margin: calc(var(--sat) * -1) -16px 8px; padding-top: var(--sat);
+  background: var(--color-warning-soft);
+  border-bottom: 1px solid rgb(255 208 7 / .28);
+}
+.offline-strip {
+  display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 8px 16px;
+  font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text);
+}
+.offline-strip svg { color: var(--color-warning); flex-shrink: 0; }
+.offline-strip b { font-weight: 600; }
+.offline-strip .sep { color: var(--color-warning); }
+
+/* ---------- UpdatePrompt ---------- */
+.layer.free { pointer-events: none; z-index: 50; }
+.layer.free > * { pointer-events: auto; }
+.update-prompt {
+  position: absolute; left: 12px; right: 12px; bottom: calc(49px + var(--sab) + 12px);
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 12px 12px 14px;
+  background: var(--color-surface-3); border: 1px solid var(--color-border); border-radius: 14px;
+  box-shadow: var(--shadow-modal); animation: var(--animate-modal-in);
+}
+.up-msg { display: flex; align-items: center; gap: 10px; min-height: 24px; font-size: var(--text-subhead); font-weight: 600; }
+.up-msg svg { color: var(--color-accent); flex-shrink: 0; }
+.up-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.update-prompt[aria-busy="true"] .up-msg { min-height: 44px; }
+.update-prompt .spin { animation: spin .9s linear infinite; }
+/* FAB sobe acima da faixa enquanto ela estiver visível (celular) */
+.fab.lifted { bottom: calc(49px + var(--sab) + 12px + 102px + 16px); }
+
+/* ---------- Fab desabilitado offline ---------- */
+.fab.off, .fab.off:hover, .fab.off:active {
+  background: var(--color-surface-2); color: var(--color-text-disabled);
+  border: 1px solid var(--color-border); box-shadow: none; transform: none; cursor: not-allowed;
+}
+.toast.warn svg { color: var(--color-warning); }
+/* com a faixa offline visível, o toast desce abaixo dela (offset do sonner = altura da faixa) */
+.toast.below-bar { top: calc(var(--sat) + 36px + 8px); }
+
+/* ---------- InstallInvite (Home) ---------- */
+.install-invite {
+  position: relative; display: flex; align-items: flex-start; gap: 12px;
+  margin-top: 16px; padding: 14px 4px 14px 14px;
+  background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+}
+.install-invite .app-icon { box-shadow: none; flex-shrink: 0; margin-top: 2px; }
+.ii-main { flex: 1; min-width: 0; }
+.ii-main h2 { margin: 0; font-size: var(--text-headline); line-height: var(--text-headline--line-height); font-weight: 600; }
+.ii-main p { margin: 2px 0 10px; font-size: var(--text-subhead); line-height: var(--text-subhead--line-height); color: var(--color-text-muted); }
+.ii-close { color: var(--color-text-muted); margin-top: -6px; flex-shrink: 0; }
+.ii-close:hover { background: var(--color-surface-2); color: var(--color-text); }
+
+/* ---------- Instalar no iPhone (sheet) ---------- */
+.ios-intro { margin: 0 0 16px; font-size: var(--text-subhead); color: var(--color-text-muted); }
+.ios-steps { list-style: none; margin: 0; padding: 0; background: var(--color-surface); border-radius: var(--radius-lg); overflow: hidden; counter-reset: s; }
+.ios-steps li { position: relative; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 16px; font-size: var(--text-body); line-height: 1.35; }
+.ios-steps li + li::before { content: ""; position: absolute; top: 0; right: 0; left: 64px; border-top: .5px solid var(--color-separator); }
+.step-ic { position: relative; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: var(--color-info-soft); color: var(--color-info); }
+.step-n {
+  position: absolute; top: -6px; left: -6px; width: 18px; height: 18px; border-radius: 99px;
+  display: grid; place-items: center; background: var(--color-info); color: var(--color-on-accent);
+  font-size: 11px; font-weight: 700; line-height: 1; box-shadow: 0 0 0 2px var(--color-surface);
+}
+.ios-steps b { font-weight: 600; }
+.ios-steps small { display: block; margin-top: 2px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+
+/* ---------- OfflinePage ---------- */
+.offline-page { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100%; padding: 24px 8px; gap: 8px; }
+.offline-page .logo-box img { display: block; height: 56px; width: auto; }
+.offline-page .ic { width: 64px; height: 64px; border-radius: 99px; display: grid; place-items: center; background: var(--color-warning-soft); color: var(--color-warning); margin: 32px 0 8px; }
+.offline-page h1 { margin: 0; font-size: var(--text-title-2); line-height: var(--text-title-2--line-height); }
+.offline-page p { margin: 0 0 16px; max-width: 30ch; font-size: var(--text-body); color: var(--color-text-muted); }
+
+@container app (min-width: 768px) {
+  .offline-bar { position: sticky; top: 0; margin: 0 0 16px; padding: 0; border: 1px solid rgb(255 208 7 / .28); border-radius: var(--radius-lg); }
+  .update-prompt { left: auto; width: 360px; right: max(24px, calc((100cqw - 960px) / 2 - 72px)); bottom: calc(32px + 56px + 16px); }
+  .fab.lifted { bottom: 32px; }
+  .offline-page .wrap { max-width: 384px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>PWA <span class="muted" style="font-weight:400">· feature 005 · T007</span></h1>
+    <p>Estados do app instalável: faixa <b>Sem internet</b> (OfflineBanner), anúncio de reconexão, aviso de <b>Nova versão disponível</b> (UpdatePrompt), item <b>Instalar o Finami</b> na Conta, folha <b>Instalar no iPhone</b>, convite discreto na Home (InstallInvite), conteúdo indisponível (OfflineContent), tela de primeira abertura sem internet (OfflinePage) e o FAB desabilitado offline. Contrato: <code>specs/005-pwa-webapp/contracts/ui.md</code>. Especificação: <code>components.md §9</code>.</p>
+    <p>Cor de aviso: faixa <code>warning-soft</code> <b>#33290A</b> + ícone <code>warning</code> <b>#FFD007</b> (9,76:1) + texto <code>text</code> <b>#F9F7F9</b> (13,47:1). Textos marcados <i>(proposta)</i> em components.md ainda não estão no contrato.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">Celular · 390 px — sem internet</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="p-offline" data-tab="home" data-fab="off" data-bell="2"></div>
+      <figcaption><b>OfflineBanner na Home.</b> Aparece após 2 s sem conexão, colado no topo: o fundo âmbar cobre a área da barra de status e o texto fica logo abaixo dela. <code>role="status"</code> + <code>aria-live="polite"</code>, sem foco. FAB "+" com <code>aria-disabled="true"</code> (continua focável), visual desabilitado.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-fab-toast" data-tab="home" data-fab="off"></div>
+      <figcaption><b>Toque no FAB offline.</b> Nada é enviado nem enfileirado; toast "Sem internet. Conecte-se para fazer lançamentos." (ícone <code>WifiOff</code> em amarelo). Fora de lançamentos: "…para fazer alterações."</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-back" data-tab="home" data-fab data-bell="2"></div>
+      <figcaption><b>Reconexão.</b> A faixa some na primeira resposta bem-sucedida e o toast curto "Conexão restabelecida." é anunciado (<code>aria-live="polite"</code> do sonner). Os dados da tela são atualizados sozinhos.</figcaption></figure>
+  </div>
+  <div class="stage" style="margin-top:40px">
+    <figure class="shot"><div class="device phone" data-screen="p-content" data-tab="home"></div>
+      <figcaption><b>Tela push + OfflineContent.</b> A faixa vem antes da linha de navegação (voltar). Extrato de um mês nunca aberto: ícone, "Este conteúdo não está disponível sem internet." e <b>Tentar de novo</b>. Faixa sem data quando a tela não tem dados guardados: "Sem internet".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-page"></div>
+      <figcaption><b>OfflinePage.</b> Primeira abertura no aparelho sem internet e sem sessão verificável: logo, "Sem internet", explicação e <b>Tentar de novo</b>. Nunca a página de erro do navegador. Sem TabBar.</figcaption></figure>
+    <figure class="shot"><div class="device phone w320" data-screen="p-offline-320" data-tab="home" data-fab="off"></div>
+      <figcaption><b>320 px.</b> O texto ainda cabe em uma linha; com zoom ou fonte maior ele quebra e a faixa cresce (<code>min-h</code>, nunca <code>h</code> fixo). A data nunca é truncada.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Celular · 390 px — atualização</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="p-update" data-tab="home" data-fab="lifted" data-bell="2"></div>
+      <figcaption><b>UpdatePrompt.</b> Cartão acima da TabBar, não modal, <code>role="status"</code>, não rouba o foco. <b>Atualizar</b> (primário) e <b>Agora não</b> (fantasma), 44 px. Enquanto visível, o FAB sobe acima do cartão e o conteúdo ganha o mesmo espaço extra no fim.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-updating" data-tab="home" data-fab="lifted"></div>
+      <figcaption><b>Atualizando…</b> Botões saem; spinner (estático com movimento reduzido) + "Atualizando…", <code>aria-busy="true"</code>. O app recarrega na mesma tela.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-update-sheet" data-tab="home" data-fab="lifted"></div>
+      <figcaption><b>Com folha aberta.</b> O cartão fica por baixo do scrim (z-index menor que o Dialog) e nada é recarregado: o que foi digitado não se perde (US3-2).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Celular · 390 px — instalação</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="p-invite" data-tab="home" data-fab data-bell="2"></div>
+      <figcaption><b>InstallInvite.</b> Cartão discreto logo abaixo do saldo total, uma vez. <b>Instalar</b> dispara a instalação (ou a folha do iOS); o X (44 px, <code>aria-label="Dispensar convite de instalação"</code>) dispensa por 30 dias.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-account" data-tab="account" data-bell="2"></div>
+      <figcaption><b>Conta → seção "App".</b> Linha de 2 linhas: ícone <code>Download</code> em quadrado verde, "Instalar o Finami" + "Use o Finami como um app, direto da tela inicial." Oculta quando instalado ou sem suporte (fora do iOS).</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-ios" data-tab="account"></div>
+      <figcaption><b>Instalar no iPhone.</b> Folha Radix com 3 passos numerados e ilustrados: <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b> → <b>Adicionar</b>; botão <b>Entendi</b>. No iPad o título vira "Instalar no iPad".</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="p-offline-desk" data-tab="home" data-fab="off" data-bell="2"></div></div>
+      <figcaption><b>Sem internet + nova versão.</b> A faixa fica no topo da coluna de 720 px, com cantos arredondados (fixa ao rolar). O UpdatePrompt fica no canto inferior direito, alinhado ao FAB e logo acima dele (toasts do desktop ficam embaixo, no centro).</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="p-account" data-tab="account" data-bell="2"></div></div>
+      <figcaption><b>Conta no desktop.</b> Item "Instalar o Finami" na seção "App" (Chrome/Edge mostram o diálogo nativo de instalação).</figcaption></figure>
+  </div>
+</div>
+
+<!-- ============ templates ============ -->
+<template id="p-offline">
+  <div class="offline-bar" role="status" aria-live="polite"><div class="offline-strip"><i data-i="wifi-off" data-s="16"></i><span><b>Sem internet</b> <span class="sep" aria-hidden="true">·</span><span class="sr-only">,</span> dados de 01/11 às 18:42</span></div></div>
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1a">
+    <p class="label" id="h1a">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 18:40</span></p>
+  </section>
+  <section class="section" aria-labelledby="s1a">
+    <a class="section-head" href="#"><span class="dot fam-0"></span><h2 id="s1a">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="s2a">
+    <a class="section-head" href="#"><span class="dot fam-1"></span><h2 id="s2a">Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<template id="p-fab-toast">
+  <div class="offline-bar" role="status" aria-live="polite"><div class="offline-strip"><i data-i="wifi-off" data-s="16"></i><span><b>Sem internet</b> <span class="sep" aria-hidden="true">·</span><span class="sr-only">,</span> dados de 01/11 às 18:42</span></div></div>
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1b">
+    <p class="label" id="h1b">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 18:40</span></p>
+  </section>
+  <section class="section" aria-labelledby="s3b">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="s3b">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="row-main"><span class="row-title">Reserva BTC</span><span class="row-sub">Bitcoin</span></span><span class="row-end"><span class="amount num">₿ 0,00250000</span><span class="sec num">≈ R$ 1.280,85</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <div class="layer free">
+    <div class="toast warn below-bar" role="status"><i data-i="wifi-off" data-s="20"></i><span>Sem internet. Conecte-se para fazer lançamentos.</span></div>
+  </div>
+</template>
+
+<template id="p-back">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1c">
+    <p class="label" id="h1c">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.910,00</span><span aria-hidden="true">·</span><span>atualizada às 19:05</span></p>
+  </section>
+  <section class="section" aria-labelledby="s1c">
+    <a class="section-head" href="#"><span class="dot fam-0"></span><h2 id="s1c">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <div class="layer free">
+    <div class="toast" role="status"><i data-i="wifi" data-s="20"></i><span>Conexão restabelecida.</span></div>
+  </div>
+</template>
+
+<template id="p-content">
+  <div class="offline-bar" role="status" aria-live="polite"><div class="offline-strip"><i data-i="wifi-off" data-s="16"></i><span><b>Sem internet</b></span></div></div>
+  <div class="navbar"><a class="back" href="#" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Conta conjunta</h1>
+  <p class="subtitle">Família Silva · Real</p>
+  <div class="state" role="status" style="padding-top:56px">
+    <span class="ic"><i data-i="wifi-off" data-s="36"></i></span>
+    <h3>Este conteúdo não está disponível sem internet.</h3>
+    <p>Abra esta tela de novo quando estiver conectado. <i>(proposta)</i></p>
+    <button class="btn secondary sm"><i data-i="rotate-cw"></i>Tentar de novo</button>
+  </div>
+</template>
+
+<template id="p-page">
+  <div class="offline-page">
+    <div class="wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div class="logo-box"><img data-asset="logo.webp" alt="Finami"></div>
+      <span class="ic" aria-hidden="true"><i data-i="wifi-off" data-s="30"></i></span>
+      <h1>Sem internet</h1>
+      <p>Conecte-se para usar o Finami pela primeira vez neste aparelho.</p>
+      <button class="btn primary"><i data-i="rotate-cw"></i>Tentar de novo</button>
+    </div>
+  </div>
+</template>
+
+<template id="p-offline-320">
+  <div class="offline-bar" role="status" aria-live="polite"><div class="offline-strip"><i data-i="wifi-off" data-s="16"></i><span><b>Sem internet</b> <span class="sep" aria-hidden="true">·</span><span class="sr-only">,</span> dados de 01/11 às 18:42</span></div></div>
+  <h1 class="large-title" style="margin:4px 0 16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1d">
+    <p class="label" id="h1d">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+  </section>
+  <section class="section" aria-labelledby="s3d">
+    <div class="section-head"><span class="dot fam-none"></span><h2 id="s3d">Avulsas</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Nubank</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span></a>
+    </div>
+  </section>
+</template>
+
+<template id="p-update">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1e">
+    <p class="label" id="h1e">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+  <section class="section" aria-labelledby="s1e">
+    <a class="section-head" href="#"><span class="dot fam-0"></span><h2 id="s1e">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="s2e">
+    <a class="section-head" href="#"><span class="dot fam-1"></span><h2 id="s2e">Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <div class="layer free">
+    <div class="update-prompt" role="status" aria-live="polite" aria-labelledby="up1">
+      <div class="up-msg"><i data-i="refresh-cw" data-s="20"></i><span id="up1">Nova versão disponível</span></div>
+      <div class="up-actions"><button class="btn ghost sm">Agora não</button><button class="btn primary sm">Atualizar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="p-updating">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1f">
+    <p class="label" id="h1f">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+  <div class="layer free">
+    <div class="update-prompt" role="status" aria-live="polite" aria-busy="true">
+      <div class="up-msg"><i data-i="loader" data-s="20" class="spin"></i><span>Atualizando…</span></div>
+    </div>
+  </div>
+</template>
+
+<template id="p-update-sheet">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1g">
+    <p class="label" id="h1g">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+  </section>
+  <div class="layer free">
+    <div class="update-prompt" role="status" aria-live="polite">
+      <div class="up-msg"><i data-i="refresh-cw" data-s="20"></i><span>Nova versão disponível</span></div>
+      <div class="up-actions"><button class="btn ghost sm" tabindex="-1">Agora não</button><button class="btn primary sm" tabindex="-1">Atualizar</button></div>
+    </div>
+  </div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ts">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l" style="padding-left:8px">Cancelar</button><h2 class="title" id="ts">Saída</h2><span></span></div>
+      <div class="sheet-body">
+        <div class="field"><span class="lbl">Valor</span><div class="money"><span class="cur">R$</span><span class="amt">45,90</span><span class="caret"></span></div></div>
+        <div class="field"><label for="ds">Descrição</label><input id="ds" class="input" value="Padaria"></div>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Continuar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="p-invite">
+  <p class="greeting-date">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1h">
+    <p class="label" id="h1h">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 14:32</span></p>
+  </section>
+  <section class="install-invite" aria-labelledby="ii-t" aria-describedby="ii-d">
+    <img class="app-icon" data-asset="app-icon.webp" width="44" height="44" alt="">
+    <div class="ii-main">
+      <h2 id="ii-t">Instalar o Finami</h2>
+      <p id="ii-d">Use o Finami como um app, direto da tela inicial.</p>
+      <button class="btn secondary sm"><i data-i="download" data-s="18"></i>Instalar</button>
+    </div>
+    <button class="icon-btn ii-close" aria-label="Dispensar convite de instalação"><i data-i="x" data-s="20"></i></button>
+  </section>
+  <section class="section" aria-labelledby="s1h">
+    <a class="section-head" href="#"><span class="dot fam-0"></span><h2 id="s1h">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+</template>
+
+<template id="p-account">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-top:12px"><span class="avatar lg fam-0" aria-hidden="true">AS</span><div style="min-width:0"><div class="row-title">Ana Silva</div><div class="row-sub">ana.silva@exemplo.com</div></div></div>
+  <section class="section" aria-labelledby="pa2">
+    <div class="section-head"><h2 id="pa2">Segurança</h2></div>
+    <div class="list">
+      <button class="row has-icon"><span class="wicon set" style="background:var(--color-family-yellow)"><i data-i="key-round" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Trocar senha</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="pa3">
+    <div class="section-head"><h2 id="pa3">Pessoas que cadastrei</h2></div>
+    <div class="list">
+      <div class="row r2 has-icon static"><span class="avatar fam-2" style="width:36px;height:36px">PS</span><span class="row-main"><span class="row-title">Pedro Silva</span><span class="row-sub">sem login · família Silva</span></span></div>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="pa4">
+    <div class="section-head"><h2 id="pa4">App</h2></div>
+    <div class="list">
+      <button class="row r2 has-icon" aria-describedby="pa4d"><span class="wicon set" style="background:var(--color-accent)"><i data-i="download" data-s="18"></i></span><span class="row-main"><span class="row-title regular">Instalar o Finami</span><span class="row-sub" id="pa4d" style="white-space:normal">Use o Finami como um app, direto da tela inicial.</span></span></button>
+    </div>
+  </section>
+  <section class="section">
+    <div class="list"><button class="row destructive" style="justify-content:center;font-weight:600"><i data-i="log-out" data-s="18"></i>Sair</button></div>
+    <p class="list-foot center">Finami · versão 1.0.0</p>
+  </section>
+</template>
+
+<template id="p-ios">
+  <h1 class="large-title" style="margin-top:12px">Conta</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ios-t" aria-describedby="ios-d">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="ios-t">Instalar no iPhone</h2><span></span></div>
+      <div class="sheet-body">
+        <p class="ios-intro" id="ios-d">No Safari, são 3 toques para ter o Finami na tela de início. <i>(proposta)</i></p>
+        <ol class="ios-steps">
+          <li><span class="step-ic" aria-hidden="true"><span class="step-n">1</span><i data-i="share" data-s="20"></i></span><span>Toque em <b>Compartilhar</b>.<small>Fica na barra do Safari; no iOS 26, dentro do menu ⋯. <i>(proposta)</i></small></span></li>
+          <li><span class="step-ic" aria-hidden="true"><span class="step-n">2</span><i data-i="square-plus" data-s="20"></i></span><span>Toque em <b>Adicionar à Tela de Início</b>.<small>Role a lista se não aparecer de cara. <i>(proposta)</i></small></span></li>
+          <li><span class="step-ic" aria-hidden="true"><span class="step-n">3</span><i data-i="check" data-s="20" data-w="2.25"></i></span><span>Toque em <b>Adicionar</b>, no canto superior direito.</span></li>
+        </ol>
+      </div>
+      <div class="sheet-foot"><button class="btn primary block">Entendi</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="p-offline-desk">
+  <div class="offline-bar" role="status" aria-live="polite"><div class="offline-strip"><i data-i="wifi-off" data-s="16"></i><span><b>Sem internet</b> <span class="sep" aria-hidden="true">·</span><span class="sr-only">,</span> dados de 01/11 às 18:42</span></div></div>
+  <p class="greeting-date" style="margin-top:0">Domingo, 1 de novembro</p>
+  <h1 class="large-title" style="margin-bottom:16px">Olá, Ana</h1>
+  <section class="hero" aria-labelledby="h1k">
+    <p class="label" id="h1k">Saldo total</p>
+    <p class="value"><span class="cur">R$</span>13.285,56</p>
+    <p class="quote" style="margin:0"><span class="num">₿ 1 = R$ 512.340,00</span><span aria-hidden="true">·</span><span>atualizada às 18:40</span></p>
+  </section>
+  <section class="section" aria-labelledby="s1k">
+    <a class="section-head" href="#"><span class="dot fam-0"></span><h2 id="s1k">Praia</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Casa de praia</span><span class="row-sub">Real · <span class="badge virtual"><i data-i="cloud" data-s="12"></i>virtual</span></span></span><span class="row-end"><span class="amount num">R$ 2.350,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="s2k">
+    <a class="section-head" href="#"><span class="dot fam-1"></span><h2 id="s2k">Silva</h2><i data-i="chevron-right" data-s="14" class="chev"></i></a>
+    <div class="list">
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Conta conjunta</span><span class="row-sub">Real</span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="#"><span class="wicon"><i data-i="wallet"></i></span><span class="row-main"><span class="row-title">Mesada do Pedro</span><span class="row-sub">Real · de Pedro Silva</span></span><span class="row-end"><span class="amount num">R$ 100,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+  </section>
+  <div class="layer free">
+    <div class="update-prompt" role="status" aria-live="polite">
+      <div class="up-msg"><i data-i="refresh-cw" data-s="20"></i><span>Nova versão disponível</span></div>
+      <div class="up-actions"><button class="btn ghost sm">Agora não</button><button class="btn primary sm">Atualizar</button></div>
+    </div>
+  </div>
+</template>
+
+<script src="mockup.js"></script>
+<script>
+  // FAB offline: continua focável, mas indisponível (aria-disabled em vez de disabled)
+  document.querySelectorAll('.fab.off').forEach((b) => b.setAttribute('aria-disabled', 'true'));
+</script>
+</body>
+</html>

@@ -685,3 +685,209 @@ Mockups: [`oauth-consent.html`](./mockups/oauth-consent.html),
   *(proposta)*.
 - Contraste: `text`/`bg` 18,74 · `text`/`surface` 17,50 · muted/`surface` 8,81 e /`bg` 9,43 ·
   `negative`/`negative-soft` 6,71 · `text`/`negative-soft` 15,12. Sem elementos interativos.
+
+---
+
+## 9. PWA (feature 005)
+
+Mockups: [`pwa-states.html`](./mockups/pwa-states.html). Contrato:
+`specs/005-pwa-webapp/contracts/ui.md`. Arquivos em `frontend/src/components/pwa/` (exceto
+`OfflinePage`, em `pages/`). Textos pt-BR no namespace i18n `pwa`. **Nenhum token novo.**
+Ícones lucide novos: `Download`, `Share`, `SquarePlus`, `RefreshCw`, `Wifi` (além de `WifiOff`,
+`RotateCw`, `X`, `Check` e `Loader2`, já usados).
+
+### Cor de aviso (faixa "Sem internet") — valores e contraste
+
+| Elemento | Token | Valor | Contraste |
+|---|---|---|---|
+| Fundo da faixa | `bg-warning-soft` | `#33290A` (opaco) | — |
+| Texto ("Sem internet · dados de…") | `text-text` | `#F9F7F9` | **13,47:1** sobre `#33290A` |
+| Ícone `WifiOff` e separador "·" | `text-warning` | `#FFD007` | **9,76:1** sobre `#33290A` (ícone exige 3:1) |
+| Borda inferior (decorativa) | `border-warning/30` | `#FFD007` a 30 % | não é a única pista: texto + ícone |
+| Faixa × fundo do app | `#33290A` / `#12021C` | — | 1,39 (decorativo; a faixa se identifica pelo texto e pelo ícone) |
+
+Amarelo sólido como fundo (`#FFD007` com texto `#12021C`, 13,58:1) foi descartado: grita demais
+para um estado que pode durar minutos ("calmo, não fintech neon"). O texto da faixa é branco
+para leitura confortável em 13 px; o amarelo fica no ícone, que carrega o sentido de "aviso"
+junto com as palavras.
+
+### Área segura e camadas (z-index)
+
+| Camada | z | Celular | ≥ 768 px |
+|---|---|---|---|
+| `OfflineBanner` | `z-30` | `sticky top-0`; o fundo cobre `env(safe-area-inset-top)` | `sticky top-4` no topo da coluna de 720 px |
+| `Fab` | `z-30` | como hoje; sobe quando há `UpdatePrompt` | como hoje |
+| `UpdatePrompt` | `z-40` | `fixed`, 12 px acima da TabBar | `fixed`, canto inferior direito, acima do FAB |
+| Toasts (sonner) | `z-[45]` | topo (abaixo da faixa, quando ela existe) | embaixo, ao centro |
+| Radix Dialog (Sheet/Modal) | `z-50` | — | — |
+
+O `AppShell` publica duas variáveis CSS no `<html>` (via `ResizeObserver`; `0px` quando o
+elemento não existe): `--offline-banner-h` e `--update-prompt-h`. Elas deslocam o cabeçalho
+compacto, o FAB, o `padding-bottom` do `main` e o `offset` dos toasts, sem números fixos e
+funcionando com zoom de 200 % (a faixa e o cartão crescem com o texto).
+
+### OfflineBanner
+- **Quando**: `showBanner` do `ConnectivityContext` (após 2 s offline; some na primeira
+  resposta bem-sucedida). Em todas as telas do layout autenticado (abas e push).
+- **Região viva**: o contêiner `<div role="status" aria-live="polite">` fica **sempre** montado
+  no `AppShell` (vazio quando online) e só o conteúdo entra e sai; assim o anúncio funciona em
+  todos os leitores de tela. Não é focável e não tem botões.
+- **Contêiner**:
+  `sticky top-0 z-30 -mx-gutter -mt-[env(safe-area-inset-top)] pt-[env(safe-area-inset-top)]
+  bg-warning-soft border-b border-warning/30
+  md:top-4 md:mx-0 md:mt-0 md:mb-4 md:pt-0 md:rounded-lg md:border`.
+  O `-mt`/`pt` da área segura faz o fundo âmbar subir por baixo da barra de status (no modo
+  instalado, `black-translucent`) e o texto ficar logo abaixo dela.
+- **Linha**: `flex items-center gap-2 min-h-9 px-gutter py-2 text-footnote text-text`
+  (`md:px-4`); `WifiOff` 16 px `shrink-0 text-warning` `aria-hidden`.
+- **Texto**: `<span class="font-semibold">Sem internet</span><span aria-hidden="true"
+  class="text-warning"> · </span><span class="sr-only">, </span>dados de <time
+  dateTime="2026-11-01T18:42">01/11 às 18:42</time>` (dia/mês e hora de Brasília). Sem
+  `staleSince`: só "Sem internet". `min-h` (nunca `h` fixo): em 320 px com zoom o texto quebra
+  e a faixa cresce; a data nunca é truncada.
+- **Telas push**: a faixa vem **antes** da linha de navegação de 44 px; o cabeçalho compacto
+  (ao rolar) usa `top-[var(--offline-banner-h,0px)]` para grudar logo abaixo dela.
+- **Toasts com a faixa visível (celular)**: `<Toaster mobileOffset={{ top:
+  "calc(env(safe-area-inset-top) + var(--offline-banner-h) + 8px)" }}>` (sonner 2.x); o toast
+  nunca cobre a faixa.
+- **Reconexão**: a faixa some + toast curto **"Conexão restabelecida."** com ícone `Wifi` em
+  `text-positive` (`positive`/`surface-3` 8,73:1; texto 14,01:1).
+- **Movimento**: entrada `motion-safe:animate-fade-in`; nada desliza (não empurra o conteúdo com
+  animação). Com movimento reduzido, aparece direto.
+
+### Fab (offline) e ações de escrita
+- `aria-disabled="true"` (**não** `disabled`: continua focável e é anunciado como
+  indisponível); `aria-haspopup` mantido. Visual: `bg-surface-2 text-text-disabled border
+  border-border shadow-none cursor-not-allowed`, sem `hover`/`active` nem `scale`.
+- Clique/Enter não abre a folha; toast de aviso **"Sem internet. Conecte-se para fazer
+  lançamentos."** com `WifiOff` em `text-warning` (`warning`/`surface-3` 10,16:1; texto
+  14,01:1). Demais ações de escrita: mesmo padrão via `useOnlineAction`, com "Sem internet.
+  Conecte-se para fazer alterações.".
+- Contraste: `text-disabled`/`surface-2` 3,58 (isento, WCAG 1.4.3 — controle inativo); o
+  contorno `border`/`bg` 4,21 mantém o círculo visível (≥ 3:1, WCAG 1.4.11).
+- `Button` com `aria-disabled` usa o estado Disabled das regras comuns.
+
+### OfflineContent
+- Mesma anatomia do `EmptyState`/`ErrorState`: `flex flex-col items-center text-center py-12
+  px-6 gap-2`, contêiner `role="status"` (não é erro da pessoa; não usar `alert`).
+- Ícone `WifiOff` 36 px em círculo 72 px `bg-surface-2 text-text-muted` (8,06:1).
+- Título `<h2 class="text-headline">` **"Este conteúdo não está disponível sem internet."**;
+  apoio opcional `text-subhead text-text-muted max-w-[32ch]` "Abra esta tela de novo quando
+  estiver conectado." *(proposta)*.
+- `Button secondary sm` com `RotateCw` 20 px **"Tentar de novo"** (`onRetry`). Durante a
+  tentativa: estado Loading das regras comuns (`aria-busy`).
+- Props: `onRetry: () => void`, `className?`.
+
+### OfflinePage (`pages/OfflinePage.tsx`)
+- Tela inteira sem TabBar/Sidebar: `min-h-dvh grid place-items-center bg-bg px-gutter
+  pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`; coluna `max-w-auth flex
+  flex-col items-center text-center gap-2`.
+- `Logo` `h-14` dentro de `rounded-lg overflow-hidden` (fundo `brand`); círculo 64 px
+  `bg-warning-soft text-warning` com `WifiOff` 30 px (`aria-hidden`, 9,76:1), `mt-8 mb-2`.
+- `<h1 tabIndex={-1} class="text-title-2">` **"Sem internet"** (18,74:1); `<p class="text-body
+  text-text-muted max-w-[30ch] mb-4">` **"Conecte-se para usar o Finami pela primeira vez neste
+  aparelho."** (9,43:1); `Button primary` com `RotateCw` **"Tentar de novo"** (recarrega).
+- Foco inicial no `<h1>` para o leitor de tela ler a situação primeiro.
+
+### UpdatePrompt
+- **Quando**: `needRefresh` do `useRegisterSW`. Não modal, não move o foco, `role="status"`
+  + `aria-live="polite"` (o contêiner fica montado; o conteúdo entra), `aria-labelledby` no
+  texto. Na ordem de tabulação fica depois do `main` e antes da TabBar.
+- **Posição**: celular `fixed inset-x-3
+  bottom-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+12px)]`; ≥ 768 px
+  `md:inset-x-auto md:w-[360px] md:right-[max(24px,calc((100vw-960px)/2-72px))]
+  md:bottom-[104px]` (alinhado à borda direita do FAB e 16 px acima dele; os toasts do desktop
+  ficam embaixo, ao centro, sem colisão).
+- **Cartão**: `z-40 flex flex-col gap-2 rounded-[14px] border border-border bg-surface-3 p-3
+  pl-3.5 shadow-modal motion-safe:animate-modal-in`.
+  - Linha: `flex items-center gap-2.5 min-h-6 text-subhead font-semibold text-text` com
+    `RefreshCw` 20 px `text-accent` + **"Nova versão disponível"**.
+  - Ações: `flex justify-end gap-2` → `Button ghost sm` **"Agora não"** + `Button primary sm`
+    **"Atualizar"** (ambos `min-h-touch`, 44 px).
+- **Atualizando…**: as ações saem; a linha mostra `Loader2` 20 px `motion-safe:animate-spin`
+  + **"Atualizando…"**, `aria-busy="true"`, `min-h-touch`. Depois o app recarrega na mesma rota.
+- **Agora não**: oculta até a próxima abertura do app (a versão nova entra no próximo início
+  do zero).
+- **FAB e conteúdo (celular)**: enquanto o cartão está visível, o FAB vai para
+  `bottom-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+12px+var(--update-prompt-h)+16px)]`
+  e o `main` ganha `var(--update-prompt-h) + 12px` a mais de `padding-bottom`. No desktop o FAB
+  não se move.
+- **Com Sheet/Modal aberto**: fica por baixo do scrim (z-40 < z-50) e nada recarrega.
+- **Contraste**: texto `text`/`surface-3` 14,01 · ícone e "Agora não" `accent`/`surface-3` 8,73
+  · "Atualizar" `on-accent`/`accent` 11,68 · borda `border`/`bg` 4,21 (separa o cartão do
+  conteúdo).
+
+### InstallInvite (Home)
+- **Quando**: depois que a Home carregou os dados, se `canPromptNative || isIos`, não instalado
+  e sem dispensa nos últimos 30 dias (`finami:install-dismissed-at`). Logo abaixo do
+  `BalanceHero`, uma vez.
+- **Anatomia**: `<section aria-labelledby aria-describedby class="relative mt-4 flex
+  items-start gap-3 rounded-lg bg-surface p-3.5 pr-1 shadow-card">`:
+  - `AppIcon` 44 px `rounded-icon mt-0.5`, `alt=""` (decorativo; o título já diz "Finami");
+  - `min-w-0 flex-1`: `<h2 class="text-headline">` **"Instalar o Finami"**; `<p class="mt-0.5
+    mb-2.5 text-subhead text-text-muted">` **"Use o Finami como um app, direto da tela
+    inicial."**; `Button secondary sm` com `Download` 18 px **"Instalar"** (no iOS,
+    `aria-haspopup="dialog"` e abre `InstallIosSheet`);
+  - fechar: `<button aria-label="Dispensar convite de instalação" class="size-11 -mt-1.5
+    shrink-0 grid place-items-center rounded-full text-text-muted hover:bg-surface-2
+    hover:text-text">` com `X` 20 px.
+- **Depois**: dispensar grava a data e o cartão sai; o foco vai para o próximo elemento
+  focável (primeiro cabeçalho de seção da Home). Instalação aceita: o cartão sai + toast
+  **"Finami instalado."**.
+- **Contraste**: título `text`/`surface` 17,50 · texto e X `muted`/`surface` 8,81 · "Instalar"
+  `text`/`surface-2` 16,02, borda `border`/`surface` 3,93.
+
+### InstallAppItem (Conta → seção "App")
+- Seção nova **"App"** entre "Pessoas que cadastrei" e o grupo do "Sair". Com o item oculto
+  (instalado, ou sem suporte fora do iOS), a seção inteira não é renderizada.
+- `ListRow` de 2 linhas (`min-h-row-2`, 60 px; alvo ≥ 44 px): ícone em quadrado 30 px
+  `rounded-lg bg-accent text-on-accent` com `Download` 18 px (11,68:1); título `text-body`
+  **"Instalar o Finami"**; descrição `text-footnote text-text-muted` **"Use o Finami como um
+  app, direto da tela inicial."** (pode quebrar em 2 linhas; ligada por `aria-describedby`).
+  Sem chevron (é ação, não navegação). No iOS, `aria-haspopup="dialog"`.
+- Nativo: `promptInstall()`; aceito → toast "Finami instalado." e o item some (foco vai para o
+  botão "Sair"). iOS: abre `InstallIosSheet`; ao fechar, o foco volta ao item.
+
+### InstallIosSheet
+- `Sheet` (Radix Dialog; modal central ≥ 768 px). Título **"Instalar no iPhone"** (no iPad,
+  **"Instalar no iPad"**), sem botão no cabeçalho; `Dialog.Description` = introdução
+  `text-subhead text-text-muted mb-4` "No Safari, são 3 toques para ter o Finami na tela de
+  início." *(proposta)*.
+- Passos: `<ol class="bg-surface rounded-lg overflow-hidden">`; cada `<li class="flex
+  items-center gap-3 min-h-16 px-4 py-2.5 text-body">`, separador hairline recuado 64 px:
+  - ilustração `size-9 rounded-[10px] bg-info-soft text-info` (6,94:1) com o ícone do passo e o
+    número num selo 18 px `bg-info text-on-accent text-[11px] font-bold` no canto superior
+    esquerdo (`on-accent`/`info` 8,92:1; anel 2 px `surface`); a ilustração inteira é
+    `aria-hidden` — a ordem vem do `<ol>`;
+  1. `Share` — "Toque em **Compartilhar**." + `<small class="block text-footnote
+     text-text-muted">` "Fica na barra do Safari; no iOS 26, dentro do menu ⋯." *(proposta)*;
+  2. `SquarePlus` — "Toque em **Adicionar à Tela de Início**." + "Role a lista se não
+     aparecer de cara." *(proposta)*;
+  3. `Check` (traço 2,25) — "Toque em **Adicionar**, no canto superior direito.".
+- Rodapé: `Button primary block` **"Entendi"** (fecha). Foco inicial no "Entendi"; `Esc` e
+  scrim fecham; o foco volta ao gatilho.
+- Contraste: passos `text`/`surface` 17,50 · ajuda `muted`/`surface` 8,81.
+
+### Aparência instalada (área segura e movimento)
+- `index.html` mantém `viewport-fit=cover`, `theme-color #12021C` e
+  `apple-mobile-web-app-status-bar-style=black-translucent`; colar as tags de
+  `frontend/public/splash/splash-links.txt` (telas de abertura do iOS).
+- Conferir no modo standalone: `main` `pt-[env(safe-area-inset-top)]`; TabBar e Sheet
+  `pb-[env(safe-area-inset-bottom)]`; `OfflineBanner` e `UpdatePrompt` como acima; em paisagem
+  no iPhone, `pl-[max(var(--spacing-gutter),env(safe-area-inset-left))]` (e o equivalente à
+  direita) no `main` e na TabBar.
+- Toda entrada usa `motion-safe:` (`animate-fade-in`, `animate-modal-in`, `animate-spin`); a
+  regra global de `prefers-reduced-motion` de `tokens.css` cobre o resto.
+
+### Ícones, atalhos e screenshots (gerados)
+- `npm run icons` gera `icon-any-{192,512}.png` (cartão `#380159` arredondado 22,37 %, cantos
+  transparentes, casa a 70 %), `icon-maskable-{192,512}.png` (fundo `#12021C` cheio, casa
+  recortada com raio máximo de 38,5 % do lado — dentro do círculo seguro de 40 %),
+  `shortcut-new-transaction-96.png` e `shortcut-wallets-96.png` (fundo `#380159`, disco
+  `#6AE005` de raio 30 %, símbolo `#12021C` — seguros com ou sem máscara) e `splash/*.png`.
+- Screenshots em `public/screenshots/`: `home-narrow.png` e `wallets-narrow.png` (1080×1920,
+  `form_factor: "narrow"`) e `home-wide.png` (1920×1080, `form_factor: "wide"`). Rótulos
+  sugeridos: "Saldo total e carteiras da família", "Carteiras e famílias", "Finami no
+  computador".
+- **Precache**: excluir `splash/**`, `screenshots/**` e `splash/splash-links.txt` dos
+  `globPatterns` do Workbox (`globIgnores`) — são cerca de 2,6 MB que o app nunca usa offline.
