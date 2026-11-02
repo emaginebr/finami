@@ -59,7 +59,7 @@ public static class McpRateLimiting
         });
     }
 
-    /// <summary>IP do cliente (já corrigido pelo <c>X-Forwarded-For</c> atrás do Caddy).</summary>
+    /// <summary>IP do cliente (já corrigido pelo <c>X-Forwarded-For</c> atrás do proxy).</summary>
     private static string ClientIp(HttpContext context) =>
         context.Connection.RemoteIpAddress?.ToString() ?? "desconhecido";
 

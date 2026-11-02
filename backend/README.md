@@ -167,11 +167,11 @@ As variáveis seguem a convenção padrão do ASP.NET Core (`Secao__Chave`); nã
 | | dev | homolog | prod |
 |---|---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Development` | `Docker` | `Production` |
-| Onde roda | `dotnet run` na máquina | docker-compose local | docker-compose no servidor, atrás do Caddy (TLS) |
+| Onde roda | `dotnet run` na máquina | docker-compose local | docker-compose no servidor (só a API, banco externo), atrás do proxy HTTPS do servidor |
 | Arquivo de configuração | `appsettings.Development.json` (valores preenchidos) | `appsettings.Docker.json` (sem segredos) | `appsettings.Production.json` (sem segredos) |
 | Segredos vêm de | o próprio JSON (valores só-dev) | `.env` → variáveis do compose | `.env.prod` → variáveis do compose |
 | `Database:MigrateOnStartup` | `false` (use `dotnet ef database update`) | `true` | `true` |
-| CORS | qualquer origem | `http://localhost:8080` (frontend do compose) | nenhuma (mesma origem via Caddy); sobrescreva com `Cors__AllowedOrigins__0` se preciso |
+| CORS | qualquer origem | `http://localhost:8080` (frontend do compose) | nenhuma (mesma origem via proxy do servidor); sobrescreva com `Cors__AllowedOrigins__0` se preciso |
 | Swagger | sim | não | não |
 | Logging padrão | `Debug` | `Information` | `Warning` |
 

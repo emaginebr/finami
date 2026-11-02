@@ -57,7 +57,7 @@ npm run dev                  # http://localhost:5173 (usa .env.development)
 |---|---|---|---|
 | **dev** | `npm run dev` (Vite, porta 5173) | `.env.development` (versionado) + `.env.development.local` (opcional, ignorado) | `http://localhost:5145` |
 | **homolog** | `docker compose` local (arquivos da raiz do repositório) | `--build-arg` da imagem | URL da API do compose (ex.: `http://localhost:5145`) ou vazio se houver proxy na mesma origem |
-| **prod** | `docker compose` no servidor, atrás do Caddy com TLS | `--build-arg` da imagem | **vazio** = mesma origem: o Caddy encaminha `/api/*` para a API e o resto para este container |
+| **prod** | publicado pelo deploy de outro projeto (fora do `docker-compose-prod.yml` deste repositório) | `--build-arg` da imagem | **vazio** = mesma origem: o proxy do servidor encaminha `/api/*`, `/mcp*`, `/oauth/*` e `/.well-known/oauth-*` para a API |
 
 ### Imagem Docker (homolog e prod)
 
@@ -98,7 +98,7 @@ um subcaminho (ex.: `/finami`), é preciso:
 - conferir os caminhos absolutos do `index.html` e do `manifest.webmanifest` (`/favicon-32.png`,
   `start_url`, ícones).
 
-Com o Caddy na mesma origem, o mais simples é manter o app na raiz.
+Com a API na mesma origem, o mais simples é manter o app na raiz.
 
 ## Variáveis de ambiente
 
@@ -118,7 +118,7 @@ git. Só variáveis com prefixo `VITE_`, lidas com `import.meta.env.VITE_*` (tip
 O botão oficial do Google Identity Services é carregado sob demanda. Ele só funciona em origens
 autorizadas: no [Google Cloud Console](https://console.cloud.google.com/apis/credentials), no
 Client ID do tipo "Aplicativo da Web", adicione **`http://localhost:5173`** em "Origens
-JavaScript autorizadas", junto com a origem de homolog e a de produção (o domínio do Caddy, em `https://`). O frontend envia o ID token para
+JavaScript autorizadas", junto com a origem de homolog e a de produção (o domínio público, em `https://`). O frontend envia o ID token para
 `POST /api/auth/google`, e o backend valida com o mesmo Client ID.
 
 ## Scripts

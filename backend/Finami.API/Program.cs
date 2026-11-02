@@ -61,7 +61,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Homolog/prod rodam atrás de um proxy (Caddy/nginx) na rede interna do compose: confia em
+// Homolog/prod rodam atrás de um proxy (nginx do `web`) na rede interna do compose: confia em
 // X-Forwarded-For/Proto vindos de qualquer origem, pois a API não é exposta diretamente.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
