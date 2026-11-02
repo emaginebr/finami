@@ -29,7 +29,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - finami-homolog
+      - emagine-network
 
   api:
     build:
@@ -42,11 +42,11 @@ services:
       - "${API_PORT:-5145}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
-      ConnectionStrings__FinamiContext: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      Jwt__Secret: ${JWT_SECRET}
+      ConnectionStrings__FinamiContext: Host=finami-homolog-db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Secret: ${FINAMI_JWT_SECRET:?defina FINAMI_JWT_SECRET}
       Jwt__Issuer: ${JWT_ISSUER:-finami}
       Jwt__Audience: ${JWT_AUDIENCE:-finami}
-      Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Google__ClientId: ${FINAMI_GOOGLE_CLIENT_ID:-}
       Cors__AllowedOrigins__0: http://localhost:${WEB_PORT:-8080}
       Database__MigrateOnStartup: "true"
       # MCP/OAuth (feature 004): issuer/recurso e tela /autorizar do frontend.
@@ -62,7 +62,9 @@ services:
       retries: 10
       start_period: 20s
     networks:
-      - finami-homolog
+      emagine-network:
+        aliases:
+          - finami-api
 
   web:
     build:
@@ -71,7 +73,7 @@ services:
       args:
         VITE_API_URL: http://localhost:${API_PORT:-5145}
         VITE_SITE_BASENAME: ""
-        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        VITE_GOOGLE_CLIENT_ID: ${FINAMI_GOOGLE_CLIENT_ID:-}
     image: finami-web:homolog
     container_name: finami-homolog-web
     restart: unless-stopped
@@ -80,11 +82,13 @@ services:
     depends_on:
       - api
     networks:
-      - finami-homolog
+      - emagine-network
 
 volumes:
   finami_homolog_pgdata:
 
 networks:
-  finami-homolog:
-    driver: bridge
+  # Rede compartilhada entre os projetos (criada uma vez: docker network create emagine-network).
+  # Nela os containers se acham por nomes únicos (finami-homolog-db, finami-api), nunca por db/api.
+  emagine-network:
+    external: true

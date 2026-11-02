@@ -15,7 +15,7 @@ RUN npm ci --no-audit --no-fund
 
 COPY . .
 
-# URL base da API. Vazio = mesma origem (prod atrás do Caddy, que encaminha /api/*)
+# URL base da API. Vazio = mesma origem (o nginx deste container encaminha /api/* para a API)
 ARG VITE_API_URL=""
 # Base path do React Router (vazio = raiz). Se usar, ajuste também o nginx.conf
 ARG VITE_SITE_BASENAME=""
@@ -35,6 +35,7 @@ RUN npm run build
 FROM nginx:1.27-alpine AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-proxy.inc /etc/nginx/conf.d/finami-proxy.inc
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
