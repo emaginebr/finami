@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import HomePage from "./HomePage";
-import { useUi } from "../hooks/useUi";
 import { Currency } from "../types/api";
 import { USER_ID, makeGroup, makeWallet, storeSession } from "../test/fixtures";
 import { offlineCache } from "../utils/offlineCache";
@@ -41,14 +40,8 @@ const WALLETS = [
 
 const renderHome = () => renderWithProviders(<HomePage />);
 
-/** Mostra se a folha de lançamento (UiContext, aberta pelo AppShell) foi pedida */
-const SheetProbe = () => {
-  const { transactionSheetOpen } = useUi();
-  return <p data-testid="sheet">{transactionSheetOpen ? "aberta" : "fechada"}</p>;
-};
-
 describe("HomePage", () => {
-  it("mostra o total (só carteiras próprias, BTC estimado) e as seções em ordem", async () => {
+  it("mostra só as carteiras próprias (total com BTC estimado) e as seções em ordem", async () => {
     storeSession();
     mockFetch({
       "GET /api/wallets": { body: WALLETS },
@@ -66,10 +59,9 @@ describe("HomePage", () => {
     expect(headings).toEqual(["Praia", "Silva", "Avulsas"]);
 
     const silva = screen.getByRole("region", { name: "Silva" });
-    expect(within(silva).getByRole("link", { name: /Mesada do Pedro.*de Pedro Silva/ })).toHaveAttribute(
-      "href",
-      "/carteiras/4",
-    );
+    expect(within(silva).getByRole("link", { name: /Conta conjunta/ })).toHaveAttribute("href", "/carteiras/2");
+    // Carteira de outro membro da família não aparece na Home
+    expect(screen.queryByText("Mesada do Pedro")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Silva" })).toHaveAttribute("href", "/familias/1");
     expect(screen.queryByText("Cotação do bitcoin indisponível")).not.toBeInTheDocument();
 
@@ -179,7 +171,7 @@ describe("HomePage", () => {
     expect(screen.getByText("desatualizada")).toBeInTheDocument();
   });
 
-  it("atalho /?acao=novo-lancamento abre a folha de lançamento e limpa o parâmetro (replace)", async () => {
+  it("atalho antigo /?acao=novo-lancamento leva à página Depositar (replace)", async () => {
     storeSession();
     mockFetch({
       "GET /api/wallets": { body: WALLETS },
@@ -187,17 +179,13 @@ describe("HomePage", () => {
       "GET /api/quotes/btc": { body: QUOTE },
     });
 
-    const { router } = renderWithProviders(
-      <>
-        <HomePage />
-        <SheetProbe />
-      </>,
-      { initialEntries: ["/?acao=novo-lancamento"] },
-    );
+    const { router } = renderWithProviders(<HomePage />, {
+      initialEntries: ["/?acao=novo-lancamento"],
+      extraRoutes: [{ path: "/depositar", element: <p>Página Depositar</p> }],
+    });
 
-    await waitFor(() => expect(screen.getByTestId("sheet")).toHaveTextContent("aberta"));
-    await waitFor(() => expect(router.state.location.search).toBe(""));
-    expect(router.state.location.pathname).toBe("/");
+    expect(await screen.findByText("Página Depositar")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/depositar");
     expect(router.state.historyAction).toBe("REPLACE");
   });
 

@@ -45,7 +45,7 @@ export const LargeTitleHeader = ({
           {backTo ? (
             <Link
               to={backTo}
-              aria-label={t("nav.backTo", { label })}
+              aria-label={backLabel ? t("nav.backTo", { label }) : label}
               className="inline-flex min-h-touch min-w-touch items-center gap-0.5 pr-2 text-body text-accent no-underline"
             >
               <ChevronLeft aria-hidden="true" className="size-6" strokeWidth={1.75} />

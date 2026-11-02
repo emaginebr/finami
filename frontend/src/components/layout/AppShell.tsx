@@ -2,11 +2,9 @@ import { Suspense, useEffect } from "react";
 import { Outlet, matchPath, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useNotification } from "../../hooks/useNotification";
-import { useUi } from "../../hooks/useUi";
 import { cn } from "../../utils/cn";
 import { OfflineBanner } from "../pwa/OfflineBanner";
 import { UpdatePrompt } from "../pwa/UpdatePrompt";
-import { TransactionSheet } from "../transaction/TransactionSheet";
 import { Fab } from "./Fab";
 import { PageLoading } from "./PageLoading";
 import { Sidebar } from "./Sidebar";
@@ -17,7 +15,7 @@ const FAB_ROUTES = ["/", "/carteiras", "/carteiras/:walletId"];
 
 interface FabTarget {
   show: boolean;
-  /** Carteira aberta no extrato, pré-selecionada na folha */
+  /** Carteira aberta no extrato, pré-selecionada na página do lançamento */
   walletId: number | null;
 }
 
@@ -34,18 +32,11 @@ const fabTargetFor = (pathname: string): FabTarget => {
 
 /**
  * Casca do app (components.md §1): TabBar (< 768 px) ou Sidebar (≥ 768 px),
- * `<main>` com largura máxima de 720 px, Fab e a folha de lançamento.
+ * `<main>` com largura máxima de 720 px e o Fab (menu Depositar · Sacar · Transferir).
  */
 export const AppShell = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const {
-    transactionSheetOpen,
-    transactionSheetWalletId,
-    transactionSheetKey,
-    openTransactionSheet,
-    setTransactionSheetOpen,
-  } = useUi();
   const fab = fabTargetFor(location.pathname);
   const { refreshUnreadIfStale } = useNotification();
 
@@ -86,15 +77,8 @@ export const AppShell = () => {
       {/* Aviso de nova versão: na ordem de foco depois do conteúdo e antes da TabBar (REVIEW-005 M-6) */}
       <UpdatePrompt />
       <TabBar />
-      {fab.show ? (
-        <Fab expanded={transactionSheetOpen} onClick={() => openTransactionSheet(fab.walletId)} />
-      ) : null}
-      <TransactionSheet
-        key={transactionSheetKey}
-        open={transactionSheetOpen}
-        onOpenChange={setTransactionSheetOpen}
-        defaultWalletId={transactionSheetWalletId}
-      />
+      {/* Remonta a cada tela: o menu do "+" sempre começa fechado */}
+      {fab.show ? <Fab key={location.pathname} walletId={fab.walletId} /> : null}
     </div>
   );
 };

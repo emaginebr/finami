@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Currency } from "../../types/api";
+import { cn } from "../../utils/cn";
 import type { WalletInfo } from "../../types/wallet";
 import { formatBrl, formatMoney } from "../../utils/money";
 import { Badge } from "../ui/Badge";
@@ -22,6 +23,9 @@ export interface WalletCardProps {
   fromTab?: AppTab;
   /** Mostra o selo "inativa" e esmaece (aba Carteiras) */
   showInactive?: boolean;
+  /** Não mostra "de {titular}" (a linha já está sob o nome do titular) */
+  hideOwner?: boolean;
+  className?: string;
 }
 
 /** Linha de 60 px que abre o extrato da carteira (components.md §6) */
@@ -31,12 +35,14 @@ export const WalletCard = ({
   quoteAvailable = true,
   fromTab,
   showInactive = false,
+  hideOwner = false,
+  className,
 }: WalletCardProps) => {
   const { t } = useTranslation();
   const isBtc = wallet.currency === Currency.BTC;
   // Coerente com o total da Home: sem cotação (503) ou sem estimativa → "sem cotação"
   const estimatedBrl = quoteAvailable ? wallet.estimatedBrl : null;
-  const isOther = currentUserId !== null && wallet.ownerUserId !== currentUserId;
+  const isOther = !hideOwner && currentUserId !== null && wallet.ownerUserId !== currentUserId;
   const inactive = showInactive && !wallet.isActive;
   const negative = wallet.balance < 0;
   const balanceText = formatMoney(wallet.balance, wallet.currency);
@@ -61,7 +67,7 @@ export const WalletCard = ({
       to={`/carteiras/${wallet.walletId}`}
       state={state}
       aria-label={ariaParts.filter(Boolean).join(", ")}
-      className={listRowClasses({ twoLines: true, withIcon: true, interactive: true })}
+      className={cn(listRowClasses({ twoLines: true, withIcon: true, interactive: true }), className)}
     >
       <WalletIcon currency={wallet.currency} className={inactive ? "opacity-60" : undefined} />
       <WalletRowContent

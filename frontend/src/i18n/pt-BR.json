@@ -9,6 +9,7 @@
     "main": "Principal",
     "home": "Home",
     "wallets": "Carteiras",
+    "transfer": "Transferir",
     "account": "Conta",
     "back": "Voltar",
     "backTo": "Voltar para {{label}}",
@@ -83,8 +84,8 @@
     "MembersSummary": "Todos veem o saldo de cada pessoa, mas só você abre os extratos."
   },
   "transactionType": {
-    "ExternalIncome": "Entrada",
-    "ExternalExpense": "Saída",
+    "ExternalIncome": "Depósito",
+    "ExternalExpense": "Saque",
     "Transfer": "Transferência",
     "BtcPurchase": "Compra de bitcoin",
     "BtcSale": "Venda de bitcoin",
@@ -140,7 +141,7 @@
     "looseSection": "Avulsas",
     "familyLink": "Família {{name}}",
     "emptyTitle": "Você ainda não tem carteiras",
-    "emptyBody": "Crie uma carteira para começar a registrar entradas e saídas.",
+    "emptyBody": "Crie uma carteira para começar a registrar depósitos e saques.",
     "createWallet": "Criar carteira"
   },
   "wallet": {
@@ -163,6 +164,12 @@
     "deactivated": "{{name}} foi desativada.",
     "deleted": "{{name}} foi excluída.",
     "inactive": "Inativas ({{count}})",
+    "tree": {
+      "you": "você",
+      "walletCount_one": "{{count}} carteira",
+      "walletCount_other": "{{count}} carteiras",
+      "noWallets": "Nenhuma carteira nesta família"
+    },
     "edit": "Editar carteira",
     "editTitle": "Editar carteira",
     "code": "código",
@@ -323,7 +330,6 @@
     "familyTotal": "Total da família",
     "memberTotal": "Saldo nas famílias",
     "members": "Membros",
-    "familyWallets": "Carteiras da família",
     "btcExcludedBody": "As carteiras em bitcoin não entraram no total.",
     "summaryTitle": "Você vê só os totais",
     "summaryBody": "O responsável permite ver o saldo de cada pessoa, mas os extratos das carteiras dos outros membros não podem ser abertos.",
@@ -362,7 +368,7 @@
     "today": "Hoje",
     "yesterday": "Ontem",
     "emptyTitle": "Nenhum lançamento no período",
-    "emptyBody": "Toque em + para registrar uma entrada ou saída.",
+    "emptyBody": "Toque em + para registrar um depósito ou saque.",
     "summaryOnlyTitle": "Você vê só os totais",
     "summaryOnlyBody": "Os lançamentos desta carteira não são exibidos para você.",
     "detailTitle": "Lançamento",
@@ -507,10 +513,15 @@
   },
   "transaction": {
     "title": "Novo lançamento",
+    "page": {
+      "income": "Depositar",
+      "expense": "Sacar",
+      "transfer": "Transferir"
+    },
     "typeGroup": "Tipo de lançamento",
     "kind": {
-      "income": "Entrada",
-      "expense": "Saída",
+      "income": "Depósito",
+      "expense": "Saque",
       "transfer": "Transferência"
     },
     "kindDescription": {
@@ -545,8 +556,8 @@
     "optional": "(opcional)",
     "counter": "{{count}}/{{max}}",
     "submit": {
-      "income": "Registrar entrada",
-      "expense": "Registrar saída",
+      "income": "Registrar depósito",
+      "expense": "Registrar saque",
       "transfer": "Registrar transferência",
       "continue": "Continuar",
       "sending": "Registrando…"
@@ -579,8 +590,8 @@
     },
     "serverErrorTitle": "Não foi possível registrar",
     "success": {
-      "income": "Entrada de {{amount}} registrada em {{wallet}}.",
-      "expense": "Saída de {{amount}} registrada em {{wallet}}.",
+      "income": "Depósito de {{amount}} registrado em {{wallet}}.",
+      "expense": "Saque de {{amount}} registrado em {{wallet}}.",
       "transfer": "Transferência de {{amount}} para {{wallet}} registrada.",
       "purchase": "Compra de {{amount}} registrada em {{wallet}}.",
       "sale": "Venda registrada: {{amount}} em {{wallet}}."

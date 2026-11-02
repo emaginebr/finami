@@ -11,7 +11,6 @@ import { UserProvider } from "../Contexts/UserContext";
 import { GroupProvider } from "../Contexts/GroupContext";
 import { QuoteProvider } from "../Contexts/QuoteContext";
 import { TransactionProvider } from "../Contexts/TransactionContext";
-import { UiProvider } from "../Contexts/UiContext";
 import { WalletProvider } from "../Contexts/WalletContext";
 import { InvitationProvider } from "../Contexts/InvitationContext";
 import { NotificationProvider } from "../Contexts/NotificationContext";
@@ -118,7 +117,7 @@ export const AppProviders = ({ children }: { children: ReactNode }) => (
                       <InvitationProvider>
                         <NotificationProvider>
                           <OAuthConnectionProvider>
-                            <UiProvider>{children}</UiProvider>
+                            {children}
                           </OAuthConnectionProvider>
                         </NotificationProvider>
                       </InvitationProvider>

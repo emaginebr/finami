@@ -13,7 +13,7 @@ export const TabBar = () => {
     <nav
       aria-label={t("nav.main")}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t-[0.5px] border-separator pb-safe pl-safe pr-safe md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t-[0.5px] border-separator pb-safe pl-safe pr-safe md:hidden",
         "bg-tabbar backdrop-blur-xl backdrop-saturate-150",
       )}
     >

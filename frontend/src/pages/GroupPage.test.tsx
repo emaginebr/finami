@@ -103,7 +103,7 @@ const renderGroup = (detailLevel: DetailLevel) => {
 };
 
 describe("GroupPage", () => {
-  it("Full: total, valores por membro e carteiras (link só com canViewStatement)", async () => {
+  it("Full: total e valores por membro, sem lista de carteiras", async () => {
     const { container } = renderGroup(DetailLevel.Full);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Silva" })).toBeInTheDocument();
@@ -115,11 +115,9 @@ describe("GroupPage", () => {
       "/pessoas/8",
     );
 
-    const wallets = screen.getByRole("region", { name: "Carteiras da família" });
-    expect(within(wallets).getByRole("link", { name: /^Mesada/ })).toHaveAttribute("href", "/carteiras/22");
-    expect(within(wallets).queryByRole("link", { name: /Salário Carlos/ })).not.toBeInTheDocument();
-    expect(within(wallets).getByText("Salário Carlos")).toBeInTheDocument();
-    expect(within(wallets).getByText(/extrato restrito/)).toBeInTheDocument();
+    // Só a lista de membros com o saldo: a página não lista as carteiras da família
+    expect(screen.queryByRole("region", { name: "Carteiras da família" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Mesada")).not.toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "Gerenciar família" })).not.toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();

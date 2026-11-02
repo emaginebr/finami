@@ -9,7 +9,8 @@
 #   - proxy em container:   http://finami-api:8080 pela rede externa `emagine-network`
 # repassando X-Forwarded-Proto/For e sem buffer em /mcp (text/event-stream).
 # O PostgreSQL é EXTERNO: a connection string vem do secret FINAMI_CONNECTION_STRING.
-# ASPNETCORE_ENVIRONMENT=Production.
+# ASPNETCORE_ENVIRONMENT=Production. O domínio público (https://finami.site: CORS e endereços
+# do MCP/OAuth e da tela /autorizar) é fixo em backend/Finami.API/appsettings.Production.json.
 
 services:
   api:
@@ -24,10 +25,6 @@ services:
       ConnectionStrings__FinamiContext: ${FINAMI_CONNECTION_STRING:?defina o secret FINAMI_CONNECTION_STRING}
       Jwt__Secret: ${FINAMI_JWT_SECRET:?defina FINAMI_JWT_SECRET}
       Google__ClientId: ${FINAMI_GOOGLE_CLIENT_ID:-}
-      Cors__AllowedOrigins__0: https://${FINAMI_DOMAIN}
-      # MCP/OAuth (feature 004): API e frontend no mesmo domínio público (proxy do outro projeto).
-      Mcp__PublicUrl: https://${FINAMI_DOMAIN}
-      App__PublicUrl: https://${FINAMI_DOMAIN}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health >/dev/null 2>&1 || curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
       interval: 15s

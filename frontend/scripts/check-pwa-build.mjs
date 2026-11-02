@@ -97,7 +97,7 @@ if (manifest) {
 
   // Atalhos
   const shortcuts = Array.isArray(manifest.shortcuts) ? manifest.shortcuts : [];
-  for (const url of ["/?acao=novo-lancamento", "/carteiras"]) {
+  for (const url of ["/depositar", "/carteiras"]) {
     const shortcut = shortcuts.find((item) => item.url === url);
     if (!shortcut) {
       fail(`manifest.shortcuts sem o atalho ${url}`);

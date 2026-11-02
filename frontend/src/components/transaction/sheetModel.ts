@@ -1,9 +1,8 @@
 import type { Currency } from "../../types/api";
 import type { WalletPublicInfo } from "../../types/wallet";
 
-/** Passos da folha de lançamento (data-model §6) */
+/** Passos da página de lançamento (data-model §6) */
 export enum SheetStep {
-  ChooseType = "chooseType",
   Form = "form",
   PickSource = "pickSource",
   PickDestination = "pickDestination",

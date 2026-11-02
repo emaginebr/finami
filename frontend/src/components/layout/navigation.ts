@@ -1,4 +1,4 @@
-import { CircleUser, House, WalletCards } from "lucide-react";
+import { ArrowLeftRight, CircleUser, House, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Currency } from "../../types/api";
 
@@ -6,6 +6,7 @@ import type { Currency } from "../../types/api";
 export enum AppTab {
   Home = "home",
   Wallets = "wallets",
+  Transfer = "transfer",
   Account = "account",
 }
 
@@ -20,6 +21,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { tab: AppTab.Home, to: "/", labelKey: "nav.home", icon: House },
   { tab: AppTab.Wallets, to: "/carteiras", labelKey: "nav.wallets", icon: WalletCards },
+  { tab: AppTab.Transfer, to: "/transferir", labelKey: "nav.transfer", icon: ArrowLeftRight },
   { tab: AppTab.Account, to: "/conta", labelKey: "nav.account", icon: CircleUser },
 ];
 
@@ -74,6 +76,10 @@ export const activeTabFor = (pathname: string, state: unknown): AppTab | null =>
   if (pathname === "/") return AppTab.Home;
   if (pathname.startsWith("/conta")) return AppTab.Account;
   if (pathname === "/carteiras") return AppTab.Wallets;
+  // Transferir é aba do menu; aberto pelo "+", mantém a aba de origem
+  if (pathname === "/transferir") return origin ?? AppTab.Transfer;
+  // Depositar e Sacar são telas push: mantêm a aba de origem
+  if (pathname === "/depositar" || pathname === "/sacar") return origin ?? null;
   // Notificações mantêm a aba de onde o sino foi tocado (components.md §7)
   if (pathname === NOTIFICATIONS_PATH) return origin ?? AppTab.Home;
   if (

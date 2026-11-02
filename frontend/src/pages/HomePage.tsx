@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, WalletCards } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
@@ -18,15 +18,16 @@ import { useAuth } from "../hooks/useAuth";
 import { useGroup } from "../hooks/useGroup";
 import { useQuote } from "../hooks/useQuote";
 import { useOnReconnected } from "../hooks/useOnReconnected";
-import { useUi } from "../hooks/useUi";
 import { isOfflineError } from "../types/api";
 import { useWallet } from "../hooks/useWallet";
 import { QuoteStatus } from "../types/quote";
+import { TransactionKind } from "../types/transaction";
 import { formatLongDate } from "../utils/dates";
 import { computeHomeTotal } from "../utils/totals";
+import { TRANSACTION_PATHS } from "../utils/transactionRoutes";
 import { groupWallets } from "../utils/walletGrouping";
 
-/** Parâmetro do atalho do manifest (`/?acao=novo-lancamento`) */
+/** Parâmetro do atalho antigo do manifest (`/?acao=novo-lancamento`) */
 const ACTION_PARAM = "acao";
 const NEW_TRANSACTION_ACTION = "novo-lancamento";
 
@@ -36,7 +37,7 @@ enum LoadPhase {
   Error = "error",
 }
 
-/** Home (rota `/`): saldo total + carteiras por família e avulsas (US1) */
+/** Home (rota `/`): saldo total + as carteiras da pessoa, por família e avulsas (US1) */
 const HomePage = () => {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -77,32 +78,20 @@ const HomePage = () => {
     void load();
   });
 
-  // Atalho do app instalado "Novo lançamento" (research R-10): abre a folha e limpa o parâmetro
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { openTransactionSheet } = useUi();
-  const shortcutHandled = useRef(false);
+  // Atalho antigo do app instalado (`/?acao=novo-lancamento`): leva à página Depositar
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const action = searchParams.get(ACTION_PARAM);
   useEffect(() => {
-    if (action !== NEW_TRANSACTION_ACTION) {
-      shortcutHandled.current = false;
-      return;
-    }
-    // StrictMode roda o efeito duas vezes antes de o parâmetro sumir
-    if (shortcutHandled.current) return;
-    shortcutHandled.current = true;
-    openTransactionSheet(null);
-    setSearchParams(
-      (params) => {
-        const next = new URLSearchParams(params);
-        next.delete(ACTION_PARAM);
-        return next;
-      },
-      { replace: true },
-    );
-  }, [action, openTransactionSheet, setSearchParams]);
+    if (action === NEW_TRANSACTION_ACTION) navigate(TRANSACTION_PATHS[TransactionKind.Income], { replace: true });
+  }, [action, navigate]);
 
   const userId = session?.user.userId ?? null;
-  const activeWallets = useMemo(() => wallets.filter((w) => w.isActive), [wallets]);
+  // Só as carteiras ativas de que a pessoa é titular (as dos outros membros ficam na página da família)
+  const activeWallets = useMemo(
+    () => wallets.filter((w) => w.isActive && w.ownerUserId === userId),
+    [wallets, userId],
+  );
   const quoteAvailable = quoteStatus === QuoteStatus.Available || quoteStatus === QuoteStatus.Stale;
   const total = useMemo(
     () => computeHomeTotal(activeWallets, userId ?? -1, quoteAvailable),

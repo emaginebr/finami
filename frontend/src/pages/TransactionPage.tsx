@@ -1,52 +1,62 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useGroup } from "../../hooks/useGroup";
-import { useTransaction } from "../../hooks/useTransaction";
-import { useWallet } from "../../hooks/useWallet";
-import { useAuth } from "../../hooks/useAuth";
-import { OfflineActionKind, useOnlineAction } from "../../hooks/useOnlineAction";
-import { Currency, isApiError, isUnconfirmedWriteError } from "../../types/api";
-import { TransactionKind, TransactionType } from "../../types/transaction";
-import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../../types/transaction";
-import type { WalletInfo } from "../../types/wallet";
-import { errorMessage, notifySuccess } from "../../utils/notify";
-import { AMOUNT_ERRORS, CURRENCY_DECIMALS, formatMoney, parseAmountInput } from "../../utils/money";
-import { groupWallets } from "../../utils/walletGrouping";
-import { Button } from "../ui/Button";
-import { Sheet, SheetHeaderButton } from "../ui/Sheet";
-import { FormStep, WalletPickerStep } from "./FormStep";
-import { PreviewStep } from "./PreviewStep";
-import { TypeStep } from "./TypeStep";
-import { DESCRIPTION_MAX, DestinationMode, EMPTY_DESTINATION, SheetStep } from "./sheetModel";
-import type { DestinationState, ResolvedDestination } from "./sheetModel";
+import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
+import { readNavState } from "../components/layout/navigation";
+import { FormStep, WalletPickerStep } from "../components/transaction/FormStep";
+import { PreviewStep } from "../components/transaction/PreviewStep";
+import { DESCRIPTION_MAX, DestinationMode, EMPTY_DESTINATION, SheetStep } from "../components/transaction/sheetModel";
+import type { DestinationState, ResolvedDestination } from "../components/transaction/sheetModel";
+import { Button } from "../components/ui/Button";
+import { useAuth } from "../hooks/useAuth";
+import { useGroup } from "../hooks/useGroup";
+import { OfflineActionKind, useOnlineAction } from "../hooks/useOnlineAction";
+import { useTransaction } from "../hooks/useTransaction";
+import { useWallet } from "../hooks/useWallet";
+import { Currency, isApiError, isUnconfirmedWriteError } from "../types/api";
+import { TransactionKind, TransactionType } from "../types/transaction";
+import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../types/transaction";
+import type { WalletInfo } from "../types/wallet";
+import { AMOUNT_ERRORS, CURRENCY_DECIMALS, formatMoney, parseAmountInput } from "../utils/money";
+import { errorMessage, notifySuccess } from "../utils/notify";
+import { WALLET_PARAM } from "../utils/transactionRoutes";
+import { groupWallets } from "../utils/walletGrouping";
 
-export interface TransactionSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Carteira pré-selecionada (ex.: a do extrato aberto) */
-  defaultWalletId?: number | null;
+export interface TransactionPageProps {
+  kind: TransactionKind;
 }
 
 /**
- * Folha de lançamento (data-model §6):
- * chooseType → form → (preview) → submitting → closed + toast.
+ * Página de lançamento (`/depositar`, `/sacar`, `/transferir`) — data-model §6:
+ * formulário → (seletor de carteira) → (prévia) → envio → toast.
  * A prévia é obrigatória quando as moedas diferem ou o destino é de terceiro.
  */
-export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }: TransactionSheetProps) => {
+const TransactionPage = ({ kind }: TransactionPageProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const navState = readNavState(location.state);
+  const [searchParams] = useSearchParams();
+  const paramWalletId = Number(searchParams.get(WALLET_PARAM));
+  const defaultWalletId = Number.isInteger(paramWalletId) && paramWalletId > 0 ? paramWalletId : null;
+
   const { session } = useAuth();
   const { wallets, loaded, loading: walletsLoading, loadWallets, getPublicWallet } = useWallet();
-  const { groups } = useGroup();
+  const { groups, loadGroups } = useGroup();
   const { createIncome, createExpense, createTransfer, previewTransfer } = useTransaction();
   const pickerLabelId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
   const onlineAction = useOnlineAction(OfflineActionKind.Transaction);
 
-  const [step, setStep] = useState<SheetStep>(SheetStep.ChooseType);
-  const [kind, setKind] = useState<TransactionKind>(TransactionKind.Income);
+  /** Depois de registrar: volta para a tela de origem; aberta direto, vai para a Home */
+  const finish = () => {
+    if (navState.backTo) navigate(-1);
+    else navigate("/", { replace: true });
+  };
+
+  const [step, setStep] = useState<SheetStep>(SheetStep.Form);
   const [sourceWalletId, setSourceWalletId] = useState<number | null>(defaultWalletId);
   const [destination, setDestination] = useState<DestinationState>(EMPTY_DESTINATION);
   const [amountText, setAmountText] = useState("");
@@ -68,22 +78,32 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
     [wallets, groups],
   );
 
-  // Garante a lista de carteiras (a folha pode abrir antes da Home carregar)
+  // Garante carteiras e famílias (a página pode abrir direto pela URL)
   useEffect(() => {
-    if (open && !loaded && !walletsLoading) loadWallets().catch(() => undefined);
-    // Só na abertura
+    if (!loaded && !walletsLoading) loadWallets().catch(() => undefined);
+    if (groups.length === 0) loadGroups().catch(() => undefined);
+    // Só na montagem
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, []);
 
-  // Pré-seleciona a carteira padrão (ou a primeira) quando a lista chega
+  // Pré-seleciona a carteira do endereço; sem ela, a primeira da pessoa (ou a primeira da lista)
+  const userId = session?.user.userId ?? null;
   useEffect(() => {
     if (sourceWalletId !== null && controllable.some((w) => w.walletId === sourceWalletId)) return;
-    const preferred = controllable.find((w) => w.walletId === defaultWalletId) ?? controllable[0];
+    const preferred =
+      controllable.find((w) => w.walletId === defaultWalletId) ??
+      controllable.find((w) => w.ownerUserId === userId) ??
+      controllable[0];
     if (preferred) setSourceWalletId(preferred.walletId);
-  }, [controllable, defaultWalletId, sourceWalletId]);
+  }, [controllable, defaultWalletId, sourceWalletId, userId]);
 
-  // Ao trocar de passo, o foco vai para o primeiro elemento marcado com data-autofocus
+  // Ao trocar de passo (não na abertura), o foco vai para o elemento com data-autofocus
+  const firstStep = useRef(true);
   useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
     const target = contentRef.current?.querySelector<HTMLElement>("[data-autofocus]");
     target?.focus();
   }, [step]);
@@ -286,7 +306,7 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
         result = await createTransfer(body);
       }
       notifySuccess(successMessage(result));
-      onOpenChange(false);
+      finish();
     } catch (err) {
       if (isUnconfirmedWriteError(err)) {
         // A rede caiu com o envio em andamento: o lançamento pode ter sido gravado.
@@ -343,14 +363,8 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
     }
   };
 
-  const changeKind = (next: TransactionKind) => {
-    setKind(next);
-    setServerError(null);
-    setAttempted(false);
-  };
-
   // ---------------------------------------------------------------------------
-  // Cabeçalho, título e rodapé por passo
+  // Título, voltar e botão principal por passo
   // ---------------------------------------------------------------------------
 
   const previewTitle = (() => {
@@ -366,25 +380,10 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
     return t("transaction.preview.titleTransfer");
   })();
 
-  let title = t("transaction.title");
-  if (step === SheetStep.Form) title = t(`transaction.kind.${kind}`);
-  if (step === SheetStep.PickSource) title = t("transaction.pickerTitleSource");
-  if (step === SheetStep.PickDestination) title = t("transaction.pickerTitleDestination");
-  if (step === SheetStep.Preview) title = previewTitle;
-
-  const backButton = (label: string, target: SheetStep) => (
-    <SheetHeaderButton onClick={() => setStep(target)} disabled={submitting}>
-      <ChevronLeft aria-hidden="true" className="size-6" strokeWidth={1.75} />
-      {label}
-    </SheetHeaderButton>
-  );
-
-  let leading: ReactNode = undefined;
-  if (step === SheetStep.Form) leading = backButton(t("actions.back"), SheetStep.ChooseType);
-  if (step === SheetStep.PickSource || step === SheetStep.PickDestination) {
-    leading = backButton(t(`transaction.kind.${kind}`), SheetStep.Form);
-  }
-  if (step === SheetStep.Preview) leading = backButton(t("actions.back"), SheetStep.Form);
+  let stepTitle: string | null = null;
+  if (step === SheetStep.PickSource) stepTitle = t("transaction.pickerTitleSource");
+  if (step === SheetStep.PickDestination) stepTitle = t("transaction.pickerTitleDestination");
+  if (step === SheetStep.Preview) stepTitle = previewTitle;
 
   const primaryLabel = (() => {
     if (step === SheetStep.Preview) return previewTitle;
@@ -396,122 +395,120 @@ export const TransactionSheet = ({ open, onOpenChange, defaultWalletId = null }:
   const primaryDisabled =
     step === SheetStep.Preview ? previewLoading || previewBlocked || !preview : hasBlockingError;
 
-  const footer =
-    step === SheetStep.Form || step === SheetStep.Preview ? (
-      <Button
-        block
-        loading={submitting}
-        loadingLabel={t("transaction.submit.sending")}
-        disabled={primaryDisabled}
-        {...onlineAction.offlineProps}
-        onClick={onPrimary}
-      >
-        {primaryLabel}
-      </Button>
-    ) : undefined;
-
   return (
-    <Sheet
-      ref={contentRef}
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && submittingRef.current) return;
-        onOpenChange(next);
-      }}
-      title={title}
-      leading={leading}
-      footer={footer}
-      dismissible={!submitting}
-      busy={submitting}
-      tall={step !== SheetStep.ChooseType && step !== SheetStep.Preview}
-    >
-      {step === SheetStep.ChooseType ? (
-        <TypeStep
-          onSelect={(selected) => {
-            changeKind(selected);
-            setStep(SheetStep.Form);
-          }}
-        />
-      ) : null}
+    <>
+      <LargeTitleHeader
+        title={t(`transaction.page.${kind}`)}
+        backTo={navState.backTo}
+        backLabel={navState.backLabel}
+      />
 
-      {step === SheetStep.Form ? (
-        <FormStep
-          kind={kind}
-          onKindChange={changeKind}
-          sourceWallet={sourceWallet}
-          sourceError={sourceError}
-          onPickSource={() => setStep(SheetStep.PickSource)}
-          destination={destination}
-          destinationOwnWallet={destinationOwnWallet}
-          resolvedDestination={resolvedDestination}
-          destinationError={destinationError}
-          onPickDestination={() => setStep(SheetStep.PickDestination)}
-          onCodeChange={(code) =>
-            setDestination((d) => ({ ...d, code, publicWallet: null, confirmed: false, lookupError: null }))
-          }
-          onLookup={() => void lookupCode()}
-          onConfirmChange={(confirmed) => setDestination((d) => ({ ...d, confirmed }))}
-          amountText={amountText}
-          onAmountChange={setAmountText}
-          amountError={amountError}
-          description={description}
-          onDescriptionChange={setDescription}
-          serverError={serverError}
-          describeWallet={describeWallet}
-          disabled={submitting}
-        />
-      ) : null}
+      <div ref={contentRef} aria-busy={submitting || undefined}>
+        {stepTitle ? (
+          <div className="-mx-2 mb-3 flex min-h-touch items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setStep(SheetStep.Form)}
+              disabled={submitting}
+              className="inline-flex min-h-touch min-w-touch items-center gap-0.5 pr-2 text-body text-accent disabled:text-text-disabled"
+            >
+              <ChevronLeft aria-hidden="true" className="size-6" strokeWidth={1.75} />
+              {t("actions.back")}
+            </button>
+            <h2 id={pickerLabelId} className="m-0 text-headline">
+              {stepTitle}
+            </h2>
+          </div>
+        ) : null}
 
-      {step === SheetStep.PickSource || step === SheetStep.PickDestination ? (
-        <>
-          <span id={pickerLabelId} className="sr-only">
-            {title}
-          </span>
-          {step === SheetStep.PickSource ? (
-            <WalletPickerStep
-              labelId={pickerLabelId}
-              wallets={controllable}
-              selectedWalletId={sourceWalletId}
-              describeWallet={describeWallet}
-              onSelect={(walletId) => {
-                setSourceWalletId(walletId);
-                setStep(SheetStep.Form);
-              }}
-            />
-          ) : (
-            <WalletPickerStep
-              labelId={pickerLabelId}
-              wallets={controllable}
-              selectedWalletId={destination.mode === DestinationMode.Own ? destination.walletId : null}
-              codeSelected={destination.mode === DestinationMode.Code}
-              describeWallet={describeWallet}
-              onSelect={(walletId) => {
-                setDestination({ ...EMPTY_DESTINATION, mode: DestinationMode.Own, walletId });
-                setStep(SheetStep.Form);
-              }}
-              onChooseCode={() => {
-                setDestination((d) =>
-                  d.mode === DestinationMode.Code ? d : { ...EMPTY_DESTINATION, mode: DestinationMode.Code },
-                );
-                setStep(SheetStep.Form);
-              }}
-            />
-          )}
-        </>
-      ) : null}
+        {step === SheetStep.Form ? (
+          <FormStep
+            kind={kind}
+            sourceWallet={sourceWallet}
+            sourceError={sourceError}
+            onPickSource={() => setStep(SheetStep.PickSource)}
+            destination={destination}
+            destinationOwnWallet={destinationOwnWallet}
+            resolvedDestination={resolvedDestination}
+            destinationError={destinationError}
+            onPickDestination={() => setStep(SheetStep.PickDestination)}
+            onCodeChange={(code) =>
+              setDestination((d) => ({ ...d, code, publicWallet: null, confirmed: false, lookupError: null }))
+            }
+            onLookup={() => void lookupCode()}
+            onConfirmChange={(confirmed) => setDestination((d) => ({ ...d, confirmed }))}
+            amountText={amountText}
+            onAmountChange={setAmountText}
+            amountError={amountError}
+            description={description}
+            onDescriptionChange={setDescription}
+            serverError={serverError}
+            describeWallet={describeWallet}
+            disabled={submitting}
+          />
+        ) : null}
 
-      {step === SheetStep.Preview && sourceWallet && resolvedDestination && parsedAmount?.value ? (
-        <PreviewStep
-          sourceWallet={sourceWallet}
-          destination={resolvedDestination}
-          amount={parsedAmount.value}
-          preview={preview}
-          loading={previewLoading}
-          blocked={previewBlocked}
-        />
-      ) : null}
-    </Sheet>
+        {step === SheetStep.PickSource ? (
+          <WalletPickerStep
+            labelId={pickerLabelId}
+            wallets={controllable}
+            selectedWalletId={sourceWalletId}
+            describeWallet={describeWallet}
+            onSelect={(walletId) => {
+              setSourceWalletId(walletId);
+              setStep(SheetStep.Form);
+            }}
+          />
+        ) : null}
+
+        {step === SheetStep.PickDestination ? (
+          <WalletPickerStep
+            labelId={pickerLabelId}
+            wallets={controllable}
+            selectedWalletId={destination.mode === DestinationMode.Own ? destination.walletId : null}
+            codeSelected={destination.mode === DestinationMode.Code}
+            describeWallet={describeWallet}
+            onSelect={(walletId) => {
+              setDestination({ ...EMPTY_DESTINATION, mode: DestinationMode.Own, walletId });
+              setStep(SheetStep.Form);
+            }}
+            onChooseCode={() => {
+              setDestination((d) =>
+                d.mode === DestinationMode.Code ? d : { ...EMPTY_DESTINATION, mode: DestinationMode.Code },
+              );
+              setStep(SheetStep.Form);
+            }}
+          />
+        ) : null}
+
+        {step === SheetStep.Preview && sourceWallet && resolvedDestination && parsedAmount?.value ? (
+          <PreviewStep
+            sourceWallet={sourceWallet}
+            destination={resolvedDestination}
+            amount={parsedAmount.value}
+            preview={preview}
+            loading={previewLoading}
+            blocked={previewBlocked}
+          />
+        ) : null}
+
+        {step === SheetStep.Form || step === SheetStep.Preview ? (
+          <div className="mt-6">
+            <Button
+              block
+              loading={submitting}
+              loadingLabel={t("transaction.submit.sending")}
+              disabled={primaryDisabled}
+              {...onlineAction.offlineProps}
+              onClick={onPrimary}
+            >
+              {primaryLabel}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 };
 
-export default TransactionSheet;
+export default TransactionPage;

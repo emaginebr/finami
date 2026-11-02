@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { TransactionSheet } from "./TransactionSheet";
-import { Currency } from "../../types/api";
-import { TransactionType } from "../../types/transaction";
-import type { TransactionInfo } from "../../types/transaction";
-import { makeWallet, storeSession } from "../../test/fixtures";
-import { apiError, axe, mockFetch, renderWithProviders, requestsTo } from "../../test/utils";
-import type { MockHandler, MockResponse } from "../../test/utils";
-import { notifySuccess, notifyWarning } from "../../utils/notify";
-import { reportOffline } from "../../utils/connectivity";
+import TransactionPage from "./TransactionPage";
+import { Currency } from "../types/api";
+import { TransactionKind, TransactionType } from "../types/transaction";
+import type { TransactionInfo } from "../types/transaction";
+import { makeWallet, storeSession } from "../test/fixtures";
+import { apiError, axe, mockFetch, renderWithProviders, requestsTo } from "../test/utils";
+import type { MockHandler, MockResponse } from "../test/utils";
+import { notifySuccess, notifyWarning } from "../utils/notify";
+import { reportOffline } from "../utils/connectivity";
 
-vi.mock("../../utils/notify", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../utils/notify")>();
+vi.mock("../utils/notify", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/notify")>();
   return { ...actual, notifySuccess: vi.fn(), notifyError: vi.fn(), notifyWarning: vi.fn() };
 });
 
@@ -39,60 +39,68 @@ const makeTransaction = (overrides: Partial<TransactionInfo> = {}): TransactionI
   ...overrides,
 });
 
-const setup = (routes: Record<string, MockResponse | MockHandler> = {}) => {
+const PATHS: Record<TransactionKind, string> = {
+  [TransactionKind.Income]: "/depositar",
+  [TransactionKind.Expense]: "/sacar",
+  [TransactionKind.Transfer]: "/transferir",
+};
+
+/** Abre a página do tipo pedido vindo do extrato da carteira 1 (pré-selecionada por `?carteira=1`) */
+const setup = (kind: TransactionKind, routes: Record<string, MockResponse | MockHandler> = {}) => {
   storeSession();
-  const fetchMock = mockFetch({ "GET /api/wallets": { body: WALLETS }, ...routes });
-  const onOpenChange = vi.fn();
+  const fetchMock = mockFetch({ "GET /api/wallets": { body: WALLETS }, "GET /api/groups": { body: [] }, ...routes });
   const user = userEvent.setup();
-  const view = renderWithProviders(
-    <TransactionSheet open onOpenChange={onOpenChange} defaultWalletId={1} />,
-  );
-  return { fetchMock, onOpenChange, user, ...view };
+  const view = renderWithProviders(<TransactionPage kind={kind} />, {
+    path: PATHS[kind],
+    initialEntries: [
+      "/carteiras/1",
+      { pathname: PATHS[kind], search: "?carteira=1", state: { backTo: "/carteiras/1" } },
+    ],
+    extraRoutes: [{ path: "/carteiras/:walletId", element: <p>Extrato</p> }],
+  });
+  return { fetchMock, user, ...view };
 };
 
 type User = ReturnType<typeof userEvent.setup>;
 
-const chooseType = async (user: User, label: "Entrada" | "Saída" | "Transferência") => {
-  await user.click(await screen.findByRole("button", { name: new RegExp(`^${label}`) }));
-  // A carteira padrão (Nubank) já aparece selecionada
-  await screen.findByText("Nubank");
-};
+/** A carteira pré-selecionada (Nubank) já aparece no formulário */
+const ready = () => screen.findByText("Nubank");
 
 const pickDestination = async (user: User, option: RegExp) => {
   await user.click(screen.getByRole("button", { name: /^Para/ }));
   await user.click(await screen.findByRole("option", { name: option }));
 };
 
-describe("TransactionSheet", () => {
-  it("Entrada válida envia amount como string, fecha e mostra o toast", async () => {
-    const { fetchMock, onOpenChange, user } = setup({
+describe("TransactionPage", () => {
+  it("Depósito válido envia amount como string, volta ao extrato e mostra o toast", async () => {
+    const { fetchMock, router, user } = setup(TransactionKind.Income, {
       "POST /api/transactions/income": { status: 201, body: makeTransaction() },
     });
 
-    await chooseType(user, "Entrada");
+    await ready();
     await user.type(screen.getByLabelText("Valor"), "100,00");
-    await user.click(screen.getByRole("button", { name: "Registrar entrada" }));
+    await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
 
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/1"));
     expect(requestsTo(fetchMock, "POST /api/transactions/income")).toEqual([
       { walletId: 1, amount: "100", description: null },
     ]);
-    expect(notifySuccess).toHaveBeenCalledWith(expect.stringContaining("Entrada de R$"));
+    expect(notifySuccess).toHaveBeenCalledWith(expect.stringContaining("Depósito de R$"));
     expect(notifySuccess).toHaveBeenCalledWith(expect.stringContaining("Nubank"));
   });
 
   it("rede cai durante o envio: avisa para conferir o extrato e não reenvia (feature 005)", async () => {
     let calls = 0;
-    const { onOpenChange, user } = setup({
+    const { router, user } = setup(TransactionKind.Income, {
       "POST /api/transactions/income": () => {
         calls += 1;
         throw new TypeError("Failed to fetch");
       },
     });
 
-    await chooseType(user, "Entrada");
+    await ready();
     await user.type(screen.getByLabelText("Valor"), "100,00");
-    await user.click(screen.getByRole("button", { name: "Registrar entrada" }));
+    await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
 
     expect(
       await screen.findByText(
@@ -100,16 +108,16 @@ describe("TransactionSheet", () => {
       ),
     ).toBeInTheDocument();
     expect(calls).toBe(1);
-    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(router.state.location.pathname).toBe("/depositar");
   });
 
   it("sem internet o envio fica aria-disabled e não chama a API (feature 005)", async () => {
-    const { fetchMock, user } = setup();
+    const { fetchMock, user } = setup(TransactionKind.Income);
 
-    await chooseType(user, "Entrada");
+    await ready();
     await user.type(screen.getByLabelText("Valor"), "100,00");
     act(() => reportOffline());
-    const submit = screen.getByRole("button", { name: "Registrar entrada" });
+    const submit = screen.getByRole("button", { name: "Registrar depósito" });
     expect(submit).toHaveAttribute("aria-disabled", "true");
     await user.click(submit);
 
@@ -118,21 +126,21 @@ describe("TransactionSheet", () => {
   });
 
   it("bloqueia o envio de 0,001 em reais", async () => {
-    const { fetchMock, user } = setup();
+    const { fetchMock, user } = setup(TransactionKind.Expense);
 
-    await chooseType(user, "Saída");
+    await ready();
     await user.type(screen.getByLabelText("Valor"), "0,001");
 
     expect(screen.getByText("Use no máximo 2 casas decimais para reais.")).toBeInTheDocument();
     expect(screen.getByLabelText("Valor")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByRole("button", { name: "Registrar saída" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Registrar saque" })).toBeDisabled();
     expect(requestsTo(fetchMock, "POST /api/transactions/expense")).toHaveLength(0);
   });
 
   it("bloqueia transferência com origem igual ao destino", async () => {
-    const { user } = setup();
+    const { user } = setup(TransactionKind.Transfer);
 
-    await chooseType(user, "Transferência");
+    await ready();
     await pickDestination(user, /^Nubank/);
 
     expect(await screen.findByText("A carteira de destino deve ser diferente da origem.")).toBeInTheDocument();
@@ -141,7 +149,7 @@ describe("TransactionSheet", () => {
   });
 
   it("BRL → BTC mostra a prévia com BTC e cotação antes de confirmar", async () => {
-    const { fetchMock, onOpenChange, user } = setup({
+    const { fetchMock, router, user } = setup(TransactionKind.Transfer, {
       "POST /api/transactions/transfer/preview": {
         body: { type: "BtcPurchase", sourceAmount: 500, destinationAmount: 0.00097591, quote: QUOTE },
       },
@@ -157,7 +165,7 @@ describe("TransactionSheet", () => {
       },
     });
 
-    await chooseType(user, "Transferência");
+    await ready();
     await pickDestination(user, /^Reserva BTC/);
     await user.type(screen.getByLabelText("Valor"), "500");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -172,16 +180,16 @@ describe("TransactionSheet", () => {
 
     await user.click(screen.getByRole("button", { name: "Confirmar compra" }));
 
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/1"));
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toHaveLength(1);
   });
 
   it("prévia com 503 desabilita Confirmar", async () => {
-    const { user } = setup({
+    const { user } = setup(TransactionKind.Transfer, {
       "POST /api/transactions/transfer/preview": apiError(503, "Cotação indisponível."),
     });
 
-    await chooseType(user, "Transferência");
+    await ready();
     await pickDestination(user, /^Reserva BTC/);
     await user.type(screen.getByLabelText("Valor"), "500");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -191,7 +199,7 @@ describe("TransactionSheet", () => {
   });
 
   it("destino por código mostra o titular e exige confirmação", async () => {
-    const { fetchMock, user } = setup({
+    const { fetchMock, user } = setup(TransactionKind.Transfer, {
       "GET /api/wallets/1042/public": {
         body: { walletId: 1042, name: "Viagem da Lu", currency: "BRL", ownerName: "Luísa Ramos", isActive: true },
       },
@@ -200,7 +208,7 @@ describe("TransactionSheet", () => {
       },
     });
 
-    await chooseType(user, "Transferência");
+    await ready();
     await pickDestination(user, /Outra carteira \(código\)/);
     await user.type(await screen.findByLabelText("Código da carteira"), "1042");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
@@ -222,14 +230,14 @@ describe("TransactionSheet", () => {
   });
 
   it("422 mantém os dados e mostra a mensagem do servidor", async () => {
-    const { user } = setup({
+    const { user } = setup(TransactionKind.Expense, {
       "POST /api/transactions/expense": apiError(422, "Saldo insuficiente na carteira de origem."),
     });
 
-    await chooseType(user, "Saída");
+    await ready();
     await user.type(screen.getByLabelText("Valor"), "2000");
     await user.type(screen.getByLabelText(/Descrição/), "Notebook");
-    await user.click(screen.getByRole("button", { name: "Registrar saída" }));
+    await user.click(screen.getByRole("button", { name: "Registrar saque" }));
 
     expect(await screen.findByText("Saldo insuficiente na carteira de origem.")).toBeInTheDocument();
     expect(screen.getByLabelText("Valor")).toHaveValue("2000");
@@ -238,38 +246,58 @@ describe("TransactionSheet", () => {
 
   it("duplo clique envia uma única vez", async () => {
     let release: (() => void) | null = null;
-    const { fetchMock, user } = setup({
+    const { fetchMock, user } = setup(TransactionKind.Income, {
       "POST /api/transactions/income": () =>
         new Promise<MockResponse>((resolve) => {
           release = () => resolve({ status: 201, body: makeTransaction() });
         }),
     });
 
-    await chooseType(user, "Entrada");
+    await ready();
     await user.type(screen.getByLabelText("Valor"), "100");
-    await user.dblClick(screen.getByRole("button", { name: "Registrar entrada" }));
+    await user.dblClick(screen.getByRole("button", { name: "Registrar depósito" }));
 
     expect(requestsTo(fetchMock, "POST /api/transactions/income")).toHaveLength(1);
     await waitFor(() => expect(release).not.toBeNull());
     (release as (() => void) | null)?.();
   });
 
-  it("Esc fecha a folha e o foco fica preso nela", async () => {
-    const { onOpenChange, user } = setup();
+  it("é uma página (não um modal) com o título do tipo e o voltar para a origem", async () => {
+    setup(TransactionKind.Expense);
+    await ready();
 
-    const first = await screen.findByRole("button", { name: /^Entrada/ });
-    expect(first).toHaveFocus();
-    expect(screen.getByRole("dialog", { name: "Novo lançamento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Sacar" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voltar" })).toHaveAttribute("href", "/carteiras/1");
+    // Cada página tem um tipo só: não há troca de tipo no formulário
+    expect(screen.queryByRole("radiogroup", { name: "Tipo de lançamento" })).not.toBeInTheDocument();
+  });
 
-    await user.keyboard("{Escape}");
+  it("sem carteira no endereço, pré-seleciona a primeira e, ao terminar, vai para a Home", async () => {
+    storeSession();
+    mockFetch({
+      "GET /api/wallets": { body: WALLETS },
+      "GET /api/groups": { body: [] },
+      "POST /api/transactions/income": { status: 201, body: makeTransaction() },
+    });
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(<TransactionPage kind={TransactionKind.Income} />, {
+      path: "/depositar",
+      initialEntries: ["/depositar"],
+      extraRoutes: [{ path: "/", element: <p>Home</p> }],
+    });
 
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    await ready();
+    await user.type(screen.getByLabelText("Valor"), "10");
+    await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
   });
 
   it("não tem violações do axe no formulário", async () => {
-    const { user } = setup();
+    setup(TransactionKind.Transfer);
 
-    await chooseType(user, "Transferência");
+    await ready();
 
     expect(await axe(document.body)).toHaveNoViolations();
   });

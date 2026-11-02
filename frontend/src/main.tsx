@@ -14,7 +14,6 @@ import { WalletProvider } from "./Contexts/WalletContext.tsx";
 import { TransactionProvider } from "./Contexts/TransactionContext.tsx";
 import { StatementProvider } from "./Contexts/StatementContext.tsx";
 import { BalanceProvider } from "./Contexts/BalanceContext.tsx";
-import { UiProvider } from "./Contexts/UiContext.tsx";
 import { InvitationProvider } from "./Contexts/InvitationContext.tsx";
 import { NotificationProvider } from "./Contexts/NotificationContext.tsx";
 import { OAuthConnectionProvider } from "./Contexts/OAuthConnectionContext.tsx";
@@ -22,10 +21,10 @@ import { OAuthConnectionProvider } from "./Contexts/OAuthConnectionContext.tsx";
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Elemento #root não encontrado em index.html");
 
-// Ordem dos providers: data-model §10 (UiProvider por último).
+// Ordem dos providers: data-model §10.
 // TransactionProvider depende do WalletProvider (refreshWallets após gravar).
 // Invitation/Notification (feature 003) ficam dentro do GroupProvider.
-// OAuthConnection (feature 004) só depende do AuthProvider; fica junto ao UiProvider.
+// OAuthConnection (feature 004) só depende do AuthProvider.
 // Connectivity/Install (feature 005) não dependem de ninguém e ficam acima dos providers de
 // dados, que vão assinar `onReconnected` para recarregar ao voltar a conexão.
 createRoot(rootElement).render(
@@ -43,7 +42,6 @@ createRoot(rootElement).render(
                         <InvitationProvider>
                           <NotificationProvider>
                             <OAuthConnectionProvider>
-                              <UiProvider>
                                 <App />
                                 {/* Região `aria-live="polite"` do sonner com rótulo em português (T041) */}
                                 <Toaster
@@ -58,7 +56,6 @@ createRoot(rootElement).render(
                                     top: "calc(max(env(safe-area-inset-top), var(--offline-banner-h, 0px)) + 8px)",
                                   }}
                                 />
-                              </UiProvider>
                             </OAuthConnectionProvider>
                           </NotificationProvider>
                         </InvitationProvider>

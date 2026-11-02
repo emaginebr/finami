@@ -9,7 +9,6 @@ import { formatMoney } from "../../utils/money";
 import { Button } from "../ui/Button";
 import { listRowClasses } from "../ui/listRow";
 import { MoneyInput } from "../ui/MoneyInput";
-import { SegmentedControl } from "../ui/SegmentedControl";
 import { TextField } from "../ui/TextField";
 import { WalletIcon } from "../wallet/WalletIcon";
 import { DESCRIPTION_MAX, DestinationMode, initials } from "./sheetModel";
@@ -110,7 +109,6 @@ const SelectorRow = ({
 
 export interface FormStepProps {
   kind: TransactionKind;
-  onKindChange: (kind: TransactionKind) => void;
   sourceWallet: WalletInfo | null;
   sourceError: string | null;
   onPickSource: () => void;
@@ -134,10 +132,9 @@ export interface FormStepProps {
   disabled: boolean;
 }
 
-/** Passo 2 da folha: carteira(s), valor e descrição (data-model §6) */
+/** Formulário da página de lançamento: carteira(s), valor e descrição (data-model §6) */
 export const FormStep = ({
   kind,
-  onKindChange,
   sourceWallet,
   sourceError,
   onPickSource,
@@ -175,19 +172,8 @@ export const FormStep = ({
         <ServerErrorBanner title={t("transaction.serverErrorTitle")} message={serverError} />
       ) : null}
 
-      <SegmentedControl
-        ariaLabel={t("transaction.typeGroup")}
-        value={kind}
-        onChange={onKindChange}
-        disabled={disabled}
-        options={[
-          { value: TransactionKind.Income, label: t("transaction.kind.income") },
-          { value: TransactionKind.Expense, label: t("transaction.kind.expense") },
-          { value: TransactionKind.Transfer, label: t("transaction.kind.transfer") },
-        ]}
-      />
 
-      <div className="mt-5 flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5">
         <span id={sourceLabelId} className="text-footnote font-medium text-text-muted">
           {isTransfer ? t("transaction.from") : t("transaction.wallet")}
         </span>
