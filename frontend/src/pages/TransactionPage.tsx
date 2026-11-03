@@ -12,13 +12,25 @@ import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { useGroup } from "../hooks/useGroup";
 import { OfflineActionKind, useOnlineAction } from "../hooks/useOnlineAction";
+import { useQuote } from "../hooks/useQuote";
 import { useTransaction } from "../hooks/useTransaction";
 import { useWallet } from "../hooks/useWallet";
 import { Currency, isApiError, isUnconfirmedWriteError } from "../types/api";
 import { TransactionKind, TransactionType } from "../types/transaction";
 import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../types/transaction";
 import type { TransferDestinationsResult, WalletInfo } from "../types/wallet";
-import { AMOUNT_ERRORS, CURRENCY_DECIMALS, formatMoney, parseAmountInput, parseSatsInput } from "../utils/money";
+import {
+  AMOUNT_ERRORS,
+  CURRENCY_DECIMALS,
+  brlToBtc,
+  formatBrl,
+  formatMoney,
+  formatMoneyFull,
+  parseAmountInput,
+  parseSatsInput,
+} from "../utils/money";
+import { QuoteStatus } from "../types/quote";
+import { isQuoteUsable } from "../utils/quote";
 import { errorMessage, notifySuccess } from "../utils/notify";
 import { WALLET_PARAM } from "../utils/transactionRoutes";
 import { groupWallets } from "../utils/walletGrouping";
@@ -58,6 +70,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const { wallets, loaded, loading: walletsLoading, loadWallets, getTransferDestinations } = useWallet();
   const { groups, loadGroups } = useGroup();
   const { createIncome, createExpense, createTransfer, previewTransfer } = useTransaction();
+  const { quote, status: quoteStatus, loading: quoteLoading, loadQuote } = useQuote();
   const pickerLabelId = useId();
   const noDestinationsId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -189,15 +202,17 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     }
   }, [currentDestinations, destination, sourceId]);
 
-  // Valor em reais só com De e Para em bitcoin; fora disso volta para bitcoin com o valor limpo
+  // Alternador Bitcoin | Satoshis | Reais: depósito/saque em carteira bitcoin, ou transferência com
+  // De e Para em bitcoin; fora disso volta para bitcoin com o valor limpo
   const bothBtc = sourceWallet?.currency === Currency.BTC && destination?.currency === Currency.BTC;
-  const inReais = isTransfer && bothBtc && amountUnit === AmountUnit.Brl;
-  const inSats = isTransfer && bothBtc && amountUnit === AmountUnit.Sat;
+  const showAmountUnit = isTransfer ? bothBtc : sourceWallet?.currency === Currency.BTC;
+  const inReais = showAmountUnit && amountUnit === AmountUnit.Brl;
+  const inSats = showAmountUnit && amountUnit === AmountUnit.Sat;
   useEffect(() => {
-    if (bothBtc || amountUnit === AmountUnit.Btc) return;
+    if (showAmountUnit || amountUnit === AmountUnit.Btc) return;
     setAmountUnit(AmountUnit.Btc);
     setAmountText("");
-  }, [bothBtc, amountUnit]);
+  }, [showAmountUnit, amountUnit]);
 
   const changeAmountUnit = (unit: AmountUnit) => {
     // Evita que "200" em reais (ou 200 sats) vire ₿ 200 (components.md §10)
@@ -228,10 +243,35 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     }
     return error;
   };
+  // Depósito/saque em reais numa carteira bitcoin: converte aqui pela cotação atual (trunc. em 8 casas)
+  // e registra em bitcoin. A transferência converte no servidor, pela prévia.
+  const convertsLocally = inReais && !isTransfer;
+  // Ao entrar em "Reais", busca a cotação atual (a página pode ter sido aberta direto pela URL)
+  useEffect(() => {
+    if (convertsLocally) void loadQuote();
+  }, [convertsLocally, loadQuote]);
+  const quoteUsable = quote !== null && isQuoteUsable(quoteStatus);
+  const localBtc =
+    convertsLocally && quote && quoteUsable && parsedAmount?.value ? brlToBtc(parsedAmount.value, quote.priceBrl) : null;
+  let conversionError: string | null = null;
+  if (convertsLocally && parsedAmount?.value) {
+    if (!quoteUsable) {
+      // Ainda buscando: sem erro, mas o envio espera a cotação
+      if (!quoteLoading && quoteStatus !== QuoteStatus.Loading) conversionError = t("errors.quoteUnavailable");
+    }
+    else if (!localBtc) conversionError = t("transaction.amountTooSmall");
+  }
+  const amountConversion =
+    localBtc && quote
+      ? t("transaction.convertedHint", {
+          btc: formatMoneyFull(localBtc, Currency.BTC),
+          price: formatBrl(quote.priceBrl),
+        })
+      : null;
   const amountError =
     sourceWallet && parsedAmount?.error && (amountTyped || attempted)
       ? translateAmountError(parsedAmount.error, amountCurrency)
-      : null;
+      : conversionError;
   const sourceError = !sourceWallet && attempted ? t("transaction.validation.walletRequired") : null;
 
   let destinationError: string | null = null;
@@ -251,6 +291,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const formValid =
     Boolean(sourceWallet) &&
     Boolean(parsedAmount?.value) &&
+    (!convertsLocally || localBtc !== null) &&
     descriptionValid &&
     // O destino precisa estar na lista da origem atual (trocar o De recarrega o Para)
     (!isTransfer || (destination !== null && currentDestinations !== null && !destinationBlocking));
@@ -261,7 +302,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     destination !== null &&
     (destination.currency !== sourceWallet.currency || !destination.isOwn || inReais);
 
-  const hasBlockingError = Boolean(amountTyped && parsedAmount?.error) || destinationBlocking;
+  const hasBlockingError =
+    Boolean(amountTyped && parsedAmount?.error) || Boolean(conversionError) || destinationBlocking;
 
   // ---------------------------------------------------------------------------
   // Ações
@@ -348,16 +390,20 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     try {
       let result: TransactionInfo;
       const descriptionValue = description.trim() || null;
+      // Em reais (depósito/saque em bitcoin) vai o BTC convertido e exibido junto ao campo
+      const amountValue = convertsLocally ? localBtc : parsedAmount.value;
       if (kind === TransactionKind.Income) {
+        if (!amountValue) return;
         result = await createIncome({
           walletId: sourceWallet.walletId,
-          amount: parsedAmount.value,
+          amount: amountValue,
           description: descriptionValue,
         });
       } else if (kind === TransactionKind.Expense) {
+        if (!amountValue) return;
         result = await createExpense({
           walletId: sourceWallet.walletId,
-          amount: parsedAmount.value,
+          amount: amountValue,
           description: descriptionValue,
         });
       } else {
@@ -528,7 +574,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
             amountText={amountText}
             onAmountChange={setAmountText}
             amountError={amountError}
-            showAmountUnit={isTransfer && bothBtc}
+            showAmountUnit={showAmountUnit}
+            amountConversion={amountConversion}
             amountUnit={amountUnit}
             onAmountUnitChange={changeAmountUnit}
             focusAmount={focusAmount}

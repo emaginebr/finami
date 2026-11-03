@@ -566,6 +566,8 @@
       "brl": "Reais"
     },
     "enterInBtc": "Informar em bitcoin",
+    "convertedHint": "= {{btc}} (₿ 1 = {{price}})",
+    "amountTooSmall": "Valor pequeno demais para conversão.",
     "amountErrors": {
       "required": "Informe o valor.",
       "invalid": "Valor inválido. Use só números, com vírgula ou ponto.",

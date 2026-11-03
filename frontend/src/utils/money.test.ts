@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Currency } from "../types/api";
 import {
   AMOUNT_ERRORS,
+  brlToBtc,
   formatBrl,
   formatBtc,
   formatMoneyParts,
@@ -138,6 +139,19 @@ describe("parseSatsInput", () => {
     expect(parseSatsInput("1,5").error).toBe(AMOUNT_ERRORS.satsInteger);
     expect(parseSatsInput("10.5").error).toBe(AMOUNT_ERRORS.satsInteger);
     expect(parseSatsInput("1.2.3").error).toBe(AMOUNT_ERRORS.invalid);
+  });
+});
+
+describe("brlToBtc", () => {
+  it("converte reais em bitcoin truncando em 8 casas", () => {
+    expect(brlToBtc("200", 500000)).toBe("0.0004");
+    expect(brlToBtc("500", 512340)).toBe("0.00097591");
+    expect(brlToBtc("0.01", 500000)).toBe("0.00000002");
+  });
+
+  it("devolve null abaixo de 1 satoshi ou sem cotação", () => {
+    expect(brlToBtc("0.01", 2000000)).toBeNull();
+    expect(brlToBtc("10", 0)).toBeNull();
   });
 });
 

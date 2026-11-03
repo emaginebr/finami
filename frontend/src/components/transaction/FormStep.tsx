@@ -131,7 +131,9 @@ export interface FormStepProps {
   amountText: string;
   onAmountChange: (text: string) => void;
   amountError: string | null;
-  /** Mostra o alternador "Bitcoin | Satoshis | Reais" (De e Para em bitcoin) */
+  /** Valor em reais já convertido em bitcoin (depósito/saque em carteira BTC), exibido junto ao campo */
+  amountConversion?: string | null;
+  /** Mostra o alternador "Bitcoin | Satoshis | Reais" (carteira em bitcoin; na transferência, De e Para) */
   showAmountUnit: boolean;
   amountUnit: AmountUnit;
   onAmountUnitChange: (unit: AmountUnit) => void;
@@ -163,6 +165,7 @@ export const FormStep = ({
   showAmountUnit,
   amountUnit,
   onAmountUnitChange,
+  amountConversion = null,
   focusAmount,
   returnFocusTo = null,
   description,
@@ -268,11 +271,16 @@ export const FormStep = ({
             ) : undefined
           }
           hint={
-            sourceWallet
-              ? t("transaction.available", {
-                  value: formatMoney(sourceWallet.balance, sourceWallet.currency),
-                })
-              : undefined
+            sourceWallet ? (
+              <>
+                {amountConversion ? <span className="block font-semibold text-text">{amountConversion}</span> : null}
+                <span className="block">
+                  {t("transaction.available", {
+                    value: formatMoney(sourceWallet.balance, sourceWallet.currency),
+                  })}
+                </span>
+              </>
+            ) : undefined
           }
         />
       </div>

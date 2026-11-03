@@ -274,6 +274,19 @@ export const parseSatsInput = (text: string): ParsedAmount => {
   return { value: fraction.length > 0 ? `${integer}.${fraction}` : integer, error: null };
 };
 
+/**
+ * Converte reais (string decimal com ponto, ex.: `"200"`) em bitcoin pela cotação, truncando em
+ * 8 casas como a API (`trunc8(reais / preço)`). Devolve `null` quando o valor não chega a 1 satoshi.
+ */
+export const brlToBtc = (brl: string, priceBrl: number): string | null => {
+  const cents = toCents(brl);
+  if (!Number.isFinite(cents) || cents <= 0 || !(priceBrl > 0)) return null;
+  // centavos × 10^6 / preço = satoshis; toPrecision(15) tira o ruído binário antes do truncamento
+  const sats = Math.floor(Number(((cents * 1_000_000) / priceBrl).toPrecision(15)));
+  if (sats < 1) return null;
+  return parseSatsInput(String(sats)).value;
+};
+
 // ---------------------------------------------------------------------------
 // Centavos
 // ---------------------------------------------------------------------------
