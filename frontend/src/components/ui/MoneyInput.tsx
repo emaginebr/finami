@@ -71,7 +71,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
             disabled={disabled}
             autoFocus={autoFocus}
             data-autofocus={dataAutofocus ? "" : undefined}
-            placeholder={currency === Currency.BTC ? "0,00000000" : "0,00"}
+            placeholder={currency === Currency.BTC ? "0,00000" : "0,00"}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
             onChange={(event) => onChange(sanitize(event.target.value))}

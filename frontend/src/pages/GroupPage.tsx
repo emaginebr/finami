@@ -10,9 +10,11 @@ import { PendingInvitations } from "../components/group/PendingInvitations";
 import { SectionHeaderAction } from "../components/ui/SectionHeaderAction";
 import { VisibilityPicker } from "../components/group/VisibilityPicker";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
-import { AppTab, readNavState } from "../components/layout/navigation";
+import { AppTab, FAMILIES_PATH, readNavState } from "../components/layout/navigation";
 import type { NavState } from "../components/layout/navigation";
+import { NotificationBell } from "../components/notification/NotificationBell";
 import { OfflineContent } from "../components/pwa/OfflineContent";
+import { NotificationBellVariant } from "../components/ui/variants";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -41,13 +43,22 @@ enum LoadPhase {
   Error = "error",
 }
 
+export interface GroupPageProps {
+  /**
+   * Família mostrada direto na aba Família (`/familias`, quando a pessoa só tem uma):
+   * sem botão voltar. Sem a prop, usa o `:groupId` da rota.
+   */
+  groupId?: number;
+}
+
 /** Família (rota `/familias/:groupId`): saldo por membro (US5) e gestão (US4) */
-const GroupPage = () => {
+const GroupPage = ({ groupId: rootGroupId }: GroupPageProps = {}) => {
   const { t } = useTranslation();
   const location = useLocation();
   const navState = readNavState(location.state);
   const { groupId: groupIdParam } = useParams();
-  const groupId = Number(groupIdParam);
+  const isRoot = rootGroupId !== undefined;
+  const groupId = isRoot ? rootGroupId : Number(groupIdParam);
   const validId = Number.isInteger(groupId) && groupId > 0;
 
   const { session } = useAuth();
@@ -128,12 +139,19 @@ const GroupPage = () => {
   const responsibleName = responsible ? `${responsible.firstName} ${responsible.lastName}` : "";
   const memberCount = balances?.members.length ?? group?.members.length ?? 0;
 
-  const fromHome = navState.tab === AppTab.Home;
-  const backTo = navState.backTo ?? (fromHome ? "/" : "/carteiras");
-  const backLabel = navState.backLabel ?? (fromHome ? t("nav.home") : t("nav.wallets"));
+  // Voltar: para a aba de origem (Home, Carteiras ou a lista da aba Família); na raiz da aba, nenhum
+  const originTab = navState.tab ?? AppTab.Family;
+  const defaultBack =
+    originTab === AppTab.Home
+      ? { to: "/", label: t("nav.home") }
+      : originTab === AppTab.Wallets
+        ? { to: "/carteiras", label: t("nav.wallets") }
+        : { to: FAMILIES_PATH, label: t("nav.family") };
+  const backTo = isRoot ? undefined : (navState.backTo ?? defaultBack.to);
+  const backLabel = isRoot ? undefined : (navState.backLabel ?? defaultBack.label);
   const childState: NavState = {
-    tab: navState.tab ?? AppTab.Wallets,
-    backTo: `/familias/${groupId}`,
+    tab: originTab,
+    backTo: isRoot ? FAMILIES_PATH : `/familias/${groupId}`,
     backLabel: name,
   };
 
@@ -208,7 +226,7 @@ const GroupPage = () => {
           action={
             notFound ? (
               <Link
-                to={backTo}
+                to={backTo ?? "/"}
                 className="inline-flex min-h-touch items-center rounded-md border border-border bg-surface-2 px-4 text-subhead font-semibold text-text no-underline"
               >
                 {t("actions.back")}
@@ -241,6 +259,9 @@ const GroupPage = () => {
       <LargeTitleHeader
         title={name}
         subtitle={balances ? subtitle : undefined}
+        titleAccessory={
+          isRoot ? <NotificationBell variant={NotificationBellVariant.Header} className="md:hidden" /> : undefined
+        }
         backTo={backTo}
         backLabel={backLabel}
         actions={actions}

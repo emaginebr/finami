@@ -226,7 +226,7 @@ Os testes ficam ao lado do código (`*.test.ts[x]`).
   leva a `/entrar` com "Sua sessão expirou" (R-04).
 - **Valores monetários** vão para a API como **string decimal com ponto** (`"amount": "0.00000001"`)
   e são validados antes do envio: > 0; até 2 casas em BRL e 8 em BTC. A exibição usa `pt-BR`
-  (`R$ 1.234,56`, `₿ 0,12345678`), com "−" (U+2212) nos negativos. O total da Home é somado em
+  (`R$ 1.234,56`; bitcoin com 5 casas, truncado: `₿ 0,12345`), com "−" (U+2212) nos negativos. O total da Home é somado em
   centavos inteiros (R-09).
 - **Datas** no fuso `America/Sao_Paulo`; períodos do extrato em `yyyy-MM-dd`, com no máximo 366
   dias (R-12).

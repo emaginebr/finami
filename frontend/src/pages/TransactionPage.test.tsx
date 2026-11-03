@@ -170,7 +170,7 @@ describe("TransactionPage", () => {
     await user.type(screen.getByLabelText("Valor"), "500");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    expect(await screen.findByText(/0,00097591/)).toBeInTheDocument();
+    expect(await screen.findByText(/0,00097/)).toBeInTheDocument();
     expect(screen.getByText("Compra de bitcoin")).toBeInTheDocument();
     expect(screen.getByText("₿ 1 = R$ 512.340,00")).toBeInTheDocument();
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([

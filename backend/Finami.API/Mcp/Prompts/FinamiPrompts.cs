@@ -32,7 +32,7 @@ public class FinamiPrompts
                (siga o proximoCursor até o fim de cada extrato).
             3. Mostre, por carteira, saldo inicial, entradas, saídas e saldo final do mês.
             4. Liste as 5 maiores despesas do mês (valor, carteira, descrição e data).
-            Valores em reais no formato R$ 1.234,56; bitcoin com até 8 casas. Não altere nenhum dado.
+            Valores em reais no formato R$ 1.234,56; bitcoin com 5 casas (ex.: ₿ 0,12345). Não altere nenhum dado.
             """;
     }
 

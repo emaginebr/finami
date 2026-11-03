@@ -23,24 +23,25 @@ describe("formatação", () => {
 
   it("formata valores grandes com separador de milhar", () => {
     expect(formatBrl(1234567890.12)).toBe(`R$${NBSP}1.234.567.890,12`);
-    expect(formatBtc(21000000)).toBe(`₿${NBSP}21.000.000,00000000`);
+    expect(formatBtc(21000000)).toBe(`₿${NBSP}21.000.000,00000`);
   });
 
-  it("formata bitcoin com 8 casas fixas", () => {
-    expect(formatBtc(0.12345678)).toBe(`₿${NBSP}0,12345678`);
-    expect(formatBtc(1)).toBe(`₿${NBSP}1,00000000`);
-    expect(formatBtc("0.00000001")).toBe(`₿${NBSP}0,00000001`);
+  it("formata bitcoin com 5 casas fixas, truncando (nunca arredonda para cima)", () => {
+    expect(formatBtc(0.12345678)).toBe(`₿${NBSP}0,12345`);
+    expect(formatBtc(0.99999999)).toBe(`₿${NBSP}0,99999`);
+    expect(formatBtc(1)).toBe(`₿${NBSP}1,00000`);
+    expect(formatBtc("0.00000001")).toBe(`₿${NBSP}0,00000`);
   });
 
   it("usa o sinal − (U+2212) nos negativos", () => {
     expect(formatBrl(-50)).toBe(`${MINUS}R$${NBSP}50,00`);
-    expect(formatBtc(-0.5)).toBe(`${MINUS}₿${NBSP}0,50000000`);
+    expect(formatBtc(-0.5)).toBe(`${MINUS}₿${NBSP}0,50000`);
   });
 
   it("formatSigned mostra + e − explícitos e zero sem sinal", () => {
     expect(formatSigned(100, Currency.BRL)).toBe(`+R$${NBSP}100,00`);
     expect(formatSigned(-1234.5, Currency.BRL)).toBe(`${MINUS}R$${NBSP}1.234,50`);
-    expect(formatSigned(-0.00000001, Currency.BTC)).toBe(`${MINUS}₿${NBSP}0,00000001`);
+    expect(formatSigned(-0.00012345, Currency.BTC)).toBe(`${MINUS}₿${NBSP}0,00012`);
     expect(formatSigned(0, Currency.BRL)).toBe(`R$${NBSP}0,00`);
   });
 
@@ -51,7 +52,7 @@ describe("formatação", () => {
   it("usa um único formato de negativo: sinal antes do símbolo, sem espaço", () => {
     expect(formatSigned(-342.1, Currency.BRL)).toBe(`${MINUS}R$${NBSP}342,10`);
     expect(formatBrl(-342.1)).toBe(`${MINUS}R$${NBSP}342,10`);
-    expect(formatBtc(-0.001)).toBe(`${MINUS}₿${NBSP}0,00100000`);
+    expect(formatBtc(-0.001)).toBe(`${MINUS}₿${NBSP}0,00100`);
     expect(formatMoneyParts(-342.1, Currency.BRL)).toEqual({
       sign: MINUS,
       symbol: "R$",

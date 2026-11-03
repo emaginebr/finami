@@ -4,10 +4,16 @@ import { Currency } from "../types/api";
 export const MINUS_SIGN = "−";
 const NBSP = " ";
 
-/** Casas decimais aceitas por moeda */
+/** Casas decimais aceitas por moeda (digitação e API; BTC em satoshi) */
 export const CURRENCY_DECIMALS: Record<Currency, number> = {
   [Currency.BRL]: 2,
   [Currency.BTC]: 8,
+};
+
+/** Casas decimais exibidas por moeda */
+export const DISPLAY_DECIMALS: Record<Currency, number> = {
+  [Currency.BRL]: 2,
+  [Currency.BTC]: 5,
 };
 
 const CURRENCY_PREFIX: Record<Currency, string> = {
@@ -20,10 +26,13 @@ const NUMBER_FORMATS: Record<Currency, Intl.NumberFormat> = {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }),
+  // Bitcoin exibido com 5 casas, truncado (nunca mostra mais do que existe na carteira).
+  // `roundingMode` é ES2023: o cast cobre a lib ES2020 do tsconfig.
   [Currency.BTC]: new Intl.NumberFormat("pt-BR", {
-    minimumFractionDigits: 8,
-    maximumFractionDigits: 8,
-  }),
+    minimumFractionDigits: DISPLAY_DECIMALS[Currency.BTC],
+    maximumFractionDigits: DISPLAY_DECIMALS[Currency.BTC],
+    roundingMode: "trunc",
+  } as Intl.NumberFormatOptions),
 };
 
 /** Texto exibido quando o valor não é um número válido */
@@ -61,7 +70,7 @@ export const formatMoney = (value: number | string, currency: Currency): string 
 /** `R$ 1.234,56` (pt-BR); negativos como `−R$ 1.234,56` */
 export const formatBrl = (value: number | string): string => formatMoney(value, Currency.BRL);
 
-/** `₿ 0,12345678` (8 casas fixas); negativos como `−₿ 0,12345678` */
+/** `₿ 0,12345` (5 casas fixas, truncado); negativos como `−₿ 0,12345` */
 export const formatBtc = (value: number | string): string => formatMoney(value, Currency.BTC);
 
 /** Valor com sinal explícito: `+R$ 100,00`, `−R$ 100,00` ou `R$ 0,00` */
