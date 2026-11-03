@@ -26,17 +26,16 @@ const NUMBER_FORMATS: Record<Currency, Intl.NumberFormat> = {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }),
-  // Bitcoin exibido com 5 casas, truncado (nunca mostra mais do que existe na carteira).
-  // `roundingMode` é ES2023: o cast cobre a lib ES2020 do tsconfig.
+  // Bitcoin exibido com 5 casas, arredondado só na tela: o valor guardado e enviado à API
+  // continua com 8 casas (satoshi).
   [Currency.BTC]: new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: DISPLAY_DECIMALS[Currency.BTC],
     maximumFractionDigits: DISPLAY_DECIMALS[Currency.BTC],
-    roundingMode: "trunc",
-  } as Intl.NumberFormatOptions),
+  }),
 };
 
 /**
- * Precisão total da moeda (BTC com 8 casas fixas, truncado). Usada onde o valor exibido
+ * Precisão total da moeda (BTC com 8 casas fixas). Usada onde o valor exibido
  * tem de ser exatamente o registrado (confirmação, SC-005) ou onde 5 casas zerariam o valor.
  * Sem `trunc`: a API já devolve no máximo 8 casas, e truncar o double (0,00097591 →
  * 0,000975909999…) poderia perder o último satoshi.
@@ -84,7 +83,7 @@ export const formatMoney = (value: number | string, currency: Currency): string 
 /** `R$ 1.234,56` (pt-BR); negativos como `−R$ 1.234,56` */
 export const formatBrl = (value: number | string): string => formatMoney(value, Currency.BRL);
 
-/** `₿ 0,12345` (5 casas fixas, truncado); negativos como `−₿ 0,12345` */
+/** `₿ 0,12346` (5 casas fixas, arredondado só na exibição); negativos como `−₿ 0,12346` */
 export const formatBtc = (value: number | string): string => formatMoney(value, Currency.BTC);
 
 /**
@@ -167,6 +166,7 @@ export const AMOUNT_ERRORS = {
   notPositive: "O valor deve ser maior que zero.",
   tooManyDecimals: (decimals: number): string =>
     `Use no máximo ${decimals} casas decimais.`,
+  satsInteger: "Satoshis são números inteiros, sem vírgula.",
 };
 
 /** Resultado de `parseAmountInput` */
@@ -242,6 +242,36 @@ export const parseAmountInput = (text: string, currency: Currency): ParsedAmount
   const value =
     trimmedFraction.length > 0 ? `${normalizedInteger}.${trimmedFraction}` : normalizedInteger;
   return { value, error: null };
+};
+
+/**
+ * Lê um valor em satoshis (inteiro; aceita "1.000" ou "1 000" como milhar) e devolve o
+ * equivalente em bitcoin como string decimal com ponto, com até 8 casas (ex.: `"12345"` →
+ * `"0.00012345"`). Conversão por texto, sem ponto flutuante.
+ */
+export const parseSatsInput = (text: string): ParsedAmount => {
+  // `\s` também cobre o espaço não separável
+  const cleaned = text.replace(/\s/g, "");
+  if (cleaned.length === 0) return fail(AMOUNT_ERRORS.required);
+  if (/^[-−]/.test(cleaned)) return fail(AMOUNT_ERRORS.notPositive);
+
+  let digits = cleaned;
+  if (/[.,]/.test(cleaned)) {
+    // Vírgula ou ponto só como separador de milhar ("1.000"); fora disso é decimal, que não existe em satoshi
+    if (!THOUSANDS_DOT.test(cleaned) && !THOUSANDS_COMMA.test(cleaned)) {
+      return fail(/^\d*[.,]\d*$/.test(cleaned) ? AMOUNT_ERRORS.satsInteger : AMOUNT_ERRORS.invalid);
+    }
+    digits = cleaned.replace(/[.,]/g, "");
+  }
+  if (!/^\d+$/.test(digits)) return fail(AMOUNT_ERRORS.invalid);
+
+  const sats = digits.replace(/^0+/, "");
+  if (sats.length === 0) return fail(AMOUNT_ERRORS.notPositive);
+
+  const padded = sats.padStart(9, "0");
+  const integer = padded.slice(0, -8).replace(/^0+(?=\d)/, "");
+  const fraction = padded.slice(-8).replace(/0+$/, "");
+  return { value: fraction.length > 0 ? `${integer}.${fraction}` : integer, error: null };
 };
 
 // ---------------------------------------------------------------------------

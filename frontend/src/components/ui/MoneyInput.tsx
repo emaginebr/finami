@@ -22,17 +22,19 @@ export interface MoneyInputProps {
   dataAutofocus?: boolean;
   /** Elemento extra à direita do rótulo (ex.: alternador "Bitcoin | Reais", feature 006) */
   labelAccessory?: ReactNode;
+  /** Valor em satoshis inteiros (só com `currency` BTC): símbolo "sat" e teclado numérico */
+  sats?: boolean;
 }
 
 /** Mantém só dígitos, vírgula e ponto (o teclado decimal do iOS já limita) */
 const sanitize = (text: string): string => text.replace(/[^\d.,]/g, "");
 
 /**
- * Campo de valor (components.md §3): prefixo da moeda, `inputMode="decimal"`,
+ * Campo de valor (components.md §3): prefixo da moeda, `inputMode={sats ? "numeric" : "decimal"}`,
  * fonte grande com números tabulares, erro ligado por `aria-describedby`.
  */
 export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
-  ({ label, currency, value, onChange, error, hint, disabled, id, autoFocus, dataAutofocus, labelAccessory }, ref) => {
+  ({ label, currency, value, onChange, error, hint, disabled, id, autoFocus, dataAutofocus, labelAccessory, sats = false }, ref) => {
     const { t } = useTranslation();
     const generatedId = useId();
     const inputId = id ?? generatedId;
@@ -67,23 +69,23 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
           )}
         >
           <span aria-hidden="true" className="text-title-2 font-medium text-text-muted">
-            {currencySymbol(currency)}
+            {sats ? "sat" : currencySymbol(currency)}
           </span>
           <span id={currencyId} className="sr-only">
-            {t(`currencyIn.${currency}`)}
+            {t(`currencyIn.${sats ? "SAT" : currency}`)}
           </span>
           <input
             ref={ref}
             id={inputId}
             type="text"
-            inputMode="decimal"
+            inputMode={sats ? "numeric" : "decimal"}
             autoComplete="off"
             enterKeyHint="done"
             value={value}
             disabled={disabled}
             autoFocus={autoFocus}
             data-autofocus={dataAutofocus ? "" : undefined}
-            placeholder={currency === Currency.BTC ? "0,00000" : "0,00"}
+            placeholder={sats ? "0" : currency === Currency.BTC ? "0,00000000" : "0,00"}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
             onChange={(event) => onChange(sanitize(event.target.value))}

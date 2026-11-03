@@ -9,7 +9,7 @@ as telas seguem o Princípio IX (WCAG 2.1 AA).
 
 - Lista: `GET /api/wallets` (carteiras que a pessoa controla, só ativas).
 - Cada opção: ícone do tipo (real / bitcoin, `aria-hidden`, com o tipo também no texto acessível),
-  **primeiro nome do titular** e saldo alinhado à direita (`formatMoney`; BTC com 5 casas). O nome da
+  **primeiro nome do titular** e saldo alinhado à direita (`formatMoney`; BTC com 5 casas, arredondado só na tela — o valor gravado e enviado tem 8 casas). O nome da
   carteira **não aparece na tela** (pedido em 2026-11-03); fica só no nome acessível.
 - Nome acessível da opção, ex.: "Ana, Nubank, real, saldo R$ 1.234,56".
 - Ao trocar o De: recarrega o Para; limpa o destino se ele não estiver mais na lista (FR-019); limpa
@@ -29,8 +29,10 @@ as telas seguem o Princípio IX (WCAG 2.1 AA).
 
 ### Valor (origem BTC e destino BTC)
 
-- Alternador "Bitcoin | Reais" junto ao campo Valor (grupo de botões com `aria-pressed`), visível só
-  quando De e Para são BTC.
+- Alternador "Bitcoin | Satoshis | Reais" junto ao campo Valor (grupo de botões com `aria-pressed`),
+  visível só quando De e Para são BTC.
+- Em "Bitcoin": até 8 casas decimais. Em "Satoshis": inteiro (símbolo "sat"), convertido no app para
+  BTC com 8 casas (`12345` → `0.00012345`) e enviado como `amount`.
 - Em "Reais": campo em R$ (2 casas). O Continuar chama o preview com `amountBrl`.
 - A confirmação mostra: valor em reais informado, **valor em BTC** que será enviado, cotação e
   horário da cotação.
@@ -76,6 +78,7 @@ As novas mensagens (contrato da API) aparecem no banner de erro da folha, como a
 | `transaction.destinationGroups.conversion` | "Converter" |
 | `transaction.noDestinations` | "Não há carteiras para transferir. Só é possível transferir para pessoas da sua família, na mesma moeda." |
 | `transaction.amountUnit.btc` | "Bitcoin" |
+| `transaction.amountUnit.sat` | "Satoshis" |
 | `transaction.amountUnit.brl` | "Reais" |
 | `transaction.enterInBtc` | "Informar em bitcoin" |
 | `transaction.walletOption` | "{{wallet}}, de {{owner}}, {{currency}}, saldo {{balance}}" |

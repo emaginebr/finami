@@ -18,7 +18,7 @@ import { Currency, isApiError, isUnconfirmedWriteError } from "../types/api";
 import { TransactionKind, TransactionType } from "../types/transaction";
 import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../types/transaction";
 import type { TransferDestinationsResult, WalletInfo } from "../types/wallet";
-import { AMOUNT_ERRORS, CURRENCY_DECIMALS, formatMoney, parseAmountInput } from "../utils/money";
+import { AMOUNT_ERRORS, CURRENCY_DECIMALS, formatMoney, parseAmountInput, parseSatsInput } from "../utils/money";
 import { errorMessage, notifySuccess } from "../utils/notify";
 import { WALLET_PARAM } from "../utils/transactionRoutes";
 import { groupWallets } from "../utils/walletGrouping";
@@ -192,6 +192,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   // Valor em reais só com De e Para em bitcoin; fora disso volta para bitcoin com o valor limpo
   const bothBtc = sourceWallet?.currency === Currency.BTC && destination?.currency === Currency.BTC;
   const inReais = isTransfer && bothBtc && amountUnit === AmountUnit.Brl;
+  const inSats = isTransfer && bothBtc && amountUnit === AmountUnit.Sat;
   useEffect(() => {
     if (bothBtc || amountUnit === AmountUnit.Btc) return;
     setAmountUnit(AmountUnit.Btc);
@@ -199,7 +200,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   }, [bothBtc, amountUnit]);
 
   const changeAmountUnit = (unit: AmountUnit) => {
-    // Evita que "200" em reais vire ₿ 200 (components.md §10)
+    // Evita que "200" em reais (ou 200 sats) vire ₿ 200 (components.md §10)
     setAmountUnit(unit);
     setAmountText("");
     setServerError(null);
@@ -210,12 +211,18 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   // ---------------------------------------------------------------------------
 
   const amountCurrency = inReais ? Currency.BRL : (sourceWallet?.currency ?? Currency.BRL);
-  const parsedAmount = sourceWallet ? parseAmountInput(amountText, amountCurrency) : null;
+  // Em satoshis o texto vira BTC com 8 casas (`parsedAmount.value` é sempre na moeda da origem ou em reais)
+  const parsedAmount = sourceWallet
+    ? inSats
+      ? parseSatsInput(amountText)
+      : parseAmountInput(amountText, amountCurrency)
+    : null;
   const amountTyped = amountText.trim().length > 0;
   const translateAmountError = (error: string, currency: Currency): string => {
     if (error === AMOUNT_ERRORS.required) return t("transaction.amountErrors.required");
     if (error === AMOUNT_ERRORS.invalid) return t("transaction.amountErrors.invalid");
     if (error === AMOUNT_ERRORS.notPositive) return t("transaction.amountErrors.notPositive");
+    if (error === AMOUNT_ERRORS.satsInteger) return t("transaction.amountErrors.satsInteger");
     if (error === AMOUNT_ERRORS.tooManyDecimals(CURRENCY_DECIMALS[currency])) {
       return t(`transaction.amountErrors.tooManyDecimals${currency}`);
     }

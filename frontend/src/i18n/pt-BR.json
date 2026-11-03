@@ -64,7 +64,8 @@
   },
   "currencyIn": {
     "BRL": "em reais",
-    "BTC": "em bitcoin"
+    "BTC": "em bitcoin",
+    "SAT": "em satoshis"
   },
   "badges": {
     "virtual": "virtual",
@@ -561,6 +562,7 @@
     "amountUnit": {
       "label": "Informar valor em",
       "btc": "Bitcoin",
+      "sat": "Satoshis",
       "brl": "Reais"
     },
     "enterInBtc": "Informar em bitcoin",
@@ -569,7 +571,8 @@
       "invalid": "Valor inválido. Use só números, com vírgula ou ponto.",
       "notPositive": "O valor deve ser maior que zero.",
       "tooManyDecimalsBRL": "Use no máximo 2 casas decimais para reais.",
-      "tooManyDecimalsBTC": "Use no máximo 8 casas decimais para bitcoin."
+      "tooManyDecimalsBTC": "Use no máximo 8 casas decimais para bitcoin.",
+      "satsInteger": "Satoshis são números inteiros, sem vírgula."
     },
     "available": "Disponível: {{value}}",
     "description": "Descrição",
