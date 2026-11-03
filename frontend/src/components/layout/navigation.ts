@@ -1,10 +1,11 @@
-import { ArrowLeftRight, CircleUser, House, WalletCards } from "lucide-react";
+import { ArrowLeftRight, CircleUser, House, Users, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Currency } from "../../types/api";
 
 /** Abas principais (TabBar no celular, Sidebar a partir de 768 px) */
 export enum AppTab {
   Home = "home",
+  Family = "family",
   Wallets = "wallets",
   Transfer = "transfer",
   Account = "account",
@@ -18,8 +19,12 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
+/** Aba Família: lista de famílias, a família única ou o convite para criar uma */
+export const FAMILIES_PATH = "/familias";
+
 export const NAV_ITEMS: NavItem[] = [
   { tab: AppTab.Home, to: "/", labelKey: "nav.home", icon: House },
+  { tab: AppTab.Family, to: FAMILIES_PATH, labelKey: "nav.family", icon: Users },
   { tab: AppTab.Wallets, to: "/carteiras", labelKey: "nav.wallets", icon: WalletCards },
   { tab: AppTab.Transfer, to: "/transferir", labelKey: "nav.transfer", icon: ArrowLeftRight },
   { tab: AppTab.Account, to: "/conta", labelKey: "nav.account", icon: CircleUser },
@@ -76,6 +81,9 @@ export const activeTabFor = (pathname: string, state: unknown): AppTab | null =>
   if (pathname === "/") return AppTab.Home;
   if (pathname.startsWith("/conta")) return AppTab.Account;
   if (pathname === "/carteiras") return AppTab.Wallets;
+  if (pathname === FAMILIES_PATH) return AppTab.Family;
+  // Tela de uma família: aberta pela aba Família ou pela árvore de Carteiras
+  if (pathname.startsWith(`${FAMILIES_PATH}/`)) return origin ?? AppTab.Family;
   // Transferir é aba do menu; aberto pelo "+", mantém a aba de origem
   if (pathname === "/transferir") return origin ?? AppTab.Transfer;
   // Depositar e Sacar são telas push: mantêm a aba de origem
@@ -84,7 +92,6 @@ export const activeTabFor = (pathname: string, state: unknown): AppTab | null =>
   if (pathname === NOTIFICATIONS_PATH) return origin ?? AppTab.Home;
   if (
     pathname.startsWith("/carteiras/") ||
-    pathname.startsWith("/familias/") ||
     pathname.startsWith("/pessoas/")
   ) {
     return origin ?? AppTab.Wallets;

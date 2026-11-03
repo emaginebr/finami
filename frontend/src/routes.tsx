@@ -13,6 +13,7 @@ const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const WalletsPage = lazy(() => import("./pages/WalletsPage"));
 const WalletStatementPage = lazy(() => import("./pages/WalletStatementPage"));
 const GroupPage = lazy(() => import("./pages/GroupPage"));
+const FamiliesPage = lazy(() => import("./pages/FamiliesPage"));
 const MemberPage = lazy(() => import("./pages/MemberPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
@@ -40,6 +41,7 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: "carteiras", element: <WalletsPage /> },
       { path: "carteiras/:walletId", element: <WalletStatementPage /> },
+      { path: "familias", element: <FamiliesPage /> },
       { path: "familias/:groupId", element: <GroupPage /> },
       { path: "pessoas/:userId", element: <MemberPage /> },
       // Lançamentos (páginas, não modal); `key` separa o estado de cada tipo
