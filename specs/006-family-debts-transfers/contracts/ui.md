@@ -9,8 +9,9 @@ as telas seguem o Princípio IX (WCAG 2.1 AA).
 
 - Lista: `GET /api/wallets` (carteiras que a pessoa controla, só ativas).
 - Cada opção: ícone do tipo (real / bitcoin, `aria-hidden`, com o tipo também no texto acessível),
-  **primeiro nome do titular**, nome da carteira e saldo formatado (`formatMoney`; BTC com 5 casas).
-- Nome acessível da opção, ex.: "Nubank, de Ana, real, saldo R$ 1.234,56".
+  **primeiro nome do titular** e saldo alinhado à direita (`formatMoney`; BTC com 5 casas). O nome da
+  carteira **não aparece na tela** (pedido em 2026-11-03); fica só no nome acessível.
+- Nome acessível da opção, ex.: "Ana, Nubank, real, saldo R$ 1.234,56".
 - Ao trocar o De: recarrega o Para; limpa o destino se ele não estiver mais na lista (FR-019); limpa
   o modo "valor em reais" se a nova origem não for BTC.
 

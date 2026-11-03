@@ -16,7 +16,8 @@ export interface WalletOptionContentProps {
 
 /**
  * Conteúdo visual de uma carteira nos campos De/Para (components.md §10):
- * ícone do tipo · nome (até 2 linhas) + primeiro nome do titular · saldo (ou "—") · slot.
+ * ícone do tipo · primeiro nome do titular · saldo (ou "—") · slot. O nome da carteira não aparece
+ * na tela; fica só no nome acessível, para distinguir carteiras da mesma pessoa.
  * Decorativo para leitores de tela: quem usa dá o nome acessível (`walletOptionLabel`).
  */
 export const WalletOptionContent = ({ wallet, trailing }: WalletOptionContentProps) => {
@@ -24,10 +25,7 @@ export const WalletOptionContent = ({ wallet, trailing }: WalletOptionContentPro
   return (
     <>
       <WalletIcon currency={wallet.currency} />
-      <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 block text-headline break-words">{wallet.name}</span>
-        <span className="mt-0.5 block truncate text-footnote text-text-muted">{wallet.ownerFirstName}</span>
-      </span>
+      <span className="min-w-0 flex-1 truncate text-headline">{wallet.ownerFirstName}</span>
       <span
         className={cn(
           "shrink-0 text-right text-headline font-semibold whitespace-nowrap tabular-nums",
@@ -62,10 +60,10 @@ export interface WalletOptionProps {
 
 /**
  * Opção (`role="option"`) dos seletores De e Para, com nome acessível
- * "Nubank, de Ana, real, saldo R$ 1.234,56" e espaço do ✓ sempre reservado.
+ * "Ana, Nubank, real, saldo R$ 1.234,56" e espaço do ✓ sempre reservado.
  *
- * O nome acessível segue o texto do contrato (contracts/ui.md) e começa pelo nome da carteira, o primeiro
- * texto visível: comando de voz ("clicar Nubank") funciona. A regra experimental do axe
+ * O nome acessível começa pelo primeiro nome do titular, o texto visível: comando de voz
+ * ("clicar Ana") funciona. A regra experimental do axe
  * `label-content-name-mismatch` não roda nos testes (REVIEW-006 M-3).
  */
 export const WalletOption = ({ wallet, selected, onSelect, autofocus = false, tabStop = true }: WalletOptionProps) => {
@@ -80,7 +78,7 @@ export const WalletOption = ({ wallet, selected, onSelect, autofocus = false, ta
       data-option-id={wallet.walletId}
       data-autofocus={autofocus ? "" : undefined}
       onClick={() => onSelect(wallet.walletId)}
-      className={listRowClasses({ twoLines: true, withIcon: true, interactive: true })}
+      className={listRowClasses({ withIcon: true, interactive: true })}
     >
       <WalletOptionContent
         wallet={wallet}
