@@ -1,9 +1,9 @@
 import type {
+  TransferDestinationsResult,
   WalletGroupInfo,
   WalletInfo,
   WalletInsertInfo,
   WalletListFilters,
-  WalletPublicInfo,
   WalletUpdateInfo,
 } from "../types/wallet";
 import { apiFetch } from "./apiHelpers";
@@ -59,9 +59,14 @@ class WalletService {
     await apiFetch<void>(`${API_BASE}/${walletId}`, { method: "DELETE" });
   }
 
-  /** Dados públicos para confirmar destino de terceiro (`GET /api/wallets/{id}/public`) */
-  async getPublic(walletId: number): Promise<WalletPublicInfo> {
-    return apiFetch<WalletPublicInfo>(`${API_BASE}/${walletId}/public`);
+  /**
+   * Opções do campo Para para a origem `walletId` (`GET /api/wallets/{id}/transfer-destinations`):
+   * grupos "Família" (mesma moeda) e "Converter". Guardada no cache da sessão para uso offline.
+   */
+  async getTransferDestinations(walletId: number): Promise<TransferDestinationsResult> {
+    return apiFetch<TransferDestinationsResult>(`${API_BASE}/${walletId}/transfer-destinations`, {
+      cache: "network-first",
+    });
   }
 }
 

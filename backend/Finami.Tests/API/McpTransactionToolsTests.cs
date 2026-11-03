@@ -126,6 +126,55 @@ public class McpTransactionToolsTests
         _kit.AuditLog.Should().BeEmpty();
     }
 
+    // ---------------- Feature 006: valor_em_reais e regras novas ----------------
+
+    [Fact]
+    public async Task Preview_and_transfer_pass_valor_em_reais_as_amount_brl()
+    {
+        _ledger.Setup(l => l.PreviewTransferAsync(USER, It.Is<TransferInfo>(t =>
+                t.SourceWalletId == 5 && t.DestinationWalletId == 9 && t.Amount == null && t.AmountBrl == 200m)))
+            .ReturnsAsync(new TransferPreviewResult
+            {
+                Type = "Transfer", SourceAmount = 0.0004m, DestinationAmount = 0.0004m,
+                Quote = new QuoteRefInfo { PriceBrl = 500000m }
+            });
+        _ledger.Setup(l => l.TransferAsync(USER, It.Is<TransferInfo>(t => t.Amount == null && t.AmountBrl == 200m)))
+            .ReturnsAsync(new TransactionInfo
+            {
+                TransactionId = 40, Type = "Transfer", SourceAmount = 0.0004m, DestinationAmount = 0.0004m,
+                Source = new TransactionAccountInfo { Name = "Ledger", Currency = "BTC" },
+                Destination = new TransactionAccountInfo { Name = "Cold", Currency = "BTC" },
+                Quote = new QuoteRefInfo { PriceBrl = 500000m }
+            });
+
+        var preview = await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 9, valor_em_reais: 200m);
+        var transfer = await _tools.RegistrarTransferencia(Principal(), 5, 9, valor_em_reais: 200m);
+
+        Structured(preview).GetProperty("sourceAmount").GetDecimal().Should().Be(0.0004m);
+        Text(preview).Should().Contain("R$ 500.000,00");
+        Text(transfer).Should().StartWith("Transferência de 0,0004 BTC de Ledger para Cold (cotação 1 BTC = R$ 500.000,00) registrada.");
+        Structured(transfer).GetProperty("quote").GetProperty("priceBrl").GetDecimal().Should().Be(500000m);
+    }
+
+    [Fact]
+    public async Task New_transfer_rules_keep_the_app_message()
+    {
+        _ledger.Setup(l => l.TransferAsync(USER, It.IsAny<TransferInfo>()))
+            .ThrowsAsync(new BusinessRuleException("Só é possível transferir para pessoas da sua família."));
+        _ledger.Setup(l => l.PreviewTransferAsync(USER, It.IsAny<TransferInfo>()))
+            .ThrowsAsync(new ValidationException("Informe o valor em bitcoin ou em reais.",
+                new[] { "Informe o valor em bitcoin ou em reais." }));
+
+        var transfer = await _tools.RegistrarTransferencia(Principal(), 5, 30, 10m);
+        var preview = await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 9);
+
+        Code(transfer).Should().Be("regra_de_negocio");
+        Text(transfer).Should().Be("Só é possível transferir para pessoas da sua família.");
+        _kit.AuditLog.Single().Outcome.Should().Be("regra_de_negocio");
+        Code(preview).Should().Be("validacao");
+        Text(preview).Should().Be("Informe o valor em bitcoin ou em reais.");
+    }
+
     [Fact]
     public async Task Same_repeat_key_100_times_registers_one_expense()
     {

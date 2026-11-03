@@ -1,4 +1,5 @@
 import type { GroupBalancesResult, UserGroupBalancesResult } from "../types/balance";
+import type { PersonDebtsResult } from "../types/debt";
 import { apiFetch } from "./apiHelpers";
 
 /**
@@ -16,6 +17,11 @@ class BalanceService {
     return apiFetch<UserGroupBalancesResult>(`/api/users/${userId}/group-balances`, {
       cache: "network-first",
     });
+  }
+
+  /** Dívidas da pessoa com cada contraparte, por moeda (`GET /api/users/{id}/debts`, feature 006) */
+  async getUserDebts(userId: number): Promise<PersonDebtsResult> {
+    return apiFetch<PersonDebtsResult>(`/api/users/${userId}/debts`, { cache: "network-first" });
   }
 }
 

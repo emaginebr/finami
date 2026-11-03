@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -21,6 +21,11 @@ export interface LargeTitleHeaderProps {
    * Não cria a linha de navegação de 44 px — components.md §1 (feature 003).
    */
   titleAccessory?: ReactNode;
+  /**
+   * Ref do `<h1>`: quando informada, o título fica focável por script (`tabIndex={-1}`) para a página
+   * levar o foco a ele ao trocar de conteúdo na mesma rota (ex.: `/pessoas/:id`, REVIEW-006 B-1).
+   */
+  titleRef?: Ref<HTMLHeadingElement>;
 }
 
 /** Cabeçalho com título grande estilo iOS (components.md §1) */
@@ -33,6 +38,7 @@ export const LargeTitleHeader = ({
   actions,
   leading,
   titleAccessory,
+  titleRef,
 }: LargeTitleHeaderProps) => {
   const { t } = useTranslation();
   const label = backLabel ?? t("nav.back");
@@ -68,8 +74,10 @@ export const LargeTitleHeader = ({
           <div className={titleAccessory ? "min-w-0 flex-1" : undefined}>
             {/* Nomes muito longos: até 3 linhas, nome completo no `title` (REVIEW F-4) */}
             <h1
+              ref={titleRef}
+              tabIndex={titleRef ? -1 : undefined}
               title={title}
-              className="m-0 mt-1 line-clamp-3 font-display text-large-title break-words hyphens-auto"
+              className="m-0 mt-1 line-clamp-3 font-display text-large-title break-words outline-none hyphens-auto"
             >
               {title}
             </h1>

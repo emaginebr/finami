@@ -81,6 +81,7 @@ public static class Startup
         services.AddScoped<ILedgerService, LedgerService>();
         services.AddScoped<IStatementService, StatementService>();
         services.AddScoped<IBalanceService, BalanceService>();
+        services.AddScoped<IDebtService, DebtService>();
         services.AddScoped<IInvitationService, InvitationService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddSingleton(TimeProvider.System);

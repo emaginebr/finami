@@ -544,3 +544,31 @@ a.notif:hover { background: var(--color-surface-3); }
   .copy-row { flex-wrap: nowrap; }
   .copy-row .input { flex: 1 1 auto; }
 }
+
+/* =============================================================================
+   Feature 006 — dívidas entre pessoas e transferências na família
+   ============================================================================= */
+/* ---------- DebtsSection / DebtRow ---------- */
+.section-head.static { cursor: default; }
+.debt-phrase { flex: 1; min-width: 0; font-size: var(--text-body); line-height: var(--text-body--line-height); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.debt-phrase b { font-weight: 600; }
+.row-end .amount.pos { color: var(--color-positive); }
+.row-end .amount.neg { color: var(--color-negative); }
+.row.has-avatar + .row.has-avatar::before { left: 68px; }
+.empty-line { margin: 0; background: var(--color-surface); border-radius: var(--radius-lg); padding: 12px 16px; font-size: var(--text-subhead); line-height: var(--text-subhead--line-height); color: var(--color-text-muted); }
+/* ---------- WalletOption ---------- */
+.opt-slot { width: 20px; flex-shrink: 0; display: grid; place-items: center; color: var(--color-positive); }
+.opt-slot.chev { color: var(--color-text-subtle); }
+.row.is-disabled { opacity: .6; cursor: not-allowed; }
+.row.is-disabled:hover { background: transparent; }
+.grp-head { margin: 0 0 8px; padding: 0 16px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); font-weight: 600; }
+.grp + .grp { margin-top: 24px; }
+.step-row { display: flex; align-items: center; gap: 4px; min-height: 44px; margin: 0 -8px 12px; }
+.step-row h2 { margin: 0; font-size: var(--text-headline); font-weight: 600; }
+/* ---------- AmountUnitToggle ---------- */
+.label-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; }
+.unit-toggle { display: inline-flex; gap: 2px; padding: 4px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; }
+.unit-toggle button { min-height: 44px; min-width: 88px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--color-text-muted); font: inherit; font-size: var(--text-subhead); font-weight: 600; cursor: pointer; }
+.unit-toggle button:hover { color: var(--color-text); }
+.unit-toggle button[aria-pressed="true"] { background: var(--color-brand-tint); color: var(--color-text); }
+.flow .entered { font-size: var(--text-subhead); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }

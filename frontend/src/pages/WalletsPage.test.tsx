@@ -34,7 +34,7 @@ const WALLETS = [
   makeWallet({ walletId: 2, name: "Nubank", balance: 1234.56 }),
   makeWallet({ walletId: 3, name: "Reserva BTC", currency: Currency.BTC, balance: 0.0025, estimatedBrl: 1280.85 }),
   makeWallet({ walletId: 4, name: "Poupança antiga", balance: 0, isActive: false }),
-  makeWallet({ walletId: 5, name: "Mesada do Pedro", balance: 50, groupId: 1, ownerUserId: 9, ownerName: "Pedro Silva" }),
+  makeWallet({ walletId: 5, name: "Mesada do Pedro", balance: 50, groupId: 1, ownerUserId: 9, ownerName: "Pedro Silva", ownerFirstName: "Pedro" }),
 ];
 
 const QUOTE = { priceBrl: 512340, quotedAt: "2026-11-01T17:32:00Z", source: "coingecko", isStale: false };

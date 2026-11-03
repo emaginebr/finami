@@ -76,7 +76,7 @@ public class LedgerService : ILedgerService
     {
         var plan = await PlanTransferAsync(userId, info);
         var transaction = await PostAsync(new PostingRequest(plan.Type, plan.Source, plan.Destination,
-            info.Amount, plan.DestinationAmount, userId, info.Description,
+            plan.SourceAmount, plan.DestinationAmount, userId, info.Description,
             plan.Quote?.BtcQuoteId, plan.Quote?.PriceBrl));
         return await ToInfoAsync(transaction);
     }
@@ -87,11 +87,16 @@ public class LedgerService : ILedgerService
         return new TransferPreviewResult
         {
             Type = plan.Type.ToString(),
-            SourceAmount = info.Amount,
+            SourceAmount = plan.SourceAmount,
             DestinationAmount = plan.DestinationAmount,
             Quote = plan.Quote == null ? null : ToQuoteRef(plan.Quote)
         };
     }
+
+    public const string CONVERSION_SAME_OWNER_MESSAGE = "Conversão entre real e bitcoin só entre carteiras da mesma pessoa.";
+    public const string FAMILY_ONLY_MESSAGE = "Só é possível transferir para pessoas da sua família.";
+    public const string AMOUNT_BRL_BTC_ONLY_MESSAGE = "Valor em reais só vale para transferência entre carteiras de bitcoin.";
+    public const string AMOUNT_TOO_SMALL_MESSAGE = "Valor pequeno demais para conversão.";
 
     public async Task<TransactionInfo> ReverseAsync(long userId, long transactionId, ReverseInfo? info)
     {
@@ -138,31 +143,68 @@ public class LedgerService : ILedgerService
     }
 
     private sealed record TransferPlan(TransactionType Type, Account Source, Account Destination,
-        decimal DestinationAmount, BtcQuote? Quote);
+        decimal SourceAmount, decimal DestinationAmount, BtcQuote? Quote);
 
-    /// <summary>Valida a transferência e decide tipo e valor de destino (FR-026/027/028).</summary>
+    /// <summary>
+    /// Valida a transferência e decide tipo e valores (FR-026/027/028; feature 006: data-model.md §Regras).
+    /// Vale para o registro e para a prévia, logo para app, API e MCP.
+    /// </summary>
     private async Task<TransferPlan> PlanTransferAsync(long userId, TransferInfo info)
     {
-        await _transferValidator.ValidateOrThrowAsync(info);
-        var source = await LoadWalletAsync(info.SourceWalletId);
+        // Mensagem do contrato (400) no lugar do genérico "Dados inválidos.".
+        if (info != null && info.Amount.HasValue == info.AmountBrl.HasValue)
+            throw new ValidationException(TransferInfoValidator.AMOUNT_REQUIRED_MESSAGE,
+                new[] { TransferInfoValidator.AMOUNT_REQUIRED_MESSAGE });
+        await _transferValidator.ValidateOrThrowAsync(info!);
+        var source = await LoadWalletAsync(info!.SourceWalletId);
         await _accessPolicy.EnsureCanControlWalletAsync(userId, source);
         var destination = await LoadWalletAsync(info.DestinationWalletId);
         source.EnsureActive();
         destination.EnsureActive();
-        Money.EnsurePositive(info.Amount, source.Currency);
+
+        // As regras são sobre os titulares das carteiras, não sobre quem lança (R-02/R-03).
+        var sourceOwner = source.UserId!.Value;
+        var destinationOwner = destination.UserId!.Value;
+        if (sourceOwner != destinationOwner)
+        {
+            // R-04: antes de buscar a cotação, para não consultá-la à toa.
+            if (source.Currency != destination.Currency)
+                throw new BusinessRuleException(CONVERSION_SAME_OWNER_MESSAGE);
+            if (!await _accessPolicy.AreFamilyAsync(sourceOwner, destinationOwner))
+                throw new BusinessRuleException(FAMILY_ONLY_MESSAGE);
+        }
+
+        if (info.AmountBrl.HasValue)
+            return await PlanBtcTransferInBrlAsync(source, destination, info.AmountBrl.Value);
+
+        var amount = info.Amount!.Value;
+        Money.EnsurePositive(amount, source.Currency);
 
         if (source.Currency == destination.Currency)
-            return new TransferPlan(TransactionType.Transfer, source, destination, info.Amount, null);
+            return new TransferPlan(TransactionType.Transfer, source, destination, amount, amount, null);
 
         var quote = await _quoteService.GetForConversionAsync();
         var isPurchase = source.Currency == Currency.Brl && destination.Currency == Currency.Btc;
-        var converted = isPurchase ? info.Amount / quote.PriceBrl : info.Amount * quote.PriceBrl;
+        var converted = isPurchase ? amount / quote.PriceBrl : amount * quote.PriceBrl;
         var destinationAmount = Money.Truncate(converted, destination.Currency);
         if (destinationAmount <= 0)
-            throw new BusinessRuleException("Valor pequeno demais para conversão.");
+            throw new BusinessRuleException(AMOUNT_TOO_SMALL_MESSAGE);
 
         return new TransferPlan(isPurchase ? TransactionType.BtcPurchase : TransactionType.BtcSale,
-            source, destination, destinationAmount, quote);
+            source, destination, amount, destinationAmount, quote);
+    }
+
+    /// <summary>R-07: BTC → BTC informado em reais; converte pela cotação atual, truncando em 8 casas.</summary>
+    private async Task<TransferPlan> PlanBtcTransferInBrlAsync(Account source, Account destination, decimal amountBrl)
+    {
+        if (source.Currency != Currency.Btc || destination.Currency != Currency.Btc)
+            throw new ValidationException(AMOUNT_BRL_BTC_ONLY_MESSAGE, new[] { AMOUNT_BRL_BTC_ONLY_MESSAGE });
+
+        var quote = await _quoteService.GetForConversionAsync();
+        var amount = Money.Truncate(amountBrl / quote.PriceBrl, Currency.Btc);
+        if (amount <= 0)
+            throw new BusinessRuleException(AMOUNT_TOO_SMALL_MESSAGE);
+        return new TransferPlan(TransactionType.Transfer, source, destination, amount, amount, quote);
     }
 
     private static QuoteRefInfo ToQuoteRef(BtcQuote quote) => new()

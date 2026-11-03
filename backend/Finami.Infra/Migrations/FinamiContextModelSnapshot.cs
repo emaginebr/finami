@@ -906,7 +906,8 @@ namespace Finami.Infra.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
-                    b.HasIndex("DestinationAccountId");
+                    b.HasIndex("DestinationAccountId")
+                        .HasDatabaseName("ix_transactions_destination_account_id");
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("ix_transactions_occurred_at");
@@ -916,7 +917,8 @@ namespace Finami.Infra.Migrations
                         .HasDatabaseName("ix_transactions_reversed_transaction_id")
                         .HasFilter("reversed_transaction_id IS NOT NULL");
 
-                    b.HasIndex("SourceAccountId");
+                    b.HasIndex("SourceAccountId")
+                        .HasDatabaseName("ix_transactions_source_account_id");
 
                     b.ToTable("transactions", (string)null);
                 });

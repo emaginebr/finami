@@ -12,4 +12,7 @@ public interface IWalletService
     Task<WalletInfo> DeactivateAsync(long userId, long walletId);
     Task DeleteAsync(long userId, long walletId);
     Task<WalletPublicInfo> GetPublicAsync(long walletId);
+
+    /// <summary>Opções do campo Para da transferência a partir da carteira de origem (feature 006).</summary>
+    Task<TransferDestinationsResult> GetTransferDestinationsAsync(long userId, long walletId);
 }

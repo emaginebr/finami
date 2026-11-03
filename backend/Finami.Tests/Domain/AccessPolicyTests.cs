@@ -73,4 +73,29 @@ public class AccessPolicyTests
         (await _policy.CanViewUserAsync(RESPONSIBLE, target)).Should().BeTrue();
         (await _policy.CanViewUserAsync(OUTSIDER, target)).Should().BeFalse();
     }
+
+    // ---------------- Feature 006: AreFamilyAsync ----------------
+
+    [Fact]
+    public async Task Same_owner_is_always_family()
+    {
+        (await _policy.AreFamilyAsync(OUTSIDER, OUTSIDER)).Should().BeTrue();
+        _groups.Verify(g => g.ShareGroupAsync(It.IsAny<long>(), It.IsAny<long>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Owners_sharing_a_group_are_family()
+    {
+        _groups.Setup(g => g.ShareGroupAsync(MEMBER, RESPONSIBLE)).ReturnsAsync(true);
+
+        (await _policy.AreFamilyAsync(MEMBER, RESPONSIBLE)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Owners_without_a_common_group_are_not_family()
+    {
+        _groups.Setup(g => g.ShareGroupAsync(It.IsAny<long>(), It.IsAny<long>())).ReturnsAsync(false);
+
+        (await _policy.AreFamilyAsync(MEMBER, OUTSIDER)).Should().BeFalse();
+    }
 }

@@ -63,8 +63,13 @@ export interface IncomeExpenseInfo {
 export interface TransferInfo {
   sourceWalletId: number;
   destinationWalletId: number;
-  /** Valor na moeda da origem, decimal com ponto como string */
-  amount: string;
+  /** Valor na moeda da origem, decimal com ponto como string. Exatamente um entre `amount` e `amountBrl`. */
+  amount?: string;
+  /**
+   * Valor em reais (2 casas), só em transferência bitcoin → bitcoin (feature 006).
+   * O app usa só no preview; o registro envia `amount` em BTC vindo do preview (R-07).
+   */
+  amountBrl?: string;
   description: string | null;
 }
 

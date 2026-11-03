@@ -21,6 +21,16 @@ public class LedgerTestContext
     public Dictionary<long, decimal> Balances { get; } = new();
     public List<Transaction> Inserted { get; } = new();
 
+    /// <summary>Pares de titulares com ao menos uma família em comum (feature 006).</summary>
+    public HashSet<(long, long)> Families { get; } = new();
+
+    /// <summary>Coloca os titulares numa família em comum.</summary>
+    public void ShareFamily(long userId, long otherUserId)
+    {
+        Families.Add((userId, otherUserId));
+        Families.Add((otherUserId, userId));
+    }
+
     public LedgerTestContext()
     {
         long id = 1;
@@ -61,6 +71,8 @@ public class LedgerTestContext
             .Returns((long userId, Account a) => a.IsWallet && a.UserId == userId
                 ? Task.CompletedTask
                 : throw new Finami.Domain.Exceptions.ForbiddenException());
+        AccessPolicy.Setup(p => p.AreFamilyAsync(It.IsAny<long>(), It.IsAny<long>()))
+            .ReturnsAsync((long owner, long other) => owner == other || Families.Contains((owner, other)));
     }
 
     public Account Add(Account account)

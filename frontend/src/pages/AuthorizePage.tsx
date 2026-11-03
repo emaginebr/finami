@@ -96,11 +96,11 @@ const LoadingState = () => {
       <Skeleton className="mb-2 h-7 w-[88%]" />
       <Skeleton className="mb-3 h-7 w-[52%]" />
       <Skeleton className="mb-5 h-4 w-1/2" />
-      <Skeleton className="h-16 w-full rounded-lg" />
+      <Skeleton className="h-16 w-full" rounded="rounded-lg" />
       <Skeleton className="mt-6 mb-3 h-4 w-1/3" />
-      <Skeleton className="h-[150px] w-full rounded-lg" />
-      <Skeleton className="mt-6 h-12 w-full rounded-md" />
-      <Skeleton className="mt-2 h-12 w-full rounded-md" />
+      <Skeleton className="h-[150px] w-full" rounded="rounded-lg" />
+      <Skeleton className="mt-6 h-12 w-full" rounded="rounded-md" />
+      <Skeleton className="mt-2 h-12 w-full" rounded="rounded-md" />
     </div>
   );
 };

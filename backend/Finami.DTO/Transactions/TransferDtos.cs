@@ -10,9 +10,13 @@ public class TransferInfo
     [JsonPropertyName("destinationWalletId")]
     public long DestinationWalletId { get; set; }
 
-    /// <summary>Valor na moeda da carteira de origem.</summary>
+    /// <summary>Valor na moeda da carteira de origem; informe este ou <see cref="AmountBrl"/>.</summary>
     [JsonPropertyName("amount")]
-    public decimal Amount { get; set; }
+    public decimal? Amount { get; set; }
+
+    /// <summary>Valor em reais, só para transferência entre carteiras de bitcoin (convertido pela cotação atual).</summary>
+    [JsonPropertyName("amountBrl")]
+    public decimal? AmountBrl { get; set; }
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }

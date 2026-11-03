@@ -12,11 +12,13 @@ public class UsersController : FinamiControllerBase
 {
     private readonly IUserService _userService;
     private readonly IBalanceService _balanceService;
+    private readonly IDebtService _debtService;
 
-    public UsersController(IUserService userService, IBalanceService balanceService)
+    public UsersController(IUserService userService, IBalanceService balanceService, IDebtService debtService)
     {
         _userService = userService;
         _balanceService = balanceService;
+        _debtService = debtService;
     }
 
     /// <summary>Cadastra outro usuário; email e senha são opcionais (sem email ele não faz login).</summary>
@@ -62,4 +64,15 @@ public class UsersController : FinamiControllerBase
     [HttpGet("{userId:long}/group-balances")]
     public Task<IActionResult> GroupBalances(long userId) =>
         Execute(async () => Ok(await _balanceService.GetUserGroupBalancesAsync(CurrentUserId, userId)));
+
+    /// <summary>
+    /// Dívidas da pessoa com cada contraparte, por moeda (feature 006): toda transferência entre titulares
+    /// diferentes vira dívida de quem recebeu com quem enviou; pares quites não aparecem. Mesma regra de
+    /// visibilidade de <c>GET /api/users/{id}</c>, mas quem não pode ver a pessoa recebe 404. Contrato em
+    /// specs/006-family-debts-transfers/contracts/api.md.
+    /// </summary>
+    /// <param name="userId">Identificador da pessoa consultada.</param>
+    [HttpGet("{userId:long}/debts")]
+    public Task<IActionResult> Debts(long userId) =>
+        Execute(async () => Ok(await _debtService.GetPersonDebtsAsync(CurrentUserId, userId)));
 }

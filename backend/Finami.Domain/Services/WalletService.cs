@@ -176,6 +176,74 @@ public class WalletService : IWalletService
         };
     }
 
+    /// <summary>
+    /// Opções do campo Para (feature 006, R-05): exige controle da origem ativa; <c>sameCurrency</c> traz as
+    /// carteiras ativas da mesma moeda do titular e das pessoas da família dele (sem a origem) e
+    /// <c>conversion</c> as do próprio titular na outra moeda. Saldo nulo quando quem consulta não pode ver
+    /// o extrato da carteira (FR-018).
+    /// </summary>
+    public async Task<TransferDestinationsResult> GetTransferDestinationsAsync(long userId, long walletId)
+    {
+        var source = await LoadControlledAsync(userId, walletId);
+        source.EnsureActive();
+        var ownerUserId = source.UserId!.Value;
+
+        var candidates = (await _accountRepository.ListTransferDestinationsAsync(ownerUserId))
+            .Where(w => w.IsWallet && w.IsActive && w.AccountId != source.AccountId)
+            .ToList();
+        var sameCurrency = candidates.Where(w => w.Currency == source.Currency).ToList();
+        var conversion = candidates.Where(w => w.Currency != source.Currency && w.UserId == ownerUserId).ToList();
+
+        var wallets = sameCurrency.Concat(conversion).ToList();
+        var balances = wallets.Count == 0
+            ? new Dictionary<long, decimal>()
+            : await _accountRepository.GetBalancesAsync(wallets.Select(w => w.AccountId));
+        var owners = wallets.Count == 0
+            ? new Dictionary<long, User>()
+            : (await _userRepository.GetByIdsAsync(wallets.Select(w => w.UserId!.Value).Distinct()))
+                .ToDictionary(u => u.UserId);
+
+        async Task<List<TransferDestinationInfo>> MapAsync(IEnumerable<Account> items)
+        {
+            var list = new List<TransferDestinationInfo>();
+            foreach (var wallet in items)
+            {
+                owners.TryGetValue(wallet.UserId!.Value, out var owner);
+                list.Add(new TransferDestinationInfo
+                {
+                    WalletId = wallet.AccountId,
+                    Name = wallet.Name,
+                    Currency = wallet.Currency.ToCode(),
+                    OwnerUserId = wallet.UserId!.Value,
+                    OwnerFirstName = owner?.FirstName ?? string.Empty,
+                    IsOwn = wallet.UserId == ownerUserId,
+                    Balance = await _accessPolicy.CanViewWalletStatementAsync(userId, wallet)
+                        ? balances.GetValueOrDefault(wallet.AccountId)
+                        : null
+                });
+            }
+            return list;
+        }
+
+        var sameCurrencyInfo = (await MapAsync(sameCurrency))
+            .OrderByDescending(d => d.IsOwn)
+            .ThenBy(d => d.OwnerFirstName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(d => d.WalletId)
+            .ToList();
+        var conversionInfo = (await MapAsync(conversion))
+            .OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(d => d.WalletId)
+            .ToList();
+
+        return new TransferDestinationsResult
+        {
+            SourceWalletId = source.AccountId,
+            SameCurrency = sameCurrencyInfo,
+            Conversion = conversionInfo
+        };
+    }
+
     private async Task<Account> LoadControlledAsync(long userId, long walletId)
     {
         var wallet = await _accountRepository.GetByIdAsync(walletId);
@@ -224,6 +292,7 @@ public class WalletService : IWalletService
                 IsActive = wallet.IsActive,
                 OwnerUserId = wallet.UserId!.Value,
                 OwnerName = owner?.FullName ?? string.Empty,
+                OwnerFirstName = owner?.FirstName ?? string.Empty,
                 GroupId = wallet.GroupId,
                 Balance = balances.GetValueOrDefault(wallet.AccountId),
                 EstimatedBrl = wallet.Currency == Currency.Btc && quote != null

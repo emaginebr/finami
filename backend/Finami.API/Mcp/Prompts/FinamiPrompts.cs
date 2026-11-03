@@ -8,6 +8,17 @@ namespace Finami.API.Mcp.Prompts;
 [McpServerPromptType]
 public class FinamiPrompts
 {
+    /// <summary>
+    /// Regras de transferência e dívidas (feature 006), repetidas nas instruções do servidor
+    /// (<see cref="McpServerSetup.INSTRUCTIONS"/>).
+    /// </summary>
+    public const string TRANSFER_GUIDANCE =
+        "Transferências só vão para carteiras da própria pessoa ou de alguém da família (destinos_de_transferencia " +
+        "lista as opções). Conversão entre real e bitcoin só entre carteiras da mesma pessoa. Toda transferência " +
+        "entre pessoas diferentes vira dívida de quem recebeu com quem enviou; transferências no sentido contrário " +
+        "compensam (dividas_da_pessoa). Entre carteiras de bitcoin, o valor pode ser informado em reais " +
+        "(valor_em_reais), convertido pela cotação atual.";
+
     private readonly TimeProvider _time;
 
     public FinamiPrompts(TimeProvider time)
@@ -32,6 +43,8 @@ public class FinamiPrompts
                (siga o proximoCursor até o fim de cada extrato).
             3. Mostre, por carteira, saldo inicial, entradas, saídas e saldo final do mês.
             4. Liste as 5 maiores despesas do mês (valor, carteira, descrição e data).
+            5. Chame dividas_da_pessoa e mostre quem me deve e a quem eu devo, por moeda.
+            {TRANSFER_GUIDANCE}
             Valores em reais no formato R$ 1.234,56; bitcoin com 5 casas (ex.: ₿ 0,12345). Não altere nenhum dado.
             """;
     }

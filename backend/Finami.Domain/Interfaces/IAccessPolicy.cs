@@ -22,6 +22,12 @@ public interface IAccessPolicy
     /// <summary>Responsável: completo; membro: conforme a visibilidade do grupo; demais: negado.</summary>
     StatementAccess GroupStatementAccess(long userId, Group group);
 
+    /// <summary>
+    /// Titulares "da mesma família" (feature 006, R-03): o mesmo usuário ou duas pessoas com ao menos uma
+    /// família em comum. Decide se uma transferência entre os titulares é permitida.
+    /// </summary>
+    Task<bool> AreFamilyAsync(long ownerUserId, long otherUserId);
+
     /// <summary>Quem controla a carteira, ou membro do grupo vinculado com visibilidade AllMembers.</summary>
     Task<bool> CanViewWalletStatementAsync(long userId, Account wallet);
 }

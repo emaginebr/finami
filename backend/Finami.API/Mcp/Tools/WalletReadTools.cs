@@ -44,6 +44,32 @@ public class WalletReadTools : McpToolBase
             userId => _walletService.GetAsync(userId, carteira_id),
             wallet => $"Carteira {Describe(wallet)}.");
 
+    [McpServerTool(Name = "destinos_de_transferencia", Title = "Destinos de transferência", ReadOnly = true,
+        Destructive = false, Idempotent = true, OpenWorld = false)]
+    [Description("Lista para onde é possível transferir a partir de uma carteira: carteiras da mesma moeda da " +
+                 "própria pessoa e das pessoas da família (sameCurrency), e as carteiras da própria pessoa na outra " +
+                 "moeda (conversion). balance nulo = saldo oculto para você. Use antes de previa_transferencia.")]
+    public Task<CallToolResult> DestinosDeTransferencia(ClaimsPrincipal user,
+        [Description("Id da carteira de origem (ex.: 5). Use listar_carteiras para descobrir.")] long carteira_origem_id) =>
+        ExecuteReadAsync(user, "destinos_de_transferencia",
+            userId => _walletService.GetTransferDestinationsAsync(userId, carteira_origem_id),
+            DescribeDestinations);
+
+    internal static string DescribeDestinations(TransferDestinationsResult result)
+    {
+        if (result.SameCurrency.Count == 0 && result.Conversion.Count == 0)
+            return "Nenhum destino possível para esta carteira (sem família ou sem carteiras compatíveis).";
+        static string Item(TransferDestinationInfo d) =>
+            $"{d.Name} de {d.OwnerFirstName} (id {d.WalletId}): " +
+            (d.Balance.HasValue ? McpFormat.Money(d.Balance.Value, d.Currency) : "saldo oculto");
+        var text = result.SameCurrency.Count == 0
+            ? "Nenhuma carteira da mesma moeda na família."
+            : $"Mesma moeda: {string.Join("; ", result.SameCurrency.Select(Item))}.";
+        if (result.Conversion.Count > 0)
+            text += $" Converter: {string.Join("; ", result.Conversion.Select(Item))}.";
+        return text;
+    }
+
     internal static string Describe(WalletInfo wallet)
     {
         var text = $"{wallet.Name} (id {wallet.WalletId}): {McpFormat.Money(wallet.Balance, wallet.Currency)}";

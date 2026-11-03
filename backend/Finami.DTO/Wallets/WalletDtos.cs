@@ -29,6 +29,10 @@ public class WalletInfo
     [JsonPropertyName("ownerName")]
     public string OwnerName { get; set; } = string.Empty;
 
+    /// <summary>Primeiro nome do titular (campo De da transferência, feature 006).</summary>
+    [JsonPropertyName("ownerFirstName")]
+    public string OwnerFirstName { get; set; } = string.Empty;
+
     [JsonPropertyName("groupId")]
     public long? GroupId { get; set; }
 
@@ -104,4 +108,46 @@ public class WalletGroupInfo
 {
     [JsonPropertyName("groupId")]
     public long? GroupId { get; set; }
+}
+
+/// <summary>Opção do campo Para da transferência (feature 006, contracts/api.md).</summary>
+public class TransferDestinationInfo
+{
+    [JsonPropertyName("walletId")]
+    public long WalletId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>"BRL" ou "BTC".</summary>
+    [JsonPropertyName("currency")]
+    public string Currency { get; set; } = string.Empty;
+
+    [JsonPropertyName("ownerUserId")]
+    public long OwnerUserId { get; set; }
+
+    [JsonPropertyName("ownerFirstName")]
+    public string OwnerFirstName { get; set; } = string.Empty;
+
+    /// <summary>Carteira do mesmo titular da origem.</summary>
+    [JsonPropertyName("isOwn")]
+    public bool IsOwn { get; set; }
+
+    /// <summary>Null quando quem consulta não pode ver o extrato da carteira (saldo oculto).</summary>
+    [JsonPropertyName("balance")]
+    public decimal? Balance { get; set; }
+}
+
+public class TransferDestinationsResult
+{
+    [JsonPropertyName("sourceWalletId")]
+    public long SourceWalletId { get; set; }
+
+    /// <summary>Mesma moeda da origem: carteiras do titular e das pessoas da família, sem a origem.</summary>
+    [JsonPropertyName("sameCurrency")]
+    public List<TransferDestinationInfo> SameCurrency { get; set; } = new();
+
+    /// <summary>Carteiras do próprio titular na outra moeda (conversão).</summary>
+    [JsonPropertyName("conversion")]
+    public List<TransferDestinationInfo> Conversion { get; set; } = new();
 }

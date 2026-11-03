@@ -44,6 +44,7 @@ export const makeWallet = (overrides: Partial<WalletInfo> = {}): WalletInfo => (
   isActive: true,
   ownerUserId: USER_ID,
   ownerName: "Ana Silva",
+  ownerFirstName: "Ana",
   groupId: null,
   balance: 0,
   estimatedBrl: null,
