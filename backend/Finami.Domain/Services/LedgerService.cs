@@ -13,7 +13,6 @@ namespace Finami.Domain.Services;
 /// <summary>Livro-razão de partidas dobradas (research R-06/R-07).</summary>
 public class LedgerService : ILedgerService
 {
-    public const string INSUFFICIENT_BALANCE = "Saldo insuficiente na carteira de origem.";
 
     private readonly IAccountRepository<Account> _accountRepository;
     private readonly ITransactionRepository<Transaction> _transactionRepository;
@@ -234,12 +233,7 @@ public class LedgerService : ILedgerService
             var walletIds = new[] { source, destination }.Where(a => a.IsWallet).Select(a => a.AccountId);
             await _unitOfWork.LockAccountsAsync(walletIds);
 
-            if (source.IsWallet)
-            {
-                var balance = await _accountRepository.GetBalanceAsync(source.AccountId);
-                if (balance < request.SourceAmount)
-                    throw new BusinessRuleException(INSUFFICIENT_BALANCE);
-            }
+            // Saldo de carteira pode ficar negativo: não há checagem de saldo disponível.
 
             await _transactionRepository.InsertWithEntriesAsync(transaction);
             await _unitOfWork.CommitAsync();

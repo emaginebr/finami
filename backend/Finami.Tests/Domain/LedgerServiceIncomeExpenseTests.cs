@@ -30,16 +30,15 @@ public class LedgerServiceIncomeExpenseTests
     }
 
     [Fact]
-    public async Task Expense_above_balance_is_rejected_without_inserting()
+    public async Task Expense_above_balance_leaves_wallet_negative()
     {
         _ctx.Wallet(100, OWNER, Currency.Brl, balance: 100m);
         var service = _ctx.CreateService();
 
-        var act = () => service.ExpenseAsync(OWNER, new ExpenseInfo { WalletId = 100, Amount = 100.01m });
+        await service.ExpenseAsync(OWNER, new ExpenseInfo { WalletId = 100, Amount = 100.01m });
 
-        (await act.Should().ThrowAsync<BusinessRuleException>()).WithMessage(LedgerService.INSUFFICIENT_BALANCE);
-        _ctx.Inserted.Should().BeEmpty();
-        _ctx.UnitOfWork.Verify(u => u.RollbackAsync(), Times.Once);
+        _ctx.Balances[100].Should().Be(-0.01m);
+        _ctx.UnitOfWork.Verify(u => u.CommitAsync(), Times.Once);
     }
 
     [Fact]

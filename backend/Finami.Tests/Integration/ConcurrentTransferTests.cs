@@ -33,7 +33,7 @@ public class ConcurrentTransferTests
         new BtcQuoteRepository(context));
 
     [IntegrationFact]
-    public async Task Parallel_transfers_exceeding_balance_accept_only_one_and_ledger_stays_balanced()
+    public async Task Parallel_transfers_exceeding_balance_are_all_posted_and_ledger_stays_balanced()
     {
         long userId, sourceId, destinationId;
         await using (var setup = NewContext())
@@ -71,10 +71,11 @@ public class ConcurrentTransferTests
 
         var results = await Task.WhenAll(TryTransfer(), TryTransfer());
 
-        results.Count(ok => ok).Should().Be(1);
+        // Saldo pode ficar negativo: as duas transferências entram, sem perder nenhuma
+        results.Should().OnlyContain(ok => ok);
         await using var check = NewContext();
         var balance = await new AccountRepository(check).GetBalanceAsync(sourceId);
-        balance.Should().Be(30m);
+        balance.Should().Be(-40m);
 
         var unbalanced = await check.LedgerEntries
             .GroupBy(e => new { e.TransactionId, e.Currency })

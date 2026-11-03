@@ -130,7 +130,7 @@ Content-Type: application/json
 
 { "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amount": 100.00, "description": "Mesada" }
 
-### 10. Saldo insuficiente → 422
+### 10. Transferência acima do saldo → 201 (a carteira de origem fica negativa)
 POST {{baseUrl}}/api/transactions/transfer
 Authorization: Bearer {{token}}
 Content-Type: application/json

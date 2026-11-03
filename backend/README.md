@@ -250,7 +250,7 @@ Os testes de integração são ignorados automaticamente quando `FINAMI_TEST_DB`
 Toda resposta diferente de 2xx (exceto 500) usa o envelope:
 
 ```json
-{ "sucesso": false, "mensagem": "Saldo insuficiente na carteira de origem.", "erros": [] }
+{ "sucesso": false, "mensagem": "A carteira \"Nubank\" está desativada.", "erros": [] }
 ```
 
 | Status | Quando |
@@ -260,7 +260,7 @@ Toda resposta diferente de 2xx (exceto 500) usa o envelope:
 | 403 | Sem permissão sobre o recurso |
 | 404 | Recurso inexistente |
 | 409 | Email já usado, membro duplicado, convite pendente duplicado ou convite que não está mais disponível, transação já estornada |
-| 422 | Regra de negócio (saldo insuficiente, carteira inativa, valor pequeno demais para conversão, inclusão direta de quem precisa ser convidado) |
+| 422 | Regra de negócio (carteira inativa, valor pequeno demais para conversão, inclusão direta de quem precisa ser convidado) |
 | 410 | Pedido de autorização OAuth vencido ou já respondido |
 | 503 | Cotação do bitcoin indisponível ou desatualizada |
 | 500 | Erro inesperado (corpo com a mensagem da exceção) |
