@@ -546,8 +546,8 @@
     "pickerTitleSource": "Carteira",
     "pickerTitleDestination": "Destino",
     "noWallets": "Você não tem carteiras ativas para lançar.",
-    "walletOption": "{{wallet}}, de {{owner}}, {{currency}}, saldo {{balance}}",
-    "walletOptionHidden": "{{wallet}}, de {{owner}}, {{currency}}, saldo oculto",
+    "walletOption": "{{owner}}, {{wallet}}, {{currency}}, saldo {{balance}}",
+    "walletOptionHidden": "{{owner}}, {{wallet}}, {{currency}}, saldo oculto",
     "walletCurrency": {
       "BRL": "real",
       "BTC": "bitcoin"

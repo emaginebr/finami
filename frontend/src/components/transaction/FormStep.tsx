@@ -85,7 +85,7 @@ const SelectorRow = ({
         disabled={disabled}
         onClick={onClick}
         className={cn(
-          listRowClasses({ twoLines: Boolean(wallet), withIcon: Boolean(wallet), interactive: !disabled }),
+          listRowClasses({ withIcon: Boolean(wallet), interactive: !disabled }),
           "disabled:cursor-not-allowed disabled:opacity-60",
         )}
       >

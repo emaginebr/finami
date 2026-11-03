@@ -48,6 +48,21 @@ describe("HomePage", () => {
       "GET /api/wallets": { body: WALLETS },
       "GET /api/groups": { body: GROUPS },
       "GET /api/quotes/btc": { body: QUOTE },
+      [`GET /api/users/${USER_ID}/debts`]: {
+        body: {
+          userId: USER_ID,
+          debts: [
+            {
+              counterpartUserId: 9,
+              counterpartName: "Bruno Lima",
+              counterpartFirstName: "Bruno",
+              currency: "BRL",
+              amount: 70,
+              direction: "owed",
+            },
+          ],
+        },
+      },
     });
 
     const { container } = renderHome();
@@ -57,7 +72,13 @@ describe("HomePage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Olá, Ana" })).toBeInTheDocument();
 
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(["Praia", "Silva", "Avulsas"]);
+    expect(headings).toEqual(["Dívidas", "Praia", "Silva", "Avulsas"]);
+
+    // Dívidas da pessoa logada, como na página dela (feature 006)
+    const debts = screen.getByRole("region", { name: "Dívidas" });
+    expect(
+      await within(debts).findByRole("link", { name: /^Bruno deve a você, \+R\$\s70,00$/ }),
+    ).toHaveAttribute("href", "/pessoas/9");
 
     const silva = screen.getByRole("region", { name: "Silva" });
     expect(within(silva).getByRole("link", { name: /Conta conjunta/ })).toHaveAttribute("href", "/carteiras/2");

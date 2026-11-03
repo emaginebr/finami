@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, WalletCards } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { DebtList } from "../components/debt/DebtList";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab } from "../components/layout/navigation";
 import { NotificationBell } from "../components/notification/NotificationBell";
@@ -15,10 +16,13 @@ import { BalanceHero, BalanceHeroSkeleton } from "../components/wallet/BalanceHe
 import { WalletCardSkeleton } from "../components/wallet/WalletCard";
 import { WalletSection } from "../components/wallet/WalletSection";
 import { useAuth } from "../hooks/useAuth";
+import { useBalance } from "../hooks/useBalance";
 import { useGroup } from "../hooks/useGroup";
 import { useQuote } from "../hooks/useQuote";
 import { useOnReconnected } from "../hooks/useOnReconnected";
+import { useTransaction } from "../hooks/useTransaction";
 import { isOfflineError } from "../types/api";
+import type { PersonDebt } from "../types/debt";
 import { useWallet } from "../hooks/useWallet";
 import { QuoteStatus } from "../types/quote";
 import { TransactionKind } from "../types/transaction";
@@ -46,6 +50,32 @@ const HomePage = () => {
   const { quote, status: quoteStatus, cached: quoteCached, loadQuote } = useQuote();
   const [phase, setPhase] = useState<LoadPhase>(LoadPhase.Loading);
   const [loadError, setLoadError] = useState<unknown>(null);
+  const { getUserDebts } = useBalance();
+  const { ledgerVersion } = useTransaction();
+  const sessionUserId = session?.user.userId ?? null;
+
+  // Dívidas da pessoa logada (feature 006): requisição própria; o erro dela nunca derruba a Home
+  const [debts, setDebts] = useState<PersonDebt[] | null>(null);
+  const [debtsError, setDebtsError] = useState<unknown>(null);
+  const [debtsRetrying, setDebtsRetrying] = useState(false);
+
+  const loadDebts = useCallback(async () => {
+    if (sessionUserId === null) return;
+    setDebtsRetrying(true);
+    try {
+      const data = await getUserDebts(sessionUserId);
+      setDebts(data.debts);
+      setDebtsError(null);
+    } catch (err) {
+      setDebtsError(err);
+    } finally {
+      setDebtsRetrying(false);
+    }
+  }, [getUserDebts, sessionUserId]);
+
+  useEffect(() => {
+    void loadDebts();
+  }, [loadDebts, ledgerVersion]);
 
   // Carteiras, famílias e cotação em paralelo (SC-001); a cotação nunca derruba a tela
   const load = useCallback(async () => {
@@ -76,6 +106,7 @@ const HomePage = () => {
   // Conexão voltou: recarrega o que a Home mostra (FR-012)
   useOnReconnected(() => {
     void load();
+    void loadDebts();
   });
 
   // Atalho antigo do app instalado (`/?acao=novo-lancamento`): leva à página Depositar
@@ -143,6 +174,17 @@ const HomePage = () => {
             quoteStatus={quoteStatus}
             quoteFromCache={quoteCached}
           />
+
+          {session ? (
+            <DebtList
+              person={{ userId: session.user.userId, firstName: session.user.firstName, isSelf: true }}
+              debts={debts}
+              error={debtsError}
+              retrying={debtsRetrying}
+              onRetry={() => void loadDebts()}
+              tab={AppTab.Home}
+            />
+          ) : null}
 
           {/* Convite de instalação (feature 005): só depois de os dados carregarem */}
           {phase === LoadPhase.Ready ? <InstallInvite /> : null}

@@ -119,7 +119,7 @@ const setup = (
 type User = ReturnType<typeof userEvent.setup>;
 
 /** A carteira pré-selecionada já aparece no formulário (nome acessível do campo De) */
-const ready = (name: RegExp = /^De Nubank, de Ana/) => screen.findByRole("button", { name });
+const ready = (name: RegExp = /^De Ana, Nubank,/) => screen.findByRole("button", { name });
 
 const paraButton = () => screen.getByRole("button", { name: /^Para/ });
 
@@ -139,7 +139,7 @@ describe("TransactionPage", () => {
       "POST /api/transactions/income": { status: 201, body: makeTransaction() },
     });
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "100,00");
     await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
 
@@ -160,7 +160,7 @@ describe("TransactionPage", () => {
       },
     });
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "100,00");
     await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
 
@@ -176,7 +176,7 @@ describe("TransactionPage", () => {
   it("sem internet o envio fica aria-disabled e não chama a API (feature 005)", async () => {
     const { fetchMock, user } = setup(TransactionKind.Income);
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "100,00");
     act(() => reportOffline());
     const submit = screen.getByRole("button", { name: "Registrar depósito" });
@@ -190,7 +190,7 @@ describe("TransactionPage", () => {
   it("bloqueia o envio de 0,001 em reais", async () => {
     const { fetchMock, user } = setup(TransactionKind.Expense);
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "0,001");
 
     expect(screen.getByText("Use no máximo 2 casas decimais para reais.")).toBeInTheDocument();
@@ -203,7 +203,7 @@ describe("TransactionPage", () => {
   // Campos De e Para (feature 006, US2)
   // -------------------------------------------------------------------------
 
-  it("opções do De mostram tipo, primeiro nome, nome e saldo", async () => {
+  it("opções do De mostram tipo, primeiro nome e saldo, sem o nome da carteira na tela", async () => {
     const { user } = setup(TransactionKind.Transfer);
 
     await ready();
@@ -212,9 +212,9 @@ describe("TransactionPage", () => {
     const listbox = await screen.findByRole("listbox", { name: "Carteira" });
     const options = within(listbox).getAllByRole("option");
     expect(options).toHaveLength(2);
-    expect(options[0]).toHaveAccessibleName(/^Nubank, de Ana, real, saldo R\$\s1\.234,56$/);
+    expect(options[0]).toHaveAccessibleName(/^Ana, Nubank, real, saldo R\$\s1\.234,56$/);
     expect(options[0]).toHaveAttribute("aria-selected", "true");
-    expect(options[1]).toHaveAccessibleName(/^Reserva BTC, de Ana, bitcoin, saldo ₿\s0,00250$/);
+    expect(options[1]).toHaveAccessibleName(/^Ana, Reserva BTC, bitcoin, saldo ₿\s0,00250$/);
     expect(within(options[1]!).getByText("Ana")).toBeInTheDocument();
   });
 
@@ -227,16 +227,16 @@ describe("TransactionPage", () => {
     const listbox = await screen.findByRole("listbox", { name: "Destino" });
     const family = within(listbox).getByRole("group", { name: "Família" });
     expect(within(family).getAllByRole("option").map((o) => o.getAttribute("aria-label"))).toEqual([
-      expect.stringMatching(/^Poupança, de Ana, real, saldo R\$\s300,00$/),
-      "Mesada, de Bruno, real, saldo oculto",
+      expect.stringMatching(/^Ana, Poupança, real, saldo R\$\s300,00$/),
+      "Bruno, Mesada, real, saldo oculto",
     ]);
     const conversion = within(listbox).getByRole("group", { name: "Converter" });
-    expect(within(conversion).getByRole("option", { name: /^Reserva BTC, de Ana, bitcoin/ })).toBeInTheDocument();
-    expect(within(listbox).queryByRole("option", { name: /^Nubank/ })).not.toBeInTheDocument();
+    expect(within(conversion).getByRole("option", { name: /^Ana, Reserva BTC, bitcoin/ })).toBeInTheDocument();
+    expect(within(listbox).queryByRole("option", { name: /Nubank/ })).not.toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
 
-    await user.click(within(family).getByRole("option", { name: /^Mesada/ }));
-    expect(await screen.findByRole("button", { name: /^Para Mesada, de Bruno, real, saldo oculto$/ })).toBeInTheDocument();
+    await user.click(within(family).getByRole("option", { name: /Mesada/ }));
+    expect(await screen.findByRole("button", { name: /^Para Bruno, Mesada, real, saldo oculto$/ })).toBeInTheDocument();
   });
 
   it("não oferece mais destino por código da carteira (FR-013)", async () => {
@@ -254,18 +254,20 @@ describe("TransactionPage", () => {
     const { fetchMock, user } = setup(TransactionKind.Transfer);
 
     await ready();
-    await pickDestination(user, /^Mesada/);
-    expect(paraButton()).toHaveAccessibleName(/^Para Mesada/);
+    await pickDestination(user, /Mesada/);
+    expect(paraButton()).toHaveAccessibleName(/^Para Bruno, Mesada,/);
 
-    await pickSource(user, /^Reserva BTC/);
+    await pickSource(user, /Reserva BTC/);
 
     await waitFor(() => expect(paraButton()).toHaveAccessibleName("Para Escolher destino"));
     expect(requestsTo(fetchMock, "GET /api/wallets/2/transfer-destinations")).toHaveLength(1);
 
     await user.click(paraButton());
     const listbox = await screen.findByRole("listbox", { name: "Destino" });
-    expect(within(listbox).getByRole("group", { name: "Família" })).toHaveTextContent("Cofre");
-    expect(within(listbox).queryByRole("option", { name: /^Mesada/ })).not.toBeInTheDocument();
+    expect(
+      within(within(listbox).getByRole("group", { name: "Família" })).getByRole("option", { name: /Cofre/ }),
+    ).toBeInTheDocument();
+    expect(within(listbox).queryByRole("option", { name: /Mesada/ })).not.toBeInTheDocument();
   });
 
   it("sem destinos: aviso no lugar do Para e \"Continuar\" aria-disabled, focável, com a explicação (REVIEW-006 M-1)", async () => {
@@ -315,11 +317,11 @@ describe("TransactionPage", () => {
 
     await ready();
     // De: escolher uma opção devolve o foco ao campo De
-    await pickSource(user, /^Nubank/);
-    await waitFor(() => expect(screen.getByRole("button", { name: /^De Nubank/ })).toHaveFocus());
+    await pickSource(user, /Nubank/);
+    await waitFor(() => expect(screen.getByRole("button", { name: /^De Ana, Nubank,/ })).toHaveFocus());
 
     // Para: idem
-    await pickDestination(user, /^Mesada/);
+    await pickDestination(user, /Mesada/);
     await waitFor(() => expect(paraButton()).toHaveFocus());
 
     // "‹ Voltar" do seletor também devolve ao campo que o abriu
@@ -402,12 +404,12 @@ describe("TransactionPage", () => {
     expect(await axe(container)).toHaveNoViolations();
 
     await user.keyboard("{Enter}");
-    const para = await screen.findByRole("button", { name: /^Para Mesada, de Bruno/ });
+    const para = await screen.findByRole("button", { name: /^Para Bruno, Mesada,/ });
     await waitFor(() => expect(para).toHaveFocus());
 
     // Reabrir: a parada de Tab é a opção escolhida
     await user.click(para);
-    const reopened = await screen.findByRole("option", { name: /^Mesada/ });
+    const reopened = await screen.findByRole("option", { name: /Mesada/ });
     expect(reopened).toHaveAttribute("aria-selected", "true");
     expect(reopened).toHaveAttribute("tabindex", "0");
     await waitFor(() => expect(reopened).toHaveFocus());
@@ -431,7 +433,7 @@ describe("TransactionPage", () => {
     });
 
     await ready();
-    await pickDestination(user, /^Mesada/);
+    await pickDestination(user, /Mesada/);
     await user.type(screen.getByLabelText("Valor"), "250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -455,7 +457,7 @@ describe("TransactionPage", () => {
     });
 
     await ready();
-    await pickDestination(user, /^Mesada/);
+    await pickDestination(user, /Mesada/);
     await user.type(screen.getByLabelText("Valor"), "250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -481,7 +483,7 @@ describe("TransactionPage", () => {
     });
 
     await ready();
-    await pickDestination(user, /^Reserva BTC/);
+    await pickDestination(user, /Reserva BTC/);
     // Conversão real → bitcoin: sem alternador (só bitcoin → bitcoin)
     expect(screen.queryByRole("group", { name: "Informar valor em" })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Valor"), "500");
@@ -507,7 +509,7 @@ describe("TransactionPage", () => {
     });
 
     await ready();
-    await pickDestination(user, /^Reserva BTC/);
+    await pickDestination(user, /Reserva BTC/);
     await user.type(screen.getByLabelText("Valor"), "500");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -524,10 +526,10 @@ describe("TransactionPage", () => {
   it("alternador só aparece com De e Para em bitcoin e volta para bitcoin fora disso", async () => {
     const { container, user } = setup(TransactionKind.Transfer, {}, 2);
 
-    await ready(/^De Reserva BTC/);
+    await ready(/^De Ana, Reserva BTC,/);
     expect(screen.queryByRole("group", { name: "Informar valor em" })).not.toBeInTheDocument();
 
-    await pickDestination(user, /^Cofre/);
+    await pickDestination(user, /Cofre/);
     const toggle = screen.getByRole("group", { name: "Informar valor em" });
     const btc = within(toggle).getByRole("button", { name: "Bitcoin" });
     const brl = within(toggle).getByRole("button", { name: "Reais" });
@@ -545,10 +547,10 @@ describe("TransactionPage", () => {
     await user.type(screen.getByLabelText("Valor"), "200");
 
     // Para em real (venda): o alternador some; ao voltar para o Cofre, está em bitcoin
-    await pickDestination(user, /^Nubank/);
+    await pickDestination(user, /Nubank/);
     expect(screen.queryByRole("group", { name: "Informar valor em" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Valor")).toHaveValue("");
-    await pickDestination(user, /^Cofre/);
+    await pickDestination(user, /Cofre/);
     expect(within(screen.getByRole("group", { name: "Informar valor em" })).getByRole("button", { name: "Bitcoin" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -581,8 +583,8 @@ describe("TransactionPage", () => {
       2,
     );
 
-    await ready(/^De Reserva BTC/);
-    await pickDestination(user, /^Cofre/);
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
     await user.click(screen.getByRole("button", { name: "Reais" }));
     await user.type(screen.getByLabelText("Valor"), "200");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -613,8 +615,8 @@ describe("TransactionPage", () => {
       2,
     );
 
-    await ready(/^De Reserva BTC/);
-    await pickDestination(user, /^Cofre/);
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
     await user.click(screen.getByRole("button", { name: "Reais" }));
     await user.type(screen.getByLabelText("Valor"), "200");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -637,8 +639,8 @@ describe("TransactionPage", () => {
       2,
     );
 
-    await ready(/^De Reserva BTC/);
-    await pickDestination(user, /^Cofre/);
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
     await user.click(screen.getByRole("button", { name: "Reais" }));
     await user.type(screen.getByLabelText("Valor"), "0,01");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -656,7 +658,7 @@ describe("TransactionPage", () => {
       "POST /api/transactions/expense": apiError(422, "Saldo insuficiente na carteira de origem."),
     });
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "2000");
     await user.type(screen.getByLabelText(/Descrição/), "Notebook");
     await user.click(screen.getByRole("button", { name: "Registrar saque" }));
@@ -675,7 +677,7 @@ describe("TransactionPage", () => {
         }),
     });
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "100");
     await user.dblClick(screen.getByRole("button", { name: "Registrar depósito" }));
 
@@ -686,7 +688,7 @@ describe("TransactionPage", () => {
 
   it("é uma página (não um modal) com o título do tipo e o voltar para a origem", async () => {
     setup(TransactionKind.Expense);
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
 
     expect(screen.getByRole("heading", { level: 1, name: "Sacar" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -709,7 +711,7 @@ describe("TransactionPage", () => {
       extraRoutes: [{ path: "/", element: <p>Home</p> }],
     });
 
-    await ready(/^Carteira Nubank/);
+    await ready(/^Carteira Ana, Nubank,/);
     await user.type(screen.getByLabelText("Valor"), "10");
     await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
 
@@ -720,7 +722,7 @@ describe("TransactionPage", () => {
     const { container, user } = setup(TransactionKind.Transfer);
 
     await ready();
-    await pickDestination(user, /^Mesada/);
+    await pickDestination(user, /Mesada/);
 
     expect(await axe(container)).toHaveNoViolations();
   });
