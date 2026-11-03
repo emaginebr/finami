@@ -8,6 +8,7 @@ import {
   formatSigned,
   fromCents,
   parseAmountInput,
+  parseSatsInput,
   toCents,
 } from "./money";
 
@@ -26,9 +27,10 @@ describe("formatação", () => {
     expect(formatBtc(21000000)).toBe(`₿${NBSP}21.000.000,00000`);
   });
 
-  it("formata bitcoin com 5 casas fixas, truncando (nunca arredonda para cima)", () => {
-    expect(formatBtc(0.12345678)).toBe(`₿${NBSP}0,12345`);
-    expect(formatBtc(0.99999999)).toBe(`₿${NBSP}0,99999`);
+  it("formata bitcoin com 5 casas fixas, arredondando só na exibição", () => {
+    expect(formatBtc(0.12345678)).toBe(`₿${NBSP}0,12346`);
+    expect(formatBtc(0.12345)).toBe(`₿${NBSP}0,12345`);
+    expect(formatBtc(0.99999999)).toBe(`₿${NBSP}1,00000`);
     expect(formatBtc(1)).toBe(`₿${NBSP}1,00000`);
     expect(formatBtc("0.00000001")).toBe(`₿${NBSP}0,00000`);
   });
@@ -116,6 +118,26 @@ describe("parseAmountInput", () => {
     expect(parseAmountInput("12.34.5", Currency.BRL).error).toBe(AMOUNT_ERRORS.invalid);
     expect(parseAmountInput("1e5", Currency.BRL).error).toBe(AMOUNT_ERRORS.invalid);
     expect(parseAmountInput(",", Currency.BRL).error).toBe(AMOUNT_ERRORS.invalid);
+  });
+});
+
+describe("parseSatsInput", () => {
+  it("converte satoshis inteiros em bitcoin com até 8 casas, sem ponto flutuante", () => {
+    expect(parseSatsInput("12345")).toEqual({ value: "0.00012345", error: null });
+    expect(parseSatsInput("1")).toEqual({ value: "0.00000001", error: null });
+    expect(parseSatsInput("100000000")).toEqual({ value: "1", error: null });
+    expect(parseSatsInput("150000001")).toEqual({ value: "1.50000001", error: null });
+    expect(parseSatsInput("1.000")).toEqual({ value: "0.00001", error: null });
+    expect(parseSatsInput("007")).toEqual({ value: "0.00000007", error: null });
+  });
+
+  it("recusa vazio, zero, negativo e decimais", () => {
+    expect(parseSatsInput("").error).toBe(AMOUNT_ERRORS.required);
+    expect(parseSatsInput("0").error).toBe(AMOUNT_ERRORS.notPositive);
+    expect(parseSatsInput("-5").error).toBe(AMOUNT_ERRORS.notPositive);
+    expect(parseSatsInput("1,5").error).toBe(AMOUNT_ERRORS.satsInteger);
+    expect(parseSatsInput("10.5").error).toBe(AMOUNT_ERRORS.satsInteger);
+    expect(parseSatsInput("1.2.3").error).toBe(AMOUNT_ERRORS.invalid);
   });
 });
 

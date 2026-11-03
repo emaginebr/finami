@@ -23,6 +23,8 @@ export enum FocusReturn {
 /** Unidade em que o valor de uma transferência bitcoin → bitcoin é informado (feature 006, FR-020) */
 export enum AmountUnit {
   Btc = "btc",
+  /** Satoshis inteiros (1 BTC = 100.000.000 sats), convertidos para BTC com 8 casas */
+  Sat = "sat",
   Brl = "brl",
 }
 

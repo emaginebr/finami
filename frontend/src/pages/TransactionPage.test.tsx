@@ -608,6 +608,53 @@ describe("TransactionPage", () => {
     ]);
   });
 
+  it("em satoshis: o valor inteiro vira BTC com 8 casas na prévia e no registro", async () => {
+    const { fetchMock, router, user } = setup(
+      TransactionKind.Transfer,
+      {
+        "POST /api/transactions/transfer/preview": {
+          body: { type: "Transfer", sourceAmount: 0.00012345, destinationAmount: 0.00012345, quote: null },
+        },
+        "POST /api/transactions/transfer": {
+          status: 201,
+          body: makeTransaction({
+            type: TransactionType.Transfer,
+            source: { accountId: 2, name: "Reserva BTC", kind: "Wallet", currency: Currency.BTC, ownerName: "Ana Silva" },
+            destination: { accountId: 14, name: "Cofre", kind: "Wallet", currency: Currency.BTC, ownerName: "Bruno Souza" },
+            sourceAmount: 0.00012345,
+            destinationAmount: 0.00012345,
+          }),
+        },
+      },
+      2,
+    );
+
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
+    const sats = screen.getByRole("button", { name: "Satoshis" });
+    await user.click(sats);
+    expect(sats).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Valor")).toHaveAccessibleDescription(/em satoshis/);
+
+    // Satoshi não tem casas decimais
+    await user.type(screen.getByLabelText("Valor"), "1,5");
+    expect(screen.getByText("Satoshis são números inteiros, sem vírgula.")).toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Valor"));
+    await user.type(screen.getByLabelText("Valor"), "12345");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    await screen.findByRole("button", { name: "Registrar transferência" });
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
+      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.00012345", description: null },
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Registrar transferência" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([
+      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.00012345", description: null },
+    ]);
+  });
+
   it("em reais com cotação indisponível: \"Informar em bitcoin\" volta ao formulário em bitcoin", async () => {
     const { user } = setup(
       TransactionKind.Transfer,

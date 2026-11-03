@@ -131,7 +131,7 @@ export interface FormStepProps {
   amountText: string;
   onAmountChange: (text: string) => void;
   amountError: string | null;
-  /** Mostra o alternador "Bitcoin | Reais" (De e Para em bitcoin) */
+  /** Mostra o alternador "Bitcoin | Satoshis | Reais" (De e Para em bitcoin) */
   showAmountUnit: boolean;
   amountUnit: AmountUnit;
   onAmountUnitChange: (unit: AmountUnit) => void;
@@ -181,6 +181,7 @@ export const FormStep = ({
   const destinationErrorId = useId();
   const isTransfer = kind === TransactionKind.Transfer;
   const inReais = showAmountUnit && amountUnit === AmountUnit.Brl;
+  const inSats = showAmountUnit && amountUnit === AmountUnit.Sat;
   const amountCurrency = inReais ? Currency.BRL : (sourceWallet?.currency ?? Currency.BRL);
 
   return (
@@ -253,6 +254,7 @@ export const FormStep = ({
         <MoneyInput
           label={t("transaction.amount")}
           currency={amountCurrency}
+          sats={inSats}
           value={amountText}
           onChange={onAmountChange}
           error={amountError}

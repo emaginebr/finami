@@ -8,10 +8,10 @@ export interface AmountUnitToggleProps {
   disabled?: boolean;
 }
 
-const UNITS: AmountUnit[] = [AmountUnit.Btc, AmountUnit.Brl];
+const UNITS: AmountUnit[] = [AmountUnit.Btc, AmountUnit.Sat, AmountUnit.Brl];
 
 /**
- * Alternador "Bitcoin | Reais" da linha do rótulo Valor (components.md §10): dois botões
+ * Alternador "Bitcoin | Satoshis | Reais" da linha do rótulo Valor (components.md §10): dois botões
  * `aria-pressed` na ordem normal de Tab (sem roving tabindex). Tocar no já pressionado não faz nada.
  */
 export const AmountUnitToggle = ({ value, onChange, disabled = false }: AmountUnitToggleProps) => {
@@ -34,7 +34,7 @@ export const AmountUnitToggle = ({ value, onChange, disabled = false }: AmountUn
               if (!pressed) onChange(unit);
             }}
             className={cn(
-              "min-h-touch min-w-[5.5rem] rounded-pill px-3 text-subhead font-semibold motion-safe:transition-colors",
+              "min-h-touch min-w-[4.5rem] rounded-pill px-3 text-subhead font-semibold motion-safe:transition-colors",
               "disabled:cursor-not-allowed disabled:opacity-60",
               pressed ? "bg-brand-tint text-text" : "text-text-muted hover:text-text",
             )}

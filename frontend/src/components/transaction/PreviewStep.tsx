@@ -49,12 +49,13 @@ export const PreviewStep = ({
   const sourceText = (() => {
     if (sourceAmount === null) return `${currencySymbol(sourceCurrency)} ${EMPTY_VALUE}`;
     if (blocked) return formatMoney(sourceAmount, sourceCurrency);
-    return formatSigned(-Math.abs(Number(sourceAmount)), sourceCurrency, inReais);
+    // Confirmação: bitcoin sempre com as 8 casas que serão gravadas (SC-005)
+    return formatSigned(-Math.abs(Number(sourceAmount)), sourceCurrency, true);
   })();
 
   const destinationText =
     preview && !blocked
-      ? formatSigned(Math.abs(preview.destinationAmount), destination.currency, inReais)
+      ? formatSigned(Math.abs(preview.destinationAmount), destination.currency, true)
       : `${currencySymbol(destination.currency)} ${EMPTY_VALUE}`;
 
   return (
