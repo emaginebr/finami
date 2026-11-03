@@ -140,18 +140,17 @@ public class LedgerServiceTransferTests
     }
 
     [Fact]
-    public async Task Insufficient_balance_rejects_transfer_and_keeps_balances()
+    public async Task Transfer_above_balance_leaves_source_negative()
     {
         _ctx.Wallet(100, ANA, Currency.Brl, balance: 50m);
         _ctx.Wallet(102, ANA, Currency.Brl);
         var service = _ctx.CreateService();
 
-        var act = () => service.TransferAsync(ANA, new TransferInfo
+        await service.TransferAsync(ANA, new TransferInfo
             { SourceWalletId = 100, DestinationWalletId = 102, Amount = 50.01m });
 
-        await act.Should().ThrowAsync<BusinessRuleException>();
-        _ctx.Balances[100].Should().Be(50m);
-        _ctx.Balances[102].Should().Be(0m);
+        _ctx.Balances[100].Should().Be(-0.01m);
+        _ctx.Balances[102].Should().Be(50.01m);
     }
 
     [Fact]
