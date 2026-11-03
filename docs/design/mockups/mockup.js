@@ -178,6 +178,7 @@
     ['add-member-sheet.html', 'Adicionar membro'], ['notifications.html', 'Notificações'],
     ['oauth-consent.html', 'Autorizar assistente'], ['account-connections.html', 'Assistentes conectados'], ['oauth-error.html', 'Erro OAuth (API)'],
     ['pwa-states.html', 'PWA (offline, atualização, instalação)'],
+    ['family-debts-transfers.html', 'Dívidas e transferências (006)'],
   ];
   const here = location.pathname.split('/').pop();
   document.querySelectorAll('nav[data-pages]').forEach((nav) => {

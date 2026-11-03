@@ -13,6 +13,8 @@ export interface WalletInfo {
   /** Titular da carteira */
   ownerUserId: number;
   ownerName: string;
+  /** Primeiro nome do titular (feature 006, campos De/Para) */
+  ownerFirstName: string;
   /** Família à qual a carteira está ligada; `null` = avulsa */
   groupId: number | null;
   /** Saldo na moeda da carteira */
@@ -47,13 +49,26 @@ export interface WalletGroupInfo {
   groupId: number | null;
 }
 
-/** Resposta de `GET /api/wallets/{id}/public` (confirmação de destino de terceiro) */
-export interface WalletPublicInfo {
+/** Opção do campo Para (`GET /api/wallets/{id}/transfer-destinations`, feature 006) */
+export interface TransferDestination {
   walletId: number;
   name: string;
   currency: Currency;
-  ownerName: string;
-  isActive: boolean;
+  ownerUserId: number;
+  ownerFirstName: string;
+  /** Carteira do próprio titular da origem */
+  isOwn: boolean;
+  /** `null` = saldo oculto para quem consulta (FR-018) */
+  balance: number | null;
+}
+
+/** Resposta de `GET /api/wallets/{id}/transfer-destinations` */
+export interface TransferDestinationsResult {
+  sourceWalletId: number;
+  /** Mesma moeda: carteiras do titular e das pessoas da família, sem a origem */
+  sameCurrency: TransferDestination[];
+  /** Outra moeda: só carteiras do próprio titular (conversão) */
+  conversion: TransferDestination[];
 }
 
 /** Filtros de `GET /api/wallets` */

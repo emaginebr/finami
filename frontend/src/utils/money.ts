@@ -35,6 +35,20 @@ const NUMBER_FORMATS: Record<Currency, Intl.NumberFormat> = {
   } as Intl.NumberFormatOptions),
 };
 
+/**
+ * Precisão total da moeda (BTC com 8 casas fixas, truncado). Usada onde o valor exibido
+ * tem de ser exatamente o registrado (confirmação, SC-005) ou onde 5 casas zerariam o valor.
+ * Sem `trunc`: a API já devolve no máximo 8 casas, e truncar o double (0,00097591 →
+ * 0,000975909999…) poderia perder o último satoshi.
+ */
+const FULL_NUMBER_FORMATS: Record<Currency, Intl.NumberFormat> = {
+  [Currency.BRL]: NUMBER_FORMATS[Currency.BRL],
+  [Currency.BTC]: new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: CURRENCY_DECIMALS[Currency.BTC],
+    maximumFractionDigits: CURRENCY_DECIMALS[Currency.BTC],
+  }),
+};
+
 /** Texto exibido quando o valor não é um número válido */
 export const EMPTY_VALUE = "—";
 
@@ -47,10 +61,10 @@ interface FormatParts {
   body: string;
 }
 
-const formatParts = (value: number | string, currency: Currency): FormatParts | null => {
+const formatParts = (value: number | string, currency: Currency, full: boolean = false): FormatParts | null => {
   const n = toNumber(value);
   if (!Number.isFinite(n)) return null;
-  const digits = NUMBER_FORMATS[currency].format(Math.abs(n));
+  const digits = (full ? FULL_NUMBER_FORMATS : NUMBER_FORMATS)[currency].format(Math.abs(n));
   // Evita "−R$ 0,00" quando o valor arredondado é zero
   const nonZero = /[1-9]/.test(digits);
   return {
@@ -73,13 +87,30 @@ export const formatBrl = (value: number | string): string => formatMoney(value, 
 /** `₿ 0,12345` (5 casas fixas, truncado); negativos como `−₿ 0,12345` */
 export const formatBtc = (value: number | string): string => formatMoney(value, Currency.BTC);
 
-/** Valor com sinal explícito: `+R$ 100,00`, `−R$ 100,00` ou `R$ 0,00` */
-export const formatSigned = (value: number | string, currency: Currency): string => {
-  const parts = formatParts(value, currency);
+/**
+ * Valor com sinal explícito: `+R$ 100,00`, `−R$ 100,00` ou `R$ 0,00`.
+ * Com `full`, BTC sai com 8 casas fixas (`+₿ 0,00040000`).
+ */
+export const formatSigned = (value: number | string, currency: Currency, full: boolean = false): string => {
+  const parts = formatParts(value, currency, full);
   if (!parts) return EMPTY_VALUE;
   if (parts.negative) return `${MINUS_SIGN}${parts.body}`;
   if (parts.positive) return `+${parts.body}`;
   return parts.body;
+};
+
+/** Na precisão total da moeda: `₿ 0,00040000` (8 casas fixas), `R$ 200,00` */
+export const formatMoneyFull = (value: number | string, currency: Currency): string => {
+  const parts = formatParts(value, currency, true);
+  if (!parts) return EMPTY_VALUE;
+  return parts.negative ? `${MINUS_SIGN}${parts.body}` : parts.body;
+};
+
+/** O valor (≠ 0) some na exibição padrão (ex.: ₿ 0,000004 → "₿ 0,00000") */
+export const hidesInDisplay = (value: number | string, currency: Currency): boolean => {
+  const n = toNumber(value);
+  if (!Number.isFinite(n) || n === 0) return false;
+  return !/[1-9]/.test(NUMBER_FORMATS[currency].format(Math.abs(n)));
 };
 
 /** Partes de um valor formatado, para exibir sinal e símbolo em estilos diferentes */

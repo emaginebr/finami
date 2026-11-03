@@ -28,8 +28,10 @@ public class TransactionsController : FinamiControllerBase
         Execute(async () => StatusCode(StatusCodes.Status201Created, await _ledgerService.ExpenseAsync(CurrentUserId, info)));
 
     /// <summary>
-    /// Transfere entre carteiras. O valor é na moeda da origem; BRL→BTC vira compra e BTC→BRL vira venda
-    /// na cotação atual. O destino pode ser a carteira de qualquer usuário.
+    /// Transfere entre carteiras. O valor é na moeda da origem (<c>amount</c>) ou, entre carteiras de bitcoin, em
+    /// reais (<c>amountBrl</c>, convertido pela cotação atual). BRL→BTC vira compra e BTC→BRL vira venda na
+    /// cotação atual, só entre carteiras do mesmo titular. O destino deve ser do próprio titular da origem ou de
+    /// alguém com família em comum com ele (feature 006); a transferência entre pessoas vira dívida.
     /// </summary>
     [HttpPost("transfer")]
     public Task<IActionResult> Transfer([FromBody] TransferInfo info) =>

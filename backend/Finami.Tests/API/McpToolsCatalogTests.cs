@@ -12,7 +12,7 @@ using ModelContextProtocol.Protocol;
 namespace Finami.Tests.API;
 
 /// <summary>
-/// T059 — contrato do catálogo (contracts/mcp-tools.md): exatamente as 38 ferramentas, anotações corretas,
+/// T059 — contrato do catálogo (contracts/mcp-tools.md + feature 006): exatamente as 40 ferramentas, anotações corretas,
 /// descrições em pt-BR, <c>chave_repeticao</c> só nas marcadas ⟲ e nada de senha/conta/conexões (FR-020).
 /// Também confere recursos e prompts publicados.
 /// </summary>
@@ -27,6 +27,8 @@ public class McpToolsCatalogTests : IClassFixture<FinamiApiFactory>
         ["saldo_total"] = new(true, false, true),
         ["listar_carteiras"] = new(true, false, true),
         ["obter_carteira"] = new(true, false, true),
+        ["destinos_de_transferencia"] = new(true, false, true),
+        ["dividas_da_pessoa"] = new(true, false, true),
         ["listar_familias"] = new(true, false, true),
         ["obter_familia"] = new(true, false, true),
         ["saldos_da_familia"] = new(true, false, true),
@@ -79,9 +81,9 @@ public class McpToolsCatalogTests : IClassFixture<FinamiApiFactory>
     }
 
     [Fact]
-    public void Contract_has_38_tools()
+    public void Contract_has_40_tools()
     {
-        CONTRACT.Should().HaveCount(38);
+        CONTRACT.Should().HaveCount(40);
     }
 
     [Fact]

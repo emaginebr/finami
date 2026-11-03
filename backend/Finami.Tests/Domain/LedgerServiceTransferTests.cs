@@ -1,5 +1,7 @@
 using Finami.Domain.Enums;
 using Finami.Domain.Exceptions;
+using System.Globalization;
+using Finami.Domain.Models;
 using Finami.DTO.Transactions;
 using FluentAssertions;
 using Moq;
@@ -10,6 +12,8 @@ public class LedgerServiceTransferTests
 {
     private const long ANA = 7;
     private const long PEDRO = 8;
+    private const long CAIO = 9;      // dependente; a responsável (ANA) controla a carteira dele
+    private const long CARLA = 10;    // fora da família de Caio
     private readonly LedgerTestContext _ctx = new();
 
     [Fact]
@@ -99,10 +103,11 @@ public class LedgerServiceTransferTests
     }
 
     [Fact]
-    public async Task Transfer_to_wallet_of_another_user_is_allowed()
+    public async Task Transfer_to_wallet_of_family_member_is_allowed()
     {
         _ctx.Wallet(100, ANA, Currency.Brl, balance: 500m);
         _ctx.Wallet(200, PEDRO, Currency.Brl);
+        _ctx.ShareFamily(ANA, PEDRO);
         var service = _ctx.CreateService();
 
         var result = await service.TransferAsync(ANA, new TransferInfo
@@ -218,5 +223,232 @@ public class LedgerServiceTransferTests
         var act = () => service.ReverseAsync(PEDRO, expense.TransactionId, null);
 
         await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    // ---------------- Feature 006: só para a família (US2) ----------------
+
+    [Fact]
+    public async Task Transfer_outside_the_family_is_rejected_without_posting()
+    {
+        _ctx.Wallet(100, ANA, Currency.Brl, balance: 500m);
+        _ctx.Wallet(300, CARLA, Currency.Brl);
+        var service = _ctx.CreateService();
+
+        var transfer = () => service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 300, Amount = 100m });
+        var preview = () => service.PreviewTransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 300, Amount = 100m });
+
+        await transfer.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("Só é possível transferir para pessoas da sua família.");
+        await preview.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("Só é possível transferir para pessoas da sua família.");
+        _ctx.Inserted.Should().BeEmpty();
+        _ctx.UnitOfWork.Verify(u => u.BeginTransactionAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task Transfer_between_own_wallets_does_not_need_a_family()
+    {
+        _ctx.Wallet(100, ANA, Currency.Brl, balance: 500m);
+        _ctx.Wallet(101, ANA, Currency.Brl);
+        var service = _ctx.CreateService();
+
+        var result = await service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 101, Amount = 10m });
+
+        result.Type.Should().Be("Transfer");
+    }
+
+    [Fact]
+    public async Task Family_rule_is_evaluated_for_the_owner_of_the_source_not_for_who_posts()
+    {
+        _ctx.Wallet(400, CAIO, Currency.Brl, balance: 100m);
+        _ctx.Wallet(300, CARLA, Currency.Brl);
+        _ctx.Wallet(200, PEDRO, Currency.Brl);
+        // A responsável (ANA) controla a carteira do dependente e é da família de Carla; Caio não é.
+        _ctx.AccessPolicy.Setup(p => p.EnsureCanControlWalletAsync(ANA, It.Is<Account>(a => a.AccountId == 400)))
+            .Returns(Task.CompletedTask);
+        _ctx.ShareFamily(ANA, CARLA);
+        _ctx.ShareFamily(CAIO, PEDRO);
+        var service = _ctx.CreateService();
+
+        var toCarla = () => service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 400, DestinationWalletId = 300, Amount = 10m });
+        await toCarla.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("Só é possível transferir para pessoas da sua família.");
+
+        var toPedro = await service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 400, DestinationWalletId = 200, Amount = 10m });
+        toPedro.Type.Should().Be("Transfer");
+        _ctx.Inserted.Single().CreatedByUserId.Should().Be(ANA);
+        _ctx.AccessPolicy.Verify(p => p.AreFamilyAsync(CAIO, CARLA), Times.Once);
+        _ctx.AccessPolicy.Verify(p => p.AreFamilyAsync(ANA, It.IsAny<long>()), Times.Never);
+    }
+
+    // ---------------- Feature 006: conversão só na mesma pessoa (US3) ----------------
+
+    [Theory]
+    [InlineData(Currency.Brl, Currency.Btc)]
+    [InlineData(Currency.Btc, Currency.Brl)]
+    public async Task Conversion_to_another_owner_is_rejected_before_fetching_the_quote(Currency from, Currency to)
+    {
+        _ctx.Wallet(100, ANA, from, balance: 1m);
+        _ctx.Wallet(200, PEDRO, to);
+        _ctx.ShareFamily(ANA, PEDRO);
+        _ctx.SetQuote(500_000m);
+        var service = _ctx.CreateService();
+
+        var transfer = () => service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 200, Amount = 0.5m });
+        var preview = () => service.PreviewTransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 200, Amount = 0.5m });
+
+        await transfer.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("Conversão entre real e bitcoin só entre carteiras da mesma pessoa.");
+        await preview.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("Conversão entre real e bitcoin só entre carteiras da mesma pessoa.");
+        _ctx.Quotes.Verify(q => q.GetForConversionAsync(), Times.Never);
+        _ctx.Inserted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Conversion_rule_comes_before_the_family_rule()
+    {
+        _ctx.Wallet(100, ANA, Currency.Brl, balance: 100m);
+        _ctx.Wallet(300, CARLA, Currency.Btc);
+        var service = _ctx.CreateService();
+
+        var act = () => service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 300, Amount = 10m });
+
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("Conversão entre real e bitcoin só entre carteiras da mesma pessoa.");
+        _ctx.AccessPolicy.Verify(p => p.AreFamilyAsync(It.IsAny<long>(), It.IsAny<long>()), Times.Never);
+    }
+
+    // ---------------- Feature 006: bitcoin informado em reais (US4) ----------------
+
+    [Fact]
+    public async Task Btc_transfer_in_brl_converts_at_quote_and_records_it()
+    {
+        _ctx.Wallet(500, ANA, Currency.Btc, balance: 0.01m);
+        _ctx.Wallet(501, PEDRO, Currency.Btc);
+        _ctx.ShareFamily(ANA, PEDRO);
+        _ctx.SetQuote(500_000m);
+        var service = _ctx.CreateService();
+
+        var result = await service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 500, DestinationWalletId = 501, AmountBrl = 200m });
+
+        result.Type.Should().Be("Transfer");
+        result.SourceAmount.Should().Be(0.0004m);
+        result.DestinationAmount.Should().Be(0.0004m);
+        result.Quote!.PriceBrl.Should().Be(500_000m);
+        var tx = _ctx.Inserted.Single();
+        tx.BtcQuoteId.Should().Be(99);
+        tx.QuotePriceBrl.Should().Be(500_000m);
+        tx.Entries.Should().HaveCount(2);
+        _ctx.Balances[500].Should().Be(0.0096m);
+        _ctx.Balances[501].Should().Be(0.0004m);
+    }
+
+    [Fact]
+    public async Task Btc_preview_in_brl_returns_btc_amounts_and_quote_and_truncates()
+    {
+        _ctx.Wallet(500, ANA, Currency.Btc);
+        _ctx.Wallet(502, ANA, Currency.Btc);
+        _ctx.SetQuote(300_000m); // 100 / 300000 = 0.000333333...
+        var service = _ctx.CreateService();
+
+        var preview = await service.PreviewTransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 500, DestinationWalletId = 502, AmountBrl = 100m });
+
+        preview.Type.Should().Be("Transfer");
+        preview.SourceAmount.Should().Be(0.00033333m);
+        preview.DestinationAmount.Should().Be(0.00033333m);
+        preview.Quote!.PriceBrl.Should().Be(300_000m);
+        _ctx.Inserted.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(Currency.Brl, Currency.Brl)]
+    [InlineData(Currency.Btc, Currency.Brl)]
+    [InlineData(Currency.Brl, Currency.Btc)]
+    public async Task Amount_in_brl_outside_btc_to_btc_is_a_validation_error(Currency from, Currency to)
+    {
+        _ctx.Wallet(100, ANA, from);
+        _ctx.Wallet(101, ANA, to);
+        _ctx.SetQuote(500_000m);
+        var service = _ctx.CreateService();
+
+        var act = () => service.PreviewTransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 100, DestinationWalletId = 101, AmountBrl = 50m });
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("Valor em reais só vale para transferência entre carteiras de bitcoin.");
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("0.001", "50")]
+    public async Task Exactly_one_amount_is_required(string? amount, string? amountBrl)
+    {
+        _ctx.Wallet(500, ANA, Currency.Btc);
+        _ctx.Wallet(502, ANA, Currency.Btc);
+        var service = _ctx.CreateService();
+
+        var act = () => service.TransferAsync(ANA, new TransferInfo
+        {
+            SourceWalletId = 500, DestinationWalletId = 502,
+            Amount = amount == null ? null : decimal.Parse(amount, CultureInfo.InvariantCulture),
+            AmountBrl = amountBrl == null ? null : decimal.Parse(amountBrl, CultureInfo.InvariantCulture)
+        });
+
+        await act.Should().ThrowAsync<ValidationException>().WithMessage("Informe o valor em bitcoin ou em reais.");
+        _ctx.Inserted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Amount_in_brl_too_small_is_rejected()
+    {
+        _ctx.Wallet(500, ANA, Currency.Btc);
+        _ctx.Wallet(502, ANA, Currency.Btc);
+        _ctx.SetQuote(500_000_000m);
+        var service = _ctx.CreateService();
+
+        var act = () => service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 500, DestinationWalletId = 502, AmountBrl = 0.01m });
+
+        await act.Should().ThrowAsync<BusinessRuleException>().WithMessage("Valor pequeno demais para conversão.");
+        _ctx.Inserted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Amount_in_brl_without_quote_is_unavailable()
+    {
+        _ctx.Wallet(500, ANA, Currency.Btc);
+        _ctx.Wallet(502, ANA, Currency.Btc);
+        _ctx.Quotes.Setup(q => q.GetForConversionAsync()).ThrowsAsync(new QuoteUnavailableException());
+        var service = _ctx.CreateService();
+
+        var act = () => service.PreviewTransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 500, DestinationWalletId = 502, AmountBrl = 200m });
+
+        await act.Should().ThrowAsync<QuoteUnavailableException>();
+    }
+
+    [Fact]
+    public async Task Btc_transfer_in_btc_does_not_fetch_quote()
+    {
+        _ctx.Wallet(500, ANA, Currency.Btc, balance: 0.01m);
+        _ctx.Wallet(502, ANA, Currency.Btc);
+        var service = _ctx.CreateService();
+
+        var result = await service.TransferAsync(ANA, new TransferInfo
+            { SourceWalletId = 500, DestinationWalletId = 502, Amount = 0.001m });
+
+        result.Quote.Should().BeNull();
+        _ctx.Quotes.Verify(q => q.GetForConversionAsync(), Times.Never);
     }
 }

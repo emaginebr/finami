@@ -4,10 +4,10 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { readNavState } from "../components/layout/navigation";
-import { FormStep, WalletPickerStep } from "../components/transaction/FormStep";
+import { DestinationPickerStep, FormStep, WalletPickerStep } from "../components/transaction/FormStep";
 import { PreviewStep } from "../components/transaction/PreviewStep";
-import { DESCRIPTION_MAX, DestinationMode, EMPTY_DESTINATION, SheetStep } from "../components/transaction/sheetModel";
-import type { DestinationState, ResolvedDestination } from "../components/transaction/sheetModel";
+import { AmountUnit, DESCRIPTION_MAX, FocusReturn, SheetStep } from "../components/transaction/sheetModel";
+import type { ResolvedDestination } from "../components/transaction/sheetModel";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { useGroup } from "../hooks/useGroup";
@@ -17,7 +17,7 @@ import { useWallet } from "../hooks/useWallet";
 import { Currency, isApiError, isUnconfirmedWriteError } from "../types/api";
 import { TransactionKind, TransactionType } from "../types/transaction";
 import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../types/transaction";
-import type { WalletInfo } from "../types/wallet";
+import type { TransferDestinationsResult, WalletInfo } from "../types/wallet";
 import { AMOUNT_ERRORS, CURRENCY_DECIMALS, formatMoney, parseAmountInput } from "../utils/money";
 import { errorMessage, notifySuccess } from "../utils/notify";
 import { WALLET_PARAM } from "../utils/transactionRoutes";
@@ -27,10 +27,23 @@ export interface TransactionPageProps {
   kind: TransactionKind;
 }
 
+/** Lista do campo Para já carregada para uma origem */
+interface LoadedDestinations {
+  sourceWalletId: number;
+  result: TransferDestinationsResult;
+}
+
+/** Valor da confirmação a ser registrado: o BTC calculado no preview, exatamente (SC-005) */
+const toAmountString = (value: number): string => {
+  const fixed = value.toFixed(CURRENCY_DECIMALS[Currency.BTC]);
+  return fixed.replace(/\.?0+$/, "");
+};
+
 /**
  * Página de lançamento (`/depositar`, `/sacar`, `/transferir`) — data-model §6:
  * formulário → (seletor de carteira) → (prévia) → envio → toast.
- * A prévia é obrigatória quando as moedas diferem ou o destino é de terceiro.
+ * A prévia é obrigatória quando as moedas diferem, o destino é de outra pessoa ou o valor de
+ * bitcoin foi informado em reais (feature 006: preview com `amountBrl`, registro com o BTC dele).
  */
 const TransactionPage = ({ kind }: TransactionPageProps) => {
   const { t } = useTranslation();
@@ -42,10 +55,11 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const defaultWalletId = Number.isInteger(paramWalletId) && paramWalletId > 0 ? paramWalletId : null;
 
   const { session } = useAuth();
-  const { wallets, loaded, loading: walletsLoading, loadWallets, getPublicWallet } = useWallet();
+  const { wallets, loaded, loading: walletsLoading, loadWallets, getTransferDestinations } = useWallet();
   const { groups, loadGroups } = useGroup();
   const { createIncome, createExpense, createTransfer, previewTransfer } = useTransaction();
   const pickerLabelId = useId();
+  const noDestinationsId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
   const onlineAction = useOnlineAction(OfflineActionKind.Transaction);
@@ -58,7 +72,14 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
 
   const [step, setStep] = useState<SheetStep>(SheetStep.Form);
   const [sourceWalletId, setSourceWalletId] = useState<number | null>(defaultWalletId);
-  const [destination, setDestination] = useState<DestinationState>(EMPTY_DESTINATION);
+  const [destination, setDestination] = useState<ResolvedDestination | null>(null);
+  const [destinations, setDestinations] = useState<LoadedDestinations | null>(null);
+  const [destinationsError, setDestinationsError] = useState<unknown>(null);
+  const [destinationsRetrying, setDestinationsRetrying] = useState(false);
+  const [amountUnit, setAmountUnit] = useState<AmountUnit>(AmountUnit.Btc);
+  const [focusAmount, setFocusAmount] = useState(false);
+  /** Para onde o foco volta quando o passo retorna ao formulário (REVIEW-006 I-1) */
+  const [returnFocus, setReturnFocus] = useState<FocusReturn | null>(null);
   const [amountText, setAmountText] = useState("");
   const [description, setDescription] = useState("");
   const [attempted, setAttempted] = useState(false);
@@ -109,62 +130,87 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   }, [step]);
 
   const sourceWallet = controllable.find((w) => w.walletId === sourceWalletId) ?? null;
+  const sourceId = sourceWallet?.walletId ?? null;
+  const isTransfer = kind === TransactionKind.Transfer;
 
-  const groupName = useCallback(
-    (groupId: number | null) => groups.find((g) => g.groupId === groupId)?.name ?? null,
-    [groups],
-  );
+  // ---------------------------------------------------------------------------
+  // Campo Para: destinos da origem escolhida (família e conversão)
+  // ---------------------------------------------------------------------------
 
-  const describeWallet = useCallback(
-    (wallet: WalletInfo) => {
-      const parts = [
-        formatMoney(wallet.balance, wallet.currency),
-        wallet.groupId === null ? t("wallet.loose") : groupName(wallet.groupId),
-        wallet.ownerUserId !== session?.user.userId ? t("wallet.ownerOf", { name: wallet.ownerName }) : null,
-      ];
-      return parts.filter(Boolean).join(" · ");
+  /** Última origem pedida: respostas de origens anteriores são descartadas */
+  const requestedSource = useRef<number | null>(null);
+
+  const loadDestinations = useCallback(
+    async (walletId: number) => {
+      requestedSource.current = walletId;
+      setDestinationsRetrying(true);
+      try {
+        const result = await getTransferDestinations(walletId);
+        if (requestedSource.current !== walletId) return;
+        setDestinations({ sourceWalletId: walletId, result });
+        setDestinationsError(null);
+      } catch (err) {
+        if (requestedSource.current !== walletId) return;
+        setDestinationsError(err);
+      } finally {
+        if (requestedSource.current === walletId) setDestinationsRetrying(false);
+      }
     },
-    [groupName, session, t],
+    [getTransferDestinations],
   );
 
-  // ---------------------------------------------------------------------------
-  // Destino resolvido
-  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!isTransfer || sourceId === null) return;
+    setDestinationsError(null);
+    void loadDestinations(sourceId);
+  }, [isTransfer, sourceId, loadDestinations]);
 
-  const destinationOwnWallet =
-    destination.mode === DestinationMode.Own
-      ? (controllable.find((w) => w.walletId === destination.walletId) ?? null)
-      : null;
+  const currentDestinations =
+    destinations !== null && destinations.sourceWalletId === sourceId ? destinations.result : null;
+  const noDestinations =
+    currentDestinations !== null &&
+    currentDestinations.sameCurrency.length === 0 &&
+    currentDestinations.conversion.length === 0;
 
-  const resolvedDestination = useMemo<ResolvedDestination | null>(() => {
-    if (destinationOwnWallet) {
-      return {
-        walletId: destinationOwnWallet.walletId,
-        name: destinationOwnWallet.name,
-        currency: destinationOwnWallet.currency,
-        ownerName: destinationOwnWallet.ownerName,
-        isOwn: true,
-        isActive: destinationOwnWallet.isActive,
-      };
+  // Trocou o De: o destino que deixou de valer é limpo (FR-019)
+  useEffect(() => {
+    if (!destination) return;
+    if (sourceId !== null && destination.walletId === sourceId) {
+      setDestination(null);
+      return;
     }
-    const pub = destination.mode === DestinationMode.Code ? destination.publicWallet : null;
-    if (!pub) return null;
-    return {
-      walletId: pub.walletId,
-      name: pub.name,
-      currency: pub.currency,
-      ownerName: pub.ownerName,
-      isOwn: controllable.some((w) => w.walletId === pub.walletId),
-      isActive: pub.isActive,
-    };
-  }, [destinationOwnWallet, destination, controllable]);
+    if (!currentDestinations) return;
+    const stillValid = [...currentDestinations.sameCurrency, ...currentDestinations.conversion].find(
+      (item) => item.walletId === destination.walletId,
+    );
+    if (!stillValid) setDestination(null);
+    else if (stillValid !== destination && stillValid.balance !== destination.balance) {
+      setDestination({ ...stillValid });
+    }
+  }, [currentDestinations, destination, sourceId]);
+
+  // Valor em reais só com De e Para em bitcoin; fora disso volta para bitcoin com o valor limpo
+  const bothBtc = sourceWallet?.currency === Currency.BTC && destination?.currency === Currency.BTC;
+  const inReais = isTransfer && bothBtc && amountUnit === AmountUnit.Brl;
+  useEffect(() => {
+    if (bothBtc || amountUnit === AmountUnit.Btc) return;
+    setAmountUnit(AmountUnit.Btc);
+    setAmountText("");
+  }, [bothBtc, amountUnit]);
+
+  const changeAmountUnit = (unit: AmountUnit) => {
+    // Evita que "200" em reais vire ₿ 200 (components.md §10)
+    setAmountUnit(unit);
+    setAmountText("");
+    setServerError(null);
+  };
 
   // ---------------------------------------------------------------------------
   // Validação (data-model §6)
   // ---------------------------------------------------------------------------
 
-  const isTransfer = kind === TransactionKind.Transfer;
-  const parsedAmount = sourceWallet ? parseAmountInput(amountText, sourceWallet.currency) : null;
+  const amountCurrency = inReais ? Currency.BRL : (sourceWallet?.currency ?? Currency.BRL);
+  const parsedAmount = sourceWallet ? parseAmountInput(amountText, amountCurrency) : null;
   const amountTyped = amountText.trim().length > 0;
   const translateAmountError = (error: string, currency: Currency): string => {
     if (error === AMOUNT_ERRORS.required) return t("transaction.amountErrors.required");
@@ -177,29 +223,20 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   };
   const amountError =
     sourceWallet && parsedAmount?.error && (amountTyped || attempted)
-      ? translateAmountError(parsedAmount.error, sourceWallet.currency)
+      ? translateAmountError(parsedAmount.error, amountCurrency)
       : null;
   const sourceError = !sourceWallet && attempted ? t("transaction.validation.walletRequired") : null;
 
   let destinationError: string | null = null;
   let destinationBlocking = false;
   if (isTransfer) {
-    if (resolvedDestination && sourceWallet && resolvedDestination.walletId === sourceWallet.walletId) {
+    if (destination && sourceWallet && destination.walletId === sourceWallet.walletId) {
       destinationError = t("transaction.validation.sameWallet");
       destinationBlocking = true;
-    } else if (resolvedDestination && !resolvedDestination.isActive) {
-      destinationError = t("transaction.lookupInactive");
+    } else if (noDestinations) {
       destinationBlocking = true;
-    } else if (resolvedDestination && !resolvedDestination.isOwn && !destination.confirmed) {
-      destinationBlocking = true;
-      if (attempted) destinationError = t("transaction.validation.confirmOwnerRequired");
-    } else if (!resolvedDestination) {
-      if (attempted) {
-        destinationError =
-          destination.mode === DestinationMode.Code
-            ? t("transaction.validation.lookupRequired")
-            : t("transaction.validation.destinationRequired");
-      }
+    } else if (!destination && attempted) {
+      destinationError = t("transaction.validation.destinationRequired");
     }
   }
 
@@ -208,13 +245,14 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     Boolean(sourceWallet) &&
     Boolean(parsedAmount?.value) &&
     descriptionValid &&
-    (!isTransfer || (resolvedDestination !== null && !destinationBlocking));
+    // O destino precisa estar na lista da origem atual (trocar o De recarrega o Para)
+    (!isTransfer || (destination !== null && currentDestinations !== null && !destinationBlocking));
 
   const needsPreview =
     isTransfer &&
     sourceWallet !== null &&
-    resolvedDestination !== null &&
-    (resolvedDestination.currency !== sourceWallet.currency || !resolvedDestination.isOwn);
+    destination !== null &&
+    (destination.currency !== sourceWallet.currency || !destination.isOwn || inReais);
 
   const hasBlockingError = Boolean(amountTyped && parsedAmount?.error) || destinationBlocking;
 
@@ -222,13 +260,28 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   // Ações
   // ---------------------------------------------------------------------------
 
-  const transferBody = (): TransferInfo | null => {
-    if (!sourceWallet || !resolvedDestination || !parsedAmount?.value) return null;
-    return {
+  /** Corpo da prévia: em reais manda `amountBrl`; senão `amount` na moeda da origem */
+  const previewBody = (): TransferInfo | null => {
+    if (!sourceWallet || !destination || !parsedAmount?.value) return null;
+    const base = {
       sourceWalletId: sourceWallet.walletId,
-      destinationWalletId: resolvedDestination.walletId,
-      amount: parsedAmount.value,
+      destinationWalletId: destination.walletId,
       description: description.trim() || null,
+    };
+    return inReais ? { ...base, amountBrl: parsedAmount.value } : { ...base, amount: parsedAmount.value };
+  };
+
+  /** Corpo do registro: em reais, o `amount` é o BTC confirmado na prévia (R-07) */
+  const transferBody = (): TransferInfo | null => {
+    const body = previewBody();
+    if (!body) return null;
+    if (!inReais) return body;
+    if (!preview) return null;
+    return {
+      sourceWalletId: body.sourceWalletId,
+      destinationWalletId: body.destinationWalletId,
+      amount: toAmountString(preview.sourceAmount),
+      description: body.description,
     };
   };
 
@@ -327,6 +380,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
 
   const onPrimary = () => {
     if (submittingRef.current) return;
+    // Sem destinos: o botão fica `aria-disabled` (focável, com a explicação) e não faz nada (M-1)
+    if (step === SheetStep.Form && noDestinations) return;
     // Sem internet: avisa e não envia (feature 005, R-05)
     if (onlineAction.blockIfOffline()) return;
     if (step === SheetStep.Preview) {
@@ -336,9 +391,12 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     setAttempted(true);
     if (!formValid) return;
     if (needsPreview) {
-      const body = transferBody();
+      const body = previewBody();
       if (!body) return;
       setServerError(null);
+      setFocusAmount(false);
+      // Voltar da prévia (ou erro dela) devolve o foco ao "Continuar"
+      setReturnFocus(FocusReturn.Primary);
       setStep(SheetStep.Preview);
       void loadPreview(body);
       return;
@@ -346,37 +404,35 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     void send();
   };
 
-  const lookupCode = async () => {
-    const id = Number(destination.code);
-    if (!destination.code || !Number.isInteger(id) || id <= 0) {
-      setDestination((d) => ({ ...d, lookupError: t("transaction.validation.codeInvalid") }));
-      return;
-    }
-    setDestination((d) => ({ ...d, lookingUp: true, lookupError: null, publicWallet: null, confirmed: false }));
-    try {
-      const publicWallet = await getPublicWallet(id);
-      setDestination((d) => ({ ...d, lookingUp: false, publicWallet }));
-    } catch (err) {
-      const message =
-        isApiError(err) && err.status === 404 ? t("transaction.lookupNotFound") : errorMessage(err);
-      setDestination((d) => ({ ...d, lookingUp: false, lookupError: message }));
-    }
+  /** Cotação indisponível no modo "Reais": volta ao formulário em bitcoin, valor limpo, foco no Valor */
+  const enterInBtc = () => {
+    setAmountUnit(AmountUnit.Btc);
+    setAmountText("");
+    setPreview(null);
+    setPreviewBlocked(false);
+    setFocusAmount(true);
+    setStep(SheetStep.Form);
+  };
+
+  const goBackToForm = () => {
+    setFocusAmount(false);
+    setStep(SheetStep.Form);
   };
 
   // ---------------------------------------------------------------------------
   // Título, voltar e botão principal por passo
   // ---------------------------------------------------------------------------
 
+  const previewType =
+    preview?.type ??
+    (sourceWallet?.currency === Currency.BRL && destination?.currency === Currency.BTC
+      ? TransactionType.BtcPurchase
+      : sourceWallet?.currency === Currency.BTC && destination?.currency === Currency.BRL
+        ? TransactionType.BtcSale
+        : TransactionType.Transfer);
   const previewTitle = (() => {
-    const type =
-      preview?.type ??
-      (sourceWallet?.currency === Currency.BRL && resolvedDestination?.currency === Currency.BTC
-        ? TransactionType.BtcPurchase
-        : sourceWallet?.currency === Currency.BTC && resolvedDestination?.currency === Currency.BRL
-          ? TransactionType.BtcSale
-          : TransactionType.Transfer);
-    if (type === TransactionType.BtcPurchase) return t("transaction.preview.titlePurchase");
-    if (type === TransactionType.BtcSale) return t("transaction.preview.titleSale");
+    if (previewType === TransactionType.BtcPurchase) return t("transaction.preview.titlePurchase");
+    if (previewType === TransactionType.BtcSale) return t("transaction.preview.titleSale");
     return t("transaction.preview.titleTransfer");
   })();
 
@@ -386,14 +442,30 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   if (step === SheetStep.Preview) stepTitle = previewTitle;
 
   const primaryLabel = (() => {
-    if (step === SheetStep.Preview) return previewTitle;
+    // Confirmação de transferência: "Registrar transferência"; compra/venda: "Confirmar compra/venda"
+    if (step === SheetStep.Preview) {
+      return previewType === TransactionType.Transfer ? t("transaction.submit.transfer") : previewTitle;
+    }
     if (kind === TransactionKind.Income) return t("transaction.submit.income");
     if (kind === TransactionKind.Expense) return t("transaction.submit.expense");
-    return needsPreview ? t("transaction.submit.continue") : t("transaction.submit.transfer");
+    // Sem destinos o próximo passo seria escolher o Para: "Continuar" (components.md §10)
+    return needsPreview || noDestinations ? t("transaction.submit.continue") : t("transaction.submit.transfer");
   })();
 
+  // Sem destinos: `aria-disabled` em vez de `disabled` — o botão continua na ordem de Tab e a explicação
+  // (`aria-describedby` → aviso) é lida ao chegar nele pelo teclado (REVIEW-006 M-1)
+  const noDestinationsBlocked = step === SheetStep.Form && noDestinations;
   const primaryDisabled =
-    step === SheetStep.Preview ? previewLoading || previewBlocked || !preview : hasBlockingError;
+    step === SheetStep.Preview
+      ? previewLoading || previewBlocked || !preview
+      : hasBlockingError && !noDestinationsBlocked;
+  const primaryDescribedBy = noDestinationsBlocked ? noDestinationsId : undefined;
+  // Foco ao voltar para o formulário: "Continuar" vindo da prévia; sem destinos, o Para não existe e o
+  // foco que iria para ele fica no botão (que explica o porquê). "Informar em bitcoin" tem prioridade.
+  const primaryAutofocus =
+    step === SheetStep.Form &&
+    !focusAmount &&
+    (returnFocus === FocusReturn.Primary || (returnFocus === FocusReturn.Destination && noDestinations));
 
   return (
     <>
@@ -408,14 +480,20 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
           <div className="-mx-2 mb-3 flex min-h-touch items-center gap-1">
             <button
               type="button"
-              onClick={() => setStep(SheetStep.Form)}
+              onClick={goBackToForm}
               disabled={submitting}
               className="inline-flex min-h-touch min-w-touch items-center gap-0.5 pr-2 text-body text-accent disabled:text-text-disabled"
             >
               <ChevronLeft aria-hidden="true" className="size-6" strokeWidth={1.75} />
               {t("actions.back")}
             </button>
-            <h2 id={pickerLabelId} className="m-0 text-headline">
+            {/* Na prévia o foco vai para o título do passo; o leitor segue dele para os valores (I-1) */}
+            <h2
+              id={pickerLabelId}
+              tabIndex={step === SheetStep.Preview ? -1 : undefined}
+              data-autofocus={step === SheetStep.Preview ? "" : undefined}
+              className="m-0 text-headline outline-none"
+            >
               {stepTitle}
             </h2>
           </div>
@@ -426,24 +504,31 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
             kind={kind}
             sourceWallet={sourceWallet}
             sourceError={sourceError}
-            onPickSource={() => setStep(SheetStep.PickSource)}
+            onPickSource={() => {
+              setFocusAmount(false);
+              setReturnFocus(FocusReturn.Source);
+              setStep(SheetStep.PickSource);
+            }}
             destination={destination}
-            destinationOwnWallet={destinationOwnWallet}
-            resolvedDestination={resolvedDestination}
             destinationError={destinationError}
-            onPickDestination={() => setStep(SheetStep.PickDestination)}
-            onCodeChange={(code) =>
-              setDestination((d) => ({ ...d, code, publicWallet: null, confirmed: false, lookupError: null }))
-            }
-            onLookup={() => void lookupCode()}
-            onConfirmChange={(confirmed) => setDestination((d) => ({ ...d, confirmed }))}
+            onPickDestination={() => {
+              setFocusAmount(false);
+              setReturnFocus(FocusReturn.Destination);
+              setStep(SheetStep.PickDestination);
+            }}
+            noDestinations={noDestinations}
+            noDestinationsId={noDestinationsId}
             amountText={amountText}
             onAmountChange={setAmountText}
             amountError={amountError}
+            showAmountUnit={isTransfer && bothBtc}
+            amountUnit={amountUnit}
+            onAmountUnitChange={changeAmountUnit}
+            focusAmount={focusAmount}
+            returnFocusTo={returnFocus}
             description={description}
             onDescriptionChange={setDescription}
             serverError={serverError}
-            describeWallet={describeWallet}
             disabled={submitting}
           />
         ) : null}
@@ -453,7 +538,6 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
             labelId={pickerLabelId}
             wallets={controllable}
             selectedWalletId={sourceWalletId}
-            describeWallet={describeWallet}
             onSelect={(walletId) => {
               setSourceWalletId(walletId);
               setStep(SheetStep.Form);
@@ -462,33 +546,37 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
         ) : null}
 
         {step === SheetStep.PickDestination ? (
-          <WalletPickerStep
+          <DestinationPickerStep
             labelId={pickerLabelId}
-            wallets={controllable}
-            selectedWalletId={destination.mode === DestinationMode.Own ? destination.walletId : null}
-            codeSelected={destination.mode === DestinationMode.Code}
-            describeWallet={describeWallet}
-            onSelect={(walletId) => {
-              setDestination({ ...EMPTY_DESTINATION, mode: DestinationMode.Own, walletId });
-              setStep(SheetStep.Form);
+            destinations={currentDestinations}
+            error={destinationsError}
+            retrying={destinationsRetrying}
+            onRetry={() => {
+              if (sourceId !== null) void loadDestinations(sourceId);
             }}
-            onChooseCode={() => {
-              setDestination((d) =>
-                d.mode === DestinationMode.Code ? d : { ...EMPTY_DESTINATION, mode: DestinationMode.Code },
-              );
+            selectedWalletId={destination?.walletId ?? null}
+            onSelect={(walletId) => {
+              const chosen = currentDestinations
+                ? [...currentDestinations.sameCurrency, ...currentDestinations.conversion].find(
+                    (item) => item.walletId === walletId,
+                  )
+                : undefined;
+              if (chosen) setDestination({ ...chosen });
               setStep(SheetStep.Form);
             }}
           />
         ) : null}
 
-        {step === SheetStep.Preview && sourceWallet && resolvedDestination && parsedAmount?.value ? (
+        {step === SheetStep.Preview && sourceWallet && destination && parsedAmount?.value ? (
           <PreviewStep
             sourceWallet={sourceWallet}
-            destination={resolvedDestination}
-            amount={parsedAmount.value}
+            destination={destination}
+            amount={inReais ? null : parsedAmount.value}
+            amountBrl={inReais ? parsedAmount.value : null}
             preview={preview}
             loading={previewLoading}
             blocked={previewBlocked}
+            onEnterInBtc={enterInBtc}
           />
         ) : null}
 
@@ -499,6 +587,9 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
               loading={submitting}
               loadingLabel={t("transaction.submit.sending")}
               disabled={primaryDisabled}
+              aria-disabled={noDestinationsBlocked || undefined}
+              aria-describedby={primaryDescribedBy}
+              data-autofocus={primaryAutofocus ? "" : undefined}
               {...onlineAction.offlineProps}
               onClick={onPrimary}
             >

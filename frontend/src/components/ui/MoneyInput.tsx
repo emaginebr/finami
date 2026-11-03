@@ -20,6 +20,8 @@ export interface MoneyInputProps {
   autoFocus?: boolean;
   /** Marca o campo como foco inicial da folha */
   dataAutofocus?: boolean;
+  /** Elemento extra à direita do rótulo (ex.: alternador "Bitcoin | Reais", feature 006) */
+  labelAccessory?: ReactNode;
 }
 
 /** Mantém só dígitos, vírgula e ponto (o teclado decimal do iOS já limita) */
@@ -30,7 +32,7 @@ const sanitize = (text: string): string => text.replace(/[^\d.,]/g, "");
  * fonte grande com números tabulares, erro ligado por `aria-describedby`.
  */
 export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
-  ({ label, currency, value, onChange, error, hint, disabled, id, autoFocus, dataAutofocus }, ref) => {
+  ({ label, currency, value, onChange, error, hint, disabled, id, autoFocus, dataAutofocus, labelAccessory }, ref) => {
     const { t } = useTranslation();
     const generatedId = useId();
     const inputId = id ?? generatedId;
@@ -43,9 +45,19 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
 
     return (
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={inputId} className="text-footnote font-medium text-text-muted">
-          {label}
-        </label>
+        {labelAccessory ? (
+          // Em 320 px / zoom 200 % o acessório desce para baixo do rótulo, sem cortar
+          <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+            <label htmlFor={inputId} className="text-footnote font-medium text-text-muted">
+              {label}
+            </label>
+            {labelAccessory}
+          </div>
+        ) : (
+          <label htmlFor={inputId} className="text-footnote font-medium text-text-muted">
+            {label}
+          </label>
+        )}
         <div
           className={cn(
             "flex min-h-16 items-baseline gap-2 rounded-md border bg-surface-2 px-4 py-2",

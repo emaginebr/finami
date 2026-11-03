@@ -34,6 +34,7 @@ const WALLETS = [
     groupId: 1,
     ownerUserId: 99,
     ownerName: "Pedro Silva",
+    ownerFirstName: "Pedro",
   }),
   makeWallet({ walletId: 5, name: "Casa de praia", balance: 0, groupId: 2 }),
 ];

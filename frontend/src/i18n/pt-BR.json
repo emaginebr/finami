@@ -347,7 +347,15 @@
     "memberOf_one": "Membro de {{count}} família que você vê",
     "memberOf_other": "Membro de {{count}} famílias que você vê",
     "onlyTotal": "Só o total",
-    "onlyTotalHint": "Nesta família você vê apenas o total de cada pessoa."
+    "onlyTotalHint": "Nesta família você vê apenas o total de cada pessoa.",
+    "hiddenBalance": "saldo oculto"
+  },
+  "debts": {
+    "title": "Dívidas",
+    "empty": "Nenhuma dívida em aberto.",
+    "owedToYou": "<b>{{name}}</b> deve a você",
+    "youOwe": "Você deve a <b>{{name}}</b>",
+    "owesTo": "<debtor>{{debtor}}</debtor> deve a <creditor>{{creditor}}</creditor>"
   },
   "statement": {
     "title": "Extrato",
@@ -538,13 +546,24 @@
     "pickerTitleSource": "Carteira",
     "pickerTitleDestination": "Destino",
     "noWallets": "Você não tem carteiras ativas para lançar.",
-    "otherWallet": "Outra carteira (código)",
-    "walletCode": "Código da carteira",
-    "lookupNotFound": "Carteira não encontrada. Confira o código.",
-    "lookupInactive": "Esta carteira está inativa e não pode receber valores.",
-    "ownerLine": "{{currency}} · titular {{owner}}",
-    "confirmOwner": "Confirmo que esta carteira é de {{owner}}",
+    "walletOption": "{{wallet}}, de {{owner}}, {{currency}}, saldo {{balance}}",
+    "walletOptionHidden": "{{wallet}}, de {{owner}}, {{currency}}, saldo oculto",
+    "walletCurrency": {
+      "BRL": "real",
+      "BTC": "bitcoin"
+    },
+    "destinationGroups": {
+      "family": "Família",
+      "conversion": "Converter"
+    },
+    "noDestinations": "Não há carteiras para transferir. Só é possível transferir para pessoas da sua família, na mesma moeda.",
     "amount": "Valor",
+    "amountUnit": {
+      "label": "Informar valor em",
+      "btc": "Bitcoin",
+      "brl": "Reais"
+    },
+    "enterInBtc": "Informar em bitcoin",
     "amountErrors": {
       "required": "Informe o valor.",
       "invalid": "Valor inválido. Use só números, com vírgula ou ponto.",
@@ -575,6 +594,9 @@
       "quote": "Cotação",
       "quotedAt": "Obtida às",
       "owner": "Titular do destino",
+      "amountBrl": "Valor informado",
+      "amountBtc": "Valor em bitcoin",
+      "enteredBrl": "= {{value}} informados",
       "note": "Se a cotação mudar até a confirmação, vale o valor registrado — ele aparece na confirmação.",
       "loading": "Calculando a conversão…",
       "blockedTitle": "Cotação indisponível",
@@ -584,9 +606,6 @@
       "walletRequired": "Escolha a carteira.",
       "destinationRequired": "Escolha a carteira de destino.",
       "sameWallet": "A carteira de destino deve ser diferente da origem.",
-      "confirmOwnerRequired": "Confirme o titular da carteira de destino para continuar.",
-      "codeInvalid": "Informe o código numérico da carteira.",
-      "lookupRequired": "Busque a carteira pelo código antes de continuar.",
       "descriptionMax": "Use no máximo {{max}} caracteres."
     },
     "serverErrorTitle": "Não foi possível registrar",

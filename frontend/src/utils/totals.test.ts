@@ -21,7 +21,7 @@ describe("computeHomeTotal", () => {
   it("deixa fora carteira de outro titular", () => {
     const wallets = [
       makeWallet({ balance: 1000 }),
-      makeWallet({ balance: 100, ownerUserId: 99, ownerName: "Pedro Silva" }),
+      makeWallet({ balance: 100, ownerUserId: 99, ownerName: "Pedro Silva", ownerFirstName: "Pedro" }),
     ];
 
     expect(computeHomeTotal(wallets, USER_ID, true).totalCents).toBe(100000);

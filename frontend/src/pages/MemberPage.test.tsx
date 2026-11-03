@@ -85,6 +85,7 @@ const setup = (
   storeSession();
   const fetchMock = mockFetch({
     [`GET /api/users/${userId}/group-balances`]: { body: options.result ?? RESULT },
+    [`GET /api/users/${userId}/debts`]: { body: { userId, debts: [] } },
     "GET /api/quotes/btc": { body: QUOTE },
     "GET /api/groups": { body: groups },
     "GET /api/wallets": { body: [] },
@@ -128,6 +129,174 @@ describe("MemberPage", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Dívidas (feature 006)
+  // -------------------------------------------------------------------------
+
+  it("seção Dívidas fica depois do total e antes das famílias, com frases do ponto de vista da pessoa", async () => {
+    const { container } = setup([], {
+      routes: {
+        "GET /api/users/8/debts": {
+          body: {
+            userId: 8,
+            debts: [
+              {
+                counterpartUserId: USER_ID,
+                counterpartName: "Ana Silva",
+                counterpartFirstName: "Ana",
+                currency: "BRL",
+                amount: 70,
+                direction: "owes",
+              },
+              {
+                counterpartUserId: 9,
+                counterpartName: "Bruno Lima",
+                counterpartFirstName: "Bruno",
+                currency: "BTC",
+                amount: 0.0004,
+                direction: "owed",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const debts = await screen.findByRole("region", { name: "Dívidas" });
+    // Ordem: total → Dívidas → famílias
+    const silva = screen.getByRole("region", { name: "Silva" });
+    expect(debts.compareDocumentPosition(silva) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("3.750,00").compareDocumentPosition(debts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Página de outra pessoa: sem "você", nomes pelo primeiro nome
+    const toAna = await within(debts).findByRole("link", { name: /^Carlos deve a Ana, −R\$\s70,00$/ });
+    expect(toAna).toHaveAttribute("href", `/pessoas/${USER_ID}`);
+    expect(within(debts).getByRole("link", { name: /^Bruno deve a Carlos, \+₿\s0,00040$/ })).toHaveAttribute(
+      "href",
+      "/pessoas/9",
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("na própria página usa \"você\"", async () => {
+    setup([], {
+      userId: USER_ID,
+      result: SELF_RESULT,
+      routes: {
+        [`GET /api/users/${USER_ID}/debts`]: {
+          body: {
+            userId: USER_ID,
+            debts: [
+              {
+                counterpartUserId: 9,
+                counterpartName: "Bruno Lima",
+                counterpartFirstName: "Bruno",
+                currency: "BRL",
+                amount: 70,
+                direction: "owed",
+              },
+              {
+                counterpartUserId: 9,
+                counterpartName: "Bruno Lima",
+                counterpartFirstName: "Bruno",
+                currency: "BTC",
+                amount: 0.0004,
+                direction: "owes",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const debts = await screen.findByRole("region", { name: "Dívidas" });
+    expect(
+      await within(debts).findByRole("link", { name: /^Bruno deve a você, \+R\$\s70,00$/ }),
+    ).toBeInTheDocument();
+    expect(within(debts).getByRole("link", { name: /^Você deve a Bruno, −₿\s0,00040$/ })).toBeInTheDocument();
+  });
+
+  it("erro nas dívidas não derruba a página e permite tentar de novo", async () => {
+    let calls = 0;
+    const { user, fetchMock } = setup([], {
+      routes: {
+        "GET /api/users/8/debts": () => {
+          calls += 1;
+          return calls === 1 ? apiError(500, "Falha ao calcular as dívidas.") : { body: { userId: 8, debts: [] } };
+        },
+      },
+    });
+
+    const debts = await screen.findByRole("region", { name: "Dívidas" });
+    expect(await within(debts).findByRole("alert")).toHaveTextContent("Falha ao calcular as dívidas.");
+    // O resto da página continua
+    expect(screen.getByRole("heading", { level: 1, name: "Carlos Souza" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Silva" })).toBeInTheDocument();
+
+    await user.click(within(debts).getByRole("button", { name: "Tentar de novo" }));
+
+    expect(await within(debts).findByText("Nenhuma dívida em aberto.")).toBeInTheDocument();
+    expect(requestsTo(fetchMock, "GET /api/users/8/debts").length).toBeGreaterThan(1);
+    // A faixa com o foco sumiu: o foco vai para o título da seção (REVIEW-006 M-2)
+    await waitFor(() => expect(within(debts).getByRole("heading", { level: 2, name: "Dívidas" })).toHaveFocus());
+  });
+
+  it("ao tocar numa dívida, não mostra a pessoa anterior enquanto carrega e leva o foco ao título (REVIEW-006 B-1)", async () => {
+    let release: (() => void) | null = null;
+    const bruno = {
+      ...RESULT,
+      userId: 9,
+      firstName: "Bruno",
+      lastName: "Lima",
+      totalBrl: 120,
+      groups: [],
+    } as UserGroupBalancesResult;
+    const { user, container, router } = setup([SILVA], {
+      routes: {
+        "GET /api/users/8/debts": {
+          body: {
+            userId: 8,
+            debts: [
+              {
+                counterpartUserId: 9,
+                counterpartName: "Bruno Lima",
+                counterpartFirstName: "Bruno",
+                currency: "BRL",
+                amount: 70,
+                direction: "owed",
+              },
+            ],
+          },
+        },
+        "GET /api/users/9/group-balances": () =>
+          new Promise<MockResponse>((resolve) => {
+            release = () => resolve({ body: bruno });
+          }),
+        "GET /api/users/9/debts": { body: { userId: 9, debts: [] } },
+      },
+    });
+
+    // Página do Carlos, com o botão de adicionar carteira para ele (Ana é responsável da Silva)
+    expect(await screen.findByRole("button", { name: "Adicionar carteira para Carlos Souza" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("link", { name: /^Bruno deve a Carlos/ }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/pessoas/9"));
+    // Resposta da nova pessoa ainda não chegou: carregando, nada do Carlos na tela
+    expect(await screen.findByRole("heading", { level: 1, name: "Pessoa" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Carlos Souza" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Adicionar carteira/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("3.750,00")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Carregando…");
+    expect(await axe(container)).toHaveNoViolations();
+
+    await waitFor(() => expect(release).not.toBeNull());
+    (release as (() => void) | null)?.();
+
+    const title = await screen.findByRole("heading", { level: 1, name: "Bruno Lima" });
+    await waitFor(() => expect(title).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Adicionar carteira para Carlos Souza" })).not.toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
   // Adicionar carteira
   // -------------------------------------------------------------------------
 
@@ -164,7 +333,7 @@ describe("MemberPage", () => {
       routes: {
         "POST /api/wallets": {
           status: 201,
-          body: makeWallet({ name: "Mesada", ownerUserId: 8, ownerName: "Carlos Souza", groupId: 3 }),
+          body: makeWallet({ name: "Mesada", ownerUserId: 8, ownerName: "Carlos Souza", ownerFirstName: "Carlos", groupId: 3 }),
         },
       },
     });

@@ -443,6 +443,9 @@ public class FinamiContext : DbContext
                 .HasFilter("reversed_transaction_id IS NOT NULL")
                 .HasDatabaseName("ix_transactions_reversed_transaction_id");
             entity.HasIndex(e => e.OccurredAt).HasDatabaseName("ix_transactions_occurred_at");
+            // Feature 006 (R-11): dívidas entre pessoas e destinos de transferência.
+            entity.HasIndex(e => e.SourceAccountId).HasDatabaseName("ix_transactions_source_account_id");
+            entity.HasIndex(e => e.DestinationAccountId).HasDatabaseName("ix_transactions_destination_account_id");
         });
     }
 

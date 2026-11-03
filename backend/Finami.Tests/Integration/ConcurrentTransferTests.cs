@@ -101,6 +101,10 @@ public class ConcurrentTransferTests
 
         public Task<bool> CanViewUserAsync(long userId, User target) => Task.FromResult(target.UserId == userId);
 
+        // As duas carteiras do teste são do mesmo titular: a regra de família (feature 006) não as afeta.
+        public Task<bool> AreFamilyAsync(long ownerUserId, long otherUserId) =>
+            Task.FromResult(ownerUserId == otherUserId);
+
         public StatementAccess GroupStatementAccess(long userId, Group group) =>
             group.IsResponsible(userId) ? StatementAccess.Full : StatementAccess.Denied;
 

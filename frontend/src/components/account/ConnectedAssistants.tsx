@@ -186,7 +186,7 @@ export const ConnectedAssistants = () => {
           <span className="sr-only">{t("app.loading")}</span>
           {[0, 1].map((key) => (
             <div key={key} className="flex items-center gap-3 px-4 py-3.5">
-              <Skeleton className="size-9 shrink-0 rounded-[10px]" />
+              <Skeleton className="size-9 shrink-0" rounded="rounded-[10px]" />
               <div className="flex-1">
                 <Skeleton className="mb-2 h-4 w-1/2" />
                 <Skeleton className="h-3 w-3/4" />
@@ -240,7 +240,7 @@ export const ConnectedAssistants = () => {
               <span className="sr-only">{t("app.loading")}</span>
               {/* Rótulo + campo (h-12) do "Endereço do MCP" */}
               <Skeleton className="mb-1.5 h-4 w-1/3" />
-              <Skeleton className="h-12 w-full rounded-md" />
+              <Skeleton className="h-12 w-full" rounded="rounded-md" />
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
+import type { TFunction } from "i18next";
 import type { Currency } from "../../types/api";
-import type { WalletPublicInfo } from "../../types/wallet";
+import { formatMoney } from "../../utils/money";
 
 /** Passos da página de lançamento (data-model §6) */
 export enum SheetStep {
@@ -9,57 +10,56 @@ export enum SheetStep {
   Preview = "preview",
 }
 
-/** Como o destino da transferência foi escolhido */
-export enum DestinationMode {
-  None = "none",
-  /** Uma das carteiras que a pessoa controla */
-  Own = "own",
-  /** "Outra carteira (código)" — `GET /api/wallets/{id}/public` */
-  Code = "code",
+/**
+ * Onde o foco cai ao voltar para o formulário (REVIEW-006 I-1): o campo que abriu o seletor
+ * (De/Para) ou o botão principal ao voltar da prévia.
+ */
+export enum FocusReturn {
+  Source = "source",
+  Destination = "destination",
+  Primary = "primary",
 }
 
-export interface DestinationState {
-  mode: DestinationMode;
-  /** Carteira própria escolhida (modo `Own`) */
-  walletId: number | null;
-  /** Código digitado (modo `Code`) */
-  code: string;
-  /** Resultado da busca por código */
-  publicWallet: WalletPublicInfo | null;
-  lookupError: string | null;
-  lookingUp: boolean;
-  /** A pessoa confirmou o titular do destino de terceiro */
-  confirmed: boolean;
+/** Unidade em que o valor de uma transferência bitcoin → bitcoin é informado (feature 006, FR-020) */
+export enum AmountUnit {
+  Btc = "btc",
+  Brl = "brl",
 }
 
-/** Destino já resolvido para validação, prévia e envio */
-export interface ResolvedDestination {
+/**
+ * Dados de uma carteira exibidos numa opção dos campos De e Para (`WalletOption`).
+ * `WalletInfo` (De) e `TransferDestination` (Para) têm esse formato.
+ */
+export interface WalletOptionData {
   walletId: number;
   name: string;
   currency: Currency;
-  ownerName: string;
-  /** Carteira que a pessoa controla (sem confirmação de titular) */
-  isOwn: boolean;
-  isActive: boolean;
+  ownerFirstName: string;
+  /** `null` = saldo oculto para quem consulta (FR-018) */
+  balance: number | null;
 }
 
-export const EMPTY_DESTINATION: DestinationState = {
-  mode: DestinationMode.None,
-  walletId: null,
-  code: "",
-  publicWallet: null,
-  lookupError: null,
-  lookingUp: false,
-  confirmed: false,
+/** Destino escolhido no campo Para, para validação, prévia e envio */
+export interface ResolvedDestination extends WalletOptionData {
+  ownerUserId: number;
+  /** Carteira do próprio titular da origem (sem dívida e sem confirmação de titular) */
+  isOwn: boolean;
+}
+
+/**
+ * Nome acessível de uma opção de carteira (contracts/ui.md): "Nubank, de Ana, real, saldo R$ 1.234,56"
+ * ou "…, saldo oculto" quando o saldo é restrito.
+ */
+export const walletOptionLabel = (t: TFunction, wallet: WalletOptionData): string => {
+  const params = {
+    wallet: wallet.name,
+    owner: wallet.ownerFirstName,
+    currency: t(`transaction.walletCurrency.${wallet.currency}`),
+  };
+  return wallet.balance === null
+    ? t("transaction.walletOptionHidden", params)
+    : t("transaction.walletOption", { ...params, balance: formatMoney(wallet.balance, wallet.currency) });
 };
 
 /** Limite da descrição (data-model §6) */
 export const DESCRIPTION_MAX = 500;
-
-/** Iniciais para o avatar ("Luísa Ramos" → "LR") */
-export const initials = (name: string): string => {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.charAt(0) ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.charAt(0) ?? "") : "";
-  return `${first}${last}`.toUpperCase();
-};

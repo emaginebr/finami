@@ -55,6 +55,29 @@ public class JsonNumberHandlingTests
         info.Amount.Should().Be(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture));
     }
 
+    [Theory]
+    [InlineData("\"200.00\"")]
+    [InlineData("200")]
+    public void Transfer_amount_brl_accepts_number_or_string_and_amount_stays_null(string amountBrlJson)
+    {
+        var json = $"{{ \"sourceWalletId\": 8, \"destinationWalletId\": 14, \"amountBrl\": {amountBrlJson} }}";
+
+        var info = JsonSerializer.Deserialize<TransferInfo>(json, OPTIONS);
+
+        info!.AmountBrl.Should().Be(200m);
+        info.Amount.Should().BeNull();
+    }
+
+    [Fact]
+    public void Transfer_accepts_explicit_null_amount()
+    {
+        var info = JsonSerializer.Deserialize<TransferInfo>(
+            "{ \"sourceWalletId\": 1, \"destinationWalletId\": 2, \"amount\": null, \"amountBrl\": 10 }", OPTIONS);
+
+        info!.Amount.Should().BeNull();
+        info.AmountBrl.Should().Be(10m);
+    }
+
     [Fact]
     public void Invalid_numeric_string_is_rejected()
     {

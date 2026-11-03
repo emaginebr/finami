@@ -66,18 +66,36 @@ public class TransactionTools : McpToolBase
                  $"{t.Source.Name}.{BalanceText(t)}",
             t => t.TransactionId);
 
+    private const string TRANSFER_RULES =
+        "Regras: o destino deve ser da própria pessoa ou de alguém da família (use destinos_de_transferencia); " +
+        "conversão entre real e bitcoin só entre carteiras da mesma pessoa; transferência entre pessoas " +
+        "diferentes vira dívida de quem recebeu com quem enviou (veja dividas_da_pessoa).";
+
+    private const string DESTINATION_HINT =
+        "Id da carteira de destino (ex.: 8); deve ser da própria pessoa ou de alguém da família; use destinos_de_transferencia.";
+
+    private const string AMOUNT_HINT =
+        "Opcional: valor na moeda da carteira de origem (ex.: 500.00). Informe valor ou valor_em_reais, nunca os dois.";
+
+    private const string AMOUNT_BRL_HINT =
+        "Opcional: valor em reais para transferir bitcoin (origem e destino em bitcoin); o Finami converte pela " +
+        "cotação atual. Informe valor ou valor_em_reais, nunca os dois.";
+
     [McpServerTool(Name = "previa_transferencia", Title = "Prévia de transferência", ReadOnly = true,
         Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("Simula uma transferência sem gravar nada: mostra o tipo (Transfer, BtcPurchase ou BtcSale), o " +
                  "valor que sai da origem, o valor que chega no destino e a cotação usada quando há conversão " +
-                 "entre BRL e BTC. Use antes de registrar_transferencia para confirmar com a pessoa.")]
+                 "entre BRL e BTC ou quando o valor de bitcoin foi informado em reais. Use antes de " +
+                 "registrar_transferencia para confirmar com a pessoa. " + TRANSFER_RULES)]
     public Task<CallToolResult> PreviaTransferencia(ClaimsPrincipal user,
         [Description("Id da carteira de origem (ex.: 5).")] long carteira_origem_id,
-        [Description("Id da carteira de destino (ex.: 8); pode ser de outra pessoa.")] long carteira_destino_id,
-        [Description("Valor na moeda da carteira de origem (ex.: 500.00).")] decimal valor,
+        [Description(DESTINATION_HINT)] long carteira_destino_id,
+        [Description(AMOUNT_HINT)] decimal? valor = null,
+        [Description(AMOUNT_BRL_HINT)] decimal? valor_em_reais = null,
         [Description("Opcional: descrição.")] string? descricao = null) =>
         ExecuteReadAsync(user, "previa_transferencia",
-            userId => _ledgerService.PreviewTransferAsync(userId, Transfer(carteira_origem_id, carteira_destino_id, valor, descricao)),
+            userId => _ledgerService.PreviewTransferAsync(userId,
+                Transfer(carteira_origem_id, carteira_destino_id, valor, valor_em_reais, descricao)),
             p => p.Quote == null
                 ? $"Prévia ({p.Type}): sai {McpFormat.Money(p.SourceAmount, null)} da origem e chega o mesmo valor no destino."
                 : $"Prévia ({p.Type}): sai {p.SourceAmount} da origem e chegam {p.DestinationAmount} no destino, " +
@@ -85,22 +103,28 @@ public class TransactionTools : McpToolBase
 
     [McpServerTool(Name = "registrar_transferencia", Title = "Registrar transferência", ReadOnly = false,
         Destructive = false, Idempotent = false, OpenWorld = false)]
-    [Description("Transfere entre carteiras (inclusive para a carteira de outra pessoa). O valor é na moeda da " +
-                 "carteira de origem; BRL→BTC vira compra e BTC→BRL vira venda na cotação atual. A origem não " +
-                 "pode ficar negativa. Use previa_transferencia e confirme com a pessoa antes. " + KEY_HINT)]
+    [Description("Transfere entre carteiras da própria pessoa ou para a carteira de alguém da família. O valor é na " +
+                 "moeda da carteira de origem; BRL→BTC vira compra e BTC→BRL vira venda na cotação atual. Entre " +
+                 "carteiras de bitcoin, dá para informar valor_em_reais. O saldo pode ficar negativo. Use " +
+                 "previa_transferencia e confirme com a pessoa antes. " + TRANSFER_RULES + " " + KEY_HINT)]
     public Task<CallToolResult> RegistrarTransferencia(ClaimsPrincipal user,
         [Description("Id da carteira de origem (ex.: 5).")] long carteira_origem_id,
-        [Description("Id da carteira de destino (ex.: 8).")] long carteira_destino_id,
-        [Description("Valor na moeda da carteira de origem (ex.: 500.00).")] decimal valor,
+        [Description(DESTINATION_HINT)] long carteira_destino_id,
+        [Description(AMOUNT_HINT)] decimal? valor = null,
+        [Description(AMOUNT_BRL_HINT)] decimal? valor_em_reais = null,
         [Description("Opcional: descrição (ex.: \"Mesada\").")] string? descricao = null,
         [Description("Opcional: chave de repetição segura (até 64 caracteres).")] string? chave_repeticao = null) =>
         ExecuteWriteAsync(user, "registrar_transferencia", chave_repeticao,
             async userId => await WithBalanceAsync(userId, carteira_origem_id,
-                await _ledgerService.TransferAsync(userId, Transfer(carteira_origem_id, carteira_destino_id, valor, descricao))),
+                await _ledgerService.TransferAsync(userId,
+                    Transfer(carteira_origem_id, carteira_destino_id, valor, valor_em_reais, descricao))),
             t => $"Transferência de {McpFormat.Money(t.SourceAmount, t.Source.Currency)} de {t.Source.Name} para " +
                  $"{t.Destination.Name}" +
                  (t.Source.Currency != t.Destination.Currency
                      ? $" ({McpFormat.Money(t.DestinationAmount, t.Destination.Currency)} no destino)"
+                     : string.Empty) +
+                 (t.Quote != null && t.Source.Currency == t.Destination.Currency
+                     ? $" (cotação 1 BTC = {McpFormat.Money(t.Quote.PriceBrl, McpFormat.BRL)})"
                      : string.Empty) +
                  $" registrada.{BalanceText(t)}",
             t => t.TransactionId);
@@ -119,11 +143,13 @@ public class TransactionTools : McpToolBase
                  $"{McpFormat.Money(t.SourceAmount, t.Source.Currency)} voltaram de {t.Source.Name} para {t.Destination.Name}.",
             t => t.TransactionId);
 
-    private static TransferInfo Transfer(long source, long destination, decimal amount, string? description) => new()
+    private static TransferInfo Transfer(long source, long destination, decimal? amount, decimal? amountBrl,
+        string? description) => new()
     {
         SourceWalletId = source,
         DestinationWalletId = destination,
         Amount = amount,
+        AmountBrl = amountBrl,
         Description = description
     };
 

@@ -10,8 +10,14 @@ import { PageLoading } from "./PageLoading";
 import { Sidebar } from "./Sidebar";
 import { TabBar } from "./TabBar";
 
-/** Rotas com o botão "+" (FR-009) */
-const FAB_ROUTES = ["/", "/carteiras", "/carteiras/:walletId"];
+/**
+ * Rotas do shell **sem** o botão "+": as próprias telas de lançamento (feature 006, FR-024).
+ * Todas as demais rotas do shell mostram o Fab (a `/autorizar` já fica fora do shell).
+ */
+const FAB_EXCLUDED_ROUTES = ["/depositar", "/sacar", "/transferir"];
+
+/** Extrato de carteira: a carteira vai pré-selecionada no lançamento (FR-025) */
+const WALLET_STATEMENT_ROUTE = "/carteiras/:walletId";
 
 interface FabTarget {
   show: boolean;
@@ -20,14 +26,11 @@ interface FabTarget {
 }
 
 const fabTargetFor = (pathname: string): FabTarget => {
-  for (const pattern of FAB_ROUTES) {
-    const match = matchPath({ path: pattern, end: true }, pathname);
-    if (match) {
-      const id = Number(match.params.walletId);
-      return { show: true, walletId: Number.isInteger(id) && id > 0 ? id : null };
-    }
-  }
-  return { show: false, walletId: null };
+  const excluded = FAB_EXCLUDED_ROUTES.some((pattern) => matchPath({ path: pattern, end: true }, pathname));
+  if (excluded) return { show: false, walletId: null };
+  const match = matchPath({ path: WALLET_STATEMENT_ROUTE, end: true }, pathname);
+  const id = Number(match?.params.walletId);
+  return { show: true, walletId: Number.isInteger(id) && id > 0 ? id : null };
 };
 
 /**

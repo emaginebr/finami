@@ -44,7 +44,7 @@ backend/
   5 minutos não é aceita para conversão.
 - **Imutabilidade**: transações nunca são alteradas; correções são feitas por estorno.
 - **Concorrência**: cada transação bloqueia as carteiras envolvidas (`SELECT … FOR UPDATE`) antes de
-  conferir o saldo, então o saldo nunca fica negativo.
+  gravar. O saldo de uma carteira pode ficar negativo (não há checagem de saldo disponível).
 - **Grupos**: o responsável inclui/retira membros, controla as carteiras vinculadas ao grupo e
   define a visibilidade do extrato (`ResponsibleOnly`, `AllMembers`, `MembersSummary`).
 - **Adicionar membro e convites** (feature 003, contrato em
@@ -77,6 +77,34 @@ backend/
   `/api/transactions/*`) aceitam número ou string JSON (`"amount": "0.00000001"`), via
   `JsonNumberHandling.AllowReadingFromString` em `Finami.API/Extensions/JsonOptionsExtensions.cs`.
   As respostas continuam com números e as validações (casas decimais, valor > 0) não mudam.
+- **Transferências dentro da família e dívidas** (feature 006, contrato em
+  `specs/006-family-debts-transfers/contracts/api.md`). As regras ficam em
+  `LedgerService.PlanTransferAsync` e valem para `POST /api/transactions/transfer`, para a prévia
+  (`/transfer/preview`) e para o MCP:
+  - **Só para a família**: o titular do destino precisa ser o titular da origem ou ter ao menos uma
+    família em comum com ele (a regra é sobre o titular da origem, não sobre quem lança) → senão 422
+    "Só é possível transferir para pessoas da sua família.".
+  - **Conversão só na mesma pessoa**: real ↔ bitcoin entre titulares diferentes → 422 "Conversão entre
+    real e bitcoin só entre carteiras da mesma pessoa." (verificado antes de buscar a cotação).
+  - **Bitcoin em reais**: `amount` passou a ser opcional e há o novo `amountBrl`; exatamente um dos dois
+    (senão 400 "Informe o valor em bitcoin ou em reais."). `amountBrl` (até 2 casas) só vale com origem e
+    destino em BTC (senão 400); o valor em BTC é `amountBrl / cotação` truncado em 8 casas (0 → 422
+    "Valor pequeno demais para conversão."; sem cotação → 503) e a cotação fica gravada na transação. A
+    prévia devolve `sourceAmount`/`destinationAmount` em BTC e `quote`. O app registra com o `amount` em
+    BTC confirmado na prévia.
+  - **Dívidas**: `GET /api/users/{userId}/debts` — calculadas na leitura a partir do razão (sem tabela
+    nova): entram as transações entre carteiras de titulares diferentes e mesma moeda;
+    `saldo = Σ recebido − Σ enviado` por contraparte e moeda (`direction`: `owes` = a pessoa deve,
+    `owed` = devem a ela). Estornos compensam sozinhos, conversões ficam de fora, pares quites não
+    aparecem. Mesma visibilidade de `GET /api/users/{id}`, mas sem permissão → 404.
+  - **Campo Para**: `GET /api/wallets/{id}/transfer-destinations` — exige controle da origem (403) e
+    origem ativa (422); `sameCurrency` (carteiras ativas da mesma moeda do titular e das pessoas da
+    família, sem a origem; as do titular primeiro) e `conversion` (carteiras do titular na outra moeda).
+    `balance` é `null` quando quem consulta não pode ver o extrato da carteira.
+  - `WalletInfo` ganhou `ownerFirstName`. `GET /api/wallets/{id}/public` continua existindo, mas o app
+    não o usa mais.
+  - Índices `ix_transactions_source_account_id` e `ix_transactions_destination_account_id` (migration
+    `AddTransactionAccountIndexes`, que renomeia os índices de FK criados pelo EF em `AddWalletsAndLedger`).
 
 ## Servidor MCP (feature 004)
 
@@ -106,13 +134,13 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
 - **MCP Inspector** (dev): `npx @modelcontextprotocol/inspector` → Streamable HTTP →
   `http://localhost:5145/mcp` → *Quick OAuth Flow*.
 
-### Ferramentas (38), recursos e prompts
+### Ferramentas (40), recursos e prompts
 
 | Área | Leitura (`finami:read`) | Escrita (`finami:write`) |
 |---|---|---|
 | Perfil | `obter_perfil` | `atualizar_perfil` |
-| Saldos | `saldo_total`, `saldos_da_familia`, `saldos_da_pessoa`, `cotacao_bitcoin` | — |
-| Carteiras | `listar_carteiras`, `obter_carteira` | `criar_carteira`⟲, `atualizar_carteira`, `mover_carteira_de_familia`, `desativar_carteira`, `excluir_carteira` |
+| Saldos e dívidas | `saldo_total`, `saldos_da_familia`, `saldos_da_pessoa`, `dividas_da_pessoa`, `cotacao_bitcoin` | — |
+| Carteiras | `listar_carteiras`, `obter_carteira`, `destinos_de_transferencia` | `criar_carteira`⟲, `atualizar_carteira`, `mover_carteira_de_familia`, `desativar_carteira`, `excluir_carteira` |
 | Extratos e lançamentos | `extrato_carteira`, `extrato_pessoa`, `extrato_familia`, `obter_lancamento`, `previa_transferencia` | `registrar_receita`⟲, `registrar_despesa`⟲, `registrar_transferencia`⟲, `estornar_lancamento` |
 | Famílias | `listar_familias`, `obter_familia`, `listar_pessoas_criadas_por_mim`, `verificar_email_para_familia`, `listar_convites_da_familia` | `criar_familia`⟲, `renomear_familia`, `criar_pessoa_na_familia`⟲, `retirar_membro`, `convidar_para_familia`⟲, `cancelar_convite`, `aceitar_convite`, `recusar_convite` |
 | Notificações | `listar_notificacoes`, `contar_notificacoes_nao_lidas` | `marcar_notificacoes_como_lidas` |
@@ -127,6 +155,11 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
   `conflito`, `regra_de_negocio`, `cotacao_indisponivel`, `permissao_insuficiente`, `erro_interno`.
 - Recursos: `finami://perfil`, `finami://carteiras`, `finami://familias`,
   `finami://notificacoes/nao-lidas`. Prompts: `resumo_do_mes`, `registrar_gasto`, `revisar_convites`.
+- Transferências (feature 006): `previa_transferencia` e `registrar_transferencia` aceitam `valor` (moeda
+  da origem) ou `valor_em_reais` (só bitcoin → bitcoin), nunca os dois; o destino deve ser da própria
+  pessoa ou de alguém da família (`destinos_de_transferencia`) e conversão real ↔ bitcoin só entre
+  carteiras da mesma pessoa. `dividas_da_pessoa` (sem `pessoa_id` = a pessoa conectada) mostra quem deve
+  a quem, por moeda. As instruções do servidor e o prompt `resumo_do_mes` explicam essas regras.
 - Fora do MCP (FR-020): senha, cadastro, login, exclusão de conta e gestão de conexões.
 
 ### Proteções

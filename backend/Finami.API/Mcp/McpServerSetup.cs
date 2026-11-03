@@ -21,7 +21,8 @@ public static class McpServerSetup
 
     public const string INSTRUCTIONS =
         "Finami é o app de finanças da família. Valores em reais (BRL) e bitcoin (BTC). " +
-        "Antes de alterar dados, confirme com a pessoa. Use listar_carteiras para descobrir ids.";
+        "Antes de alterar dados, confirme com a pessoa. Use listar_carteiras para descobrir ids. " +
+        Prompts.FinamiPrompts.TRANSFER_GUIDANCE;
 
     public static IServiceCollection AddFinamiMcp(this IServiceCollection services)
     {

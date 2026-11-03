@@ -61,4 +61,13 @@ public class WalletsController : FinamiControllerBase
     [HttpGet("{id:long}/public")]
     public Task<IActionResult> GetPublic(long id) =>
         Execute(async () => Ok(await _walletService.GetPublicAsync(id)));
+
+    /// <summary>
+    /// Opções do campo Para para a carteira de origem (feature 006): <c>sameCurrency</c> (carteiras da mesma moeda
+    /// do titular e da família dele, sem a origem) e <c>conversion</c> (carteiras do titular na outra moeda).
+    /// Exige controle da origem (403); origem desativada → 422; <c>balance</c> nulo = saldo oculto.
+    /// </summary>
+    [HttpGet("{id:long}/transfer-destinations")]
+    public Task<IActionResult> TransferDestinations(long id) =>
+        Execute(async () => Ok(await _walletService.GetTransferDestinationsAsync(CurrentUserId, id)));
 }

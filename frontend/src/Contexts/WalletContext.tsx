@@ -2,10 +2,10 @@ import { createContext, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { walletService } from "../Services/walletService";
 import type {
+  TransferDestinationsResult,
   WalletInfo,
   WalletInsertInfo,
   WalletListFilters,
-  WalletPublicInfo,
   WalletUpdateInfo,
 } from "../types/wallet";
 import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
@@ -32,7 +32,8 @@ export interface WalletContextType {
   setWalletGroup: (walletId: number, groupId: number | null) => Promise<WalletInfo>;
   deactivateWallet: (walletId: number) => Promise<void>;
   deleteWallet: (walletId: number) => Promise<void>;
-  getPublicWallet: (walletId: number) => Promise<WalletPublicInfo>;
+  /** Opções do campo Para para a carteira de origem (feature 006) */
+  getTransferDestinations: (walletId: number) => Promise<TransferDestinationsResult>;
   clearError: () => void;
 }
 
@@ -166,11 +167,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     [handleError],
   );
 
-  const getPublicWallet = useCallback(
-    async (walletId: number): Promise<WalletPublicInfo> => {
+  const getTransferDestinations = useCallback(
+    async (walletId: number): Promise<TransferDestinationsResult> => {
       try {
         setError(null);
-        return await walletService.getPublic(walletId);
+        return await walletService.getTransferDestinations(walletId);
       } catch (err) {
         return handleError(err);
       }
@@ -196,7 +197,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setWalletGroup,
       deactivateWallet,
       deleteWallet,
-      getPublicWallet,
+      getTransferDestinations,
       clearError,
     }),
     [
@@ -213,7 +214,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setWalletGroup,
       deactivateWallet,
       deleteWallet,
-      getPublicWallet,
+      getTransferDestinations,
       clearError,
     ],
   );

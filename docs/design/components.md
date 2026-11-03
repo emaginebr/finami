@@ -891,3 +891,267 @@ funcionando com zoom de 200 % (a faixa e o cartão crescem com o texto).
   computador".
 - **Precache**: excluir `splash/**`, `screenshots/**` e `splash/splash-links.txt` dos
   `globPatterns` do Workbox (`globIgnores`) — são cerca de 2,6 MB que o app nunca usa offline.
+
+---
+
+## 10. Feature 006 — Dívidas e transferências na família
+
+Mockup: [`family-debts-transfers.html`](./mockups/family-debts-transfers.html). Contrato
+(fonte da verdade do comportamento): `specs/006-family-debts-transfers/contracts/ui.md`.
+**Nenhum token novo** e nenhum ícone lucide novo (`Users`, `Check`, `ChevronRight`,
+`ChevronsUpDown`, `ArrowDown`, `WifiOff`, `RotateCw` já são usados). Todas as combinações de
+cor abaixo já estão na tabela de contraste de `tokens.css`.
+
+| Combinação usada aqui | Contraste | Onde |
+|---|---|---|
+| `text-positive` sobre `bg-surface` | 10,91:1 | valor "a receber" (com "+") |
+| `text-negative` sobre `bg-surface` | 7,76:1 | valor "a pagar" (com "−") |
+| `text-text-subtle` sobre `bg-surface` / `bg-surface-3` | 6,18 / 4,95:1 | saldo oculto "—" |
+| `text-text` sobre `bg-brand-tint` | 12,26:1 | segmento pressionado do alternador |
+| `text-text-muted` sobre `bg-surface` | 8,81:1 | segmento solto, cabeçalhos de grupo |
+| `border-border` sobre `bg-bg` | 4,21:1 | trilho do alternador (componente ≥ 3:1) |
+| `text-info` / `text-text` sobre `bg-info-soft` | 6,94 / ≥ 12,87:1 | aviso "sem destinos" |
+| `text-positive` (✓) sobre `bg-surface-3` | 8,73:1 | opção selecionada em hover/pressed |
+
+Arquivos previstos (o nome final é do `frontend-react-developer`; aqui só a anatomia):
+`components/debt/DebtsSection.tsx` (com `DebtRow`), `components/transaction/WalletOption.tsx`
+(conteúdo da opção, reaproveitado no `SelectorRow` e no `WalletPickerStep`) e
+`components/transaction/AmountUnitToggle.tsx`. Mudanças em `FormStep`, `PreviewStep`,
+`TransactionPage` e `MemberPage`.
+
+### DebtsSection (página da pessoa, `/pessoas/:userId`)
+
+**Posição**: logo depois do `BalanceHero` e antes da primeira seção de família, no mesmo ritmo
+das seções de família (`mt-7`). Carrega com requisição própria
+(`GET /api/users/{userId}/debts`), recarrega com `ledgerVersion` e ao reconectar; o erro dela
+**nunca** derruba o resto da página (hero e famílias continuam).
+
+- **Contêiner**: `<section aria-labelledby="debts-title" aria-busy={loading || undefined}
+  className="mt-7">`.
+- **Cabeçalho** (não é link e não tem ponto colorido — o ponto significa "família"):
+  `<h2 id="debts-title" className="m-0 flex min-h-touch items-center px-4 py-[13px]
+  text-footnote font-semibold tracking-wider text-text-muted uppercase">` "Dívidas"
+  (`debts.title`). Mesma tipografia do cabeçalho das famílias logo abaixo.
+- **Cartão**: `overflow-hidden rounded-lg bg-surface` (o `ListGroup` sem título, já que o
+  título é o `<h2>`), uma `DebtRow` por item da API, na ordem recebida (nome pt-BR, BRL antes
+  de BTC). Pessoa com dívida em real e em bitcoin = duas linhas.
+
+#### DebtRow
+`<Link to={"/pessoas/" + counterpartUserId} state={navState}>` com
+`listRowClasses({ twoLines: true, withIcon: true, interactive: true })` (60 px, hairline
+recuado depois do avatar, `hover/active:bg-surface-3`, anel de foco interno de `.list-row`).
+
+| Parte | Classes / componente | Conteúdo |
+|---|---|---|
+| Avatar | `<Avatar name={counterpartName} colorIndex={counterpartUserId} size="md" />` (40 px, `aria-hidden`) | Iniciais da contraparte. O mesmo `colorIndex` vai no `NavState`, para o avatar da página de destino ter a mesma cor. |
+| Bloco frase + valor | `flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5` | Envolve a frase e o valor, que quebram juntos (ver "320 px" abaixo). |
+| Frase | `min-w-[9rem] flex-1 text-body text-text break-words` — **sem** `line-clamp` (REVIEW-006 B-2) | Regra de texto abaixo. Nome da outra pessoa em `font-semibold`; "deve a" e "você" em peso normal. |
+| Valor | `ml-auto shrink-0 text-headline font-semibold whitespace-nowrap tabular-nums` + `text-positive` ou `text-negative` | `formatSigned(±amount, currency)`: **"+R$ 70,00"** a receber, **"−R$ 30,00"** a pagar (U+2212). |
+| Chevron | `ChevronRight` `size-[18px] shrink-0 text-text-subtle`, `aria-hidden` | Indica navegação. |
+
+- **Regra de texto** (contrato): na página da pessoa logada, `debts.owedToYou` ("Bruno deve a
+  você") / `debts.youOwe` ("Você deve a Bruno"); na página de outra pessoa, `debts.owesTo` com
+  devedor e credor pelo **primeiro nome** ("Bruno deve a Ana" / "Ana deve a Bruno"). Não trocar
+  para "você" quando a contraparte é quem está vendo: o sinal do valor é sempre do ponto de
+  vista **da pessoa da página** (a do `BalanceHero` logo acima), e misturar os dois pontos de
+  vista confundiria.
+- **A receber × a pagar sem depender de cor**: a frase diz quem deve a quem **e** o valor tem
+  sinal. `direction = owed` (devem à pessoa da página) → "+" verde; `owes` (a pessoa da página
+  deve) → "−" rosa. A cor é só reforço.
+- **Bitcoin**: `formatMoney` (5 casas, truncado), como no resto do app. Se o valor absoluto for
+  menor que `0,00001` (viraria "₿ 0,00000"), exibir com 8 casas — nunca mostrar dívida zerada.
+- **Nome acessível**: o conteúdo do link já forma a frase ("Bruno deve a você, +R$ 70,00").
+  A pausa é um `<span className="sr-only">,</span>` **dentro** do `<span>` da frase, logo depois
+  do texto, e o espaço fica entre os blocos (fora dele, o `sr-only` vira um bloco à parte e o
+  Chrome calcula "você , +R$" — REVIEW-006 M-4). **Sem** `aria-label` (o nome acessível fica
+  igual ao texto visível, WCAG 2.5.3).
+- **NavState do link**: `{ tab: navState.tab ?? AppTab.Wallets, backTo: "/pessoas/{id da
+  página}", backLabel: primeiro nome da pessoa da página, colorIndex: counterpartUserId }`.
+  Se quem vê não puder abrir a página da contraparte, a `MemberPage` de destino mostra o estado
+  404 com "Voltar" (já existe); a linha continua sendo link, como pede o contrato.
+- **320 px / zoom 200 %**: a frase **nunca é cortada** (quem deve a quem é a informação principal
+  da linha; com avatar + valor + chevron sobram ~110 px para ela). Frase e valor quebram como
+  bloco (`flex-wrap`): acima de ~360 px ficam na mesma linha; abaixo disso o valor desce para
+  baixo da frase, alinhado à direita (`ml-auto`), sem quebrar nem truncar. A linha cresce em
+  altura (`min-h`, nunca `h`). Correção do `line-clamp-2` da versão anterior (REVIEW-006 B-2,
+  falha de 1.4.10).
+
+#### Estados da seção
+| Estado | Visual | A11y |
+|---|---|---|
+| Carregando | Cabeçalho visível + cartão com **2** linhas-esqueleto de 60 px (`listRowClasses({ twoLines: true, withIcon: true })`): `Skeleton` `size-10` com `rounded="rounded-pill"` (prop que substitui o `rounded-sm` padrão — classe `rounded-*` no `className` dependeria da ordem do CSS, REVIEW-006 I-3), barra `h-3.5 w-40`, valor `ml-auto h-4 w-[4.5rem]`. | `aria-busy="true"` na `<section>` + `<span className="sr-only" role="status">Carregando…</span>` (`app.loading`); blocos `aria-hidden`. |
+| Com dívidas | Cartão com as `DebtRow`. | — |
+| Vazio | **Sem** `EmptyState` grande: `<p className="m-0 rounded-lg bg-surface px-4 py-3 text-subhead text-text-muted">` "Nenhuma dívida em aberto." (`debts.empty`). Fica num cartão para manter o ritmo entre o hero e as famílias. | Texto comum (não é alerta nem `status`). |
+| Erro | No lugar do cartão: `RetryBanner` (tom erro, `role="alert"`) com `errorMessage(err)` e `retryLabel` "Tentar de novo"; durante a nova tentativa a faixa continua montada e o botão entra em loading. | Foco volta ao botão se a nova tentativa falhar (já é do `RetryBanner`); se der certo, vai para o `<h2>` "Dívidas" (`tabIndex={-1}`), já que a faixa com o foco some (REVIEW-006 M-2). |
+| Offline com cache | Lista guardada; a faixa global "Sem internet · dados de…" (feature 005) informa a data. | — |
+| Offline sem cache | `RetryBanner` com `icon={WifiOff}` e `pwa.offline.contentUnavailable`. | Igual ao erro. |
+
+### WalletOption (opção dos campos De e Para)
+
+Conteúdo único usado em três lugares: (1) as opções do `WalletPickerStep` (`role="option"`),
+(2) a linha do campo já preenchido (`SelectorRow`, `aria-haspopup="listbox"`) e (3) o grupo
+"Converter". Substitui o par "nome + `describeWallet`" atual.
+
+```
+[ícone 36]  Nome da carteira (headline, até 2 linhas)      R$ 1.234,56  [✓ 20]
+            Ana (footnote, muted)                           (headline, tabular)
+```
+
+| Parte | Classes / componente |
+|---|---|
+| Linha | `listRowClasses({ twoLines: true, withIcon: true, interactive: true })` → `min-h-row-2` (60 px, alvo ≥ 44) e largura total. |
+| Ícone do tipo | `<WalletIcon currency={wallet.currency} />` — real `Wallet` em `bg-surface-2 text-accent`, bitcoin `Bitcoin` em `bg-warning-soft text-warning`; `aria-hidden` (o tipo vai no nome acessível). |
+| Nome da carteira | `block text-headline line-clamp-2 break-words` (trunca o nome, nunca o saldo). |
+| Primeiro nome do titular | `mt-0.5 block truncate text-footnote text-text-muted` → `wallet.ownerFirstName`. Sempre exibido, inclusive nas carteiras da própria pessoa (é o que diferencia "Nubank · Ana" de "Mesada · Caio" quando o responsável lança pelo dependente). |
+| Saldo | `shrink-0 text-right text-headline font-semibold whitespace-nowrap tabular-nums` com `formatMoney(balance, currency)` (BTC com 5 casas). Negativo: "−" + `text-negative`. |
+| Saldo oculto (`balance: null`) | `<span className="text-text-subtle" aria-hidden="true">—</span>`. Onde a linha **não** tiver `aria-label`, acrescentar `<span className="sr-only">saldo oculto</span>` (`balances.hiddenBalance`). |
+| Marca de selecionado | Slot `w-5 shrink-0` **sempre reservado** (os saldos ficam alinhados com ou sem ✓): `Check` `size-5 text-positive` `strokeWidth={2.5}`, `aria-hidden`, só na opção selecionada. No `SelectorRow` o slot dá lugar ao `ChevronsUpDown` `size-[18px] text-text-subtle`. |
+
+- **Selecionado**: `aria-selected="true"` + ✓ verde. Sem fundo diferente: `surface-3` já é o
+  hover/pressed, e seleção por fundo seria confundida com toque.
+- **Foco/hover/pressed**: herdados de `.list-row` (anel interno, `bg-surface-3`).
+- **Nome acessível**: na opção, `aria-label`; no `SelectorRow`, `aria-labelledby="{id do
+  rótulo De/Para} {id do texto}"`, com o texto num `<span id className="sr-only">` e o
+  conteúdo visível da linha em `aria-hidden` (não usar `aria-label` num `<span>` genérico:
+  o suporte é irregular). Texto: `transaction.walletOption` → "Nubank, de Ana, real, saldo
+  R$ 1.234,56", com `{{currency}}` em minúsculas ("real", "bitcoin").
+  **Saldo oculto**: com `balance = balances.hiddenBalance` o resultado seria "…, saldo saldo
+  oculto". Sugestão ao contrato: chave `transaction.walletOptionHidden` = "{{wallet}}, de
+  {{owner}}, {{currency}}, saldo oculto".
+- **Campo De**: um único cartão `rounded-lg bg-surface`, sem cabeçalhos de grupo. Lista vazia:
+  texto existente `transaction.noWallets`.
+
+### Campo Para — grupos "Família" e "Converter"
+
+Antes de escolher o De, o `SelectorRow` do Para fica `disabled` (`opacity-60`, placeholder
+"Escolher destino"): não há lista sem origem. Ao trocar o De: recarrega a lista, limpa o
+destino se ele sumiu (FR-019) e volta o alternador para "Bitcoin" se a origem deixou de ser
+bitcoin.
+
+**Seletor** (sub-passo na própria página `/transferir`, cabeçalho existente "‹ Voltar ·
+Destino"): um único `role="listbox"` com até dois grupos, no padrão APG *Listbox with grouped
+options*:
+
+```html
+<div role="listbox" aria-labelledby="picker-title">
+  <div role="group" aria-labelledby="g-family">
+    <div role="presentation" id="g-family" class="mb-2 px-4 text-footnote …">Família</div>
+    <div class="overflow-hidden rounded-lg bg-surface"> …opções role="option"… </div>
+  </div>
+  <div role="group" aria-labelledby="g-convert" class="mt-6"> …"Converter"… </div>
+</div>
+```
+
+| Elemento | Classes |
+|---|---|
+| Cabeçalho de grupo | `mb-2 px-4 text-footnote font-semibold tracking-wide text-text-muted uppercase` (= título do `ListGroup`). Textos `transaction.destinationGroups.family` / `.conversion`. |
+| Cartão do grupo | `overflow-hidden rounded-lg bg-surface`; segundo grupo com `mt-6`. |
+| Opções | `WalletOption`. No grupo "Converter" o ícone já é o do **outro** tipo (origem real → opções com `Bitcoin` amarelo); junto do cabeçalho, deixa claro que é conversão. |
+| Grupo vazio | Não renderiza (nem o cabeçalho). Se só "Converter" existir, ele aparece sozinho, com cabeçalho. |
+
+- **Carregando** (lista do Para ainda vindo): no lugar do listbox, `<div aria-busy="true">` +
+  `sr-only role="status"` "Carregando…" + cartão com 3 linhas-esqueleto de 60 px (`Skeleton`
+  `size-9` com `rounded="rounded-md"`, barras `h-3.5 w-32` / `h-3 w-16`, saldo `ml-auto h-4 w-20`).
+- **Erro**: `RetryBanner` com `errorMessage(err)` e "Tentar de novo". Tentativa bem-sucedida:
+  foco na opção inicial do listbox (a mesma da abertura).
+- **Teclado** (De e Para, padrão APG *Listbox*; REVIEW-006 I-2): **uma** parada de Tab no
+  listbox (roving tabindex — a opção selecionada, ou a primeira, com `tabIndex={0}`; as demais
+  `-1`); `ArrowDown`/`ArrowUp` vão para a próxima/anterior **atravessando os grupos**,
+  `Home`/`End` para a primeira/última; `Enter`/`Espaço` escolhem (clique do `<button
+  role="option">`). A seleção continua em `aria-selected` + ✓. Ao abrir o seletor, o foco vai
+  para a parada de Tab.
+- **Retorno do foco** (REVIEW-006 I-1): escolher uma opção ou tocar "‹ Voltar" no seletor
+  devolve o foco ao campo (De ou Para) que o abriu. Na prévia, o foco vai para o título do passo
+  (`<h2 tabIndex={-1}>`, ex.: "Confirmar transferência"); ao voltar da prévia, para o
+  "Continuar". "Informar em bitcoin" (503 em "Reais") continua levando ao `MoneyInput`, com
+  prioridade.
+- **Offline**: usa a última lista do cache da sessão; sem cache, `Banner tone="warning"` com
+  `WifiOff` e `pwa.offline.contentUnavailable` (o registro já fica bloqueado offline,
+  feature 005).
+
+**Aviso sem destinos** (lista carregada e vazia nos dois grupos): no **formulário**, o
+`SelectorRow` do Para é substituído pelo aviso, abaixo do rótulo "Para" (não adianta abrir um
+seletor vazio):
+`<Banner tone="info" role="status" icon={Users}>` → `flex items-start gap-2.5 rounded-md
+bg-info-soft p-3 text-footnote text-info`, ícone `Users` 18 px, texto em `text-text`: "Não há
+carteiras para transferir. Só é possível transferir para pessoas da sua família, na mesma
+moeda." (`transaction.noDestinations`). Tom **info** (azul), não erro: é uma regra, não uma
+falha. O botão principal diz **"Continuar"** (`transaction.submit.continue` — o próximo passo
+seria escolher o Para) e fica com **`aria-disabled="true"`** (não `disabled`) + `aria-describedby`
+apontando para o aviso: continua na ordem de Tab, o leitor anuncia "indisponível" junto com o
+motivo para quem chega nele pelo teclado, e tocar nele não faz nada. Visual = estado Disabled das
+regras comuns (o `Button` já estiliza `aria-disabled`). Correção da versão anterior, em que o
+`disabled` tirava o botão da ordem de Tab e a descrição só era lida no modo de leitura
+(REVIEW-006 M-1).
+
+### AmountUnitToggle — alternador "Bitcoin | Reais"
+
+Visível **só** quando De e Para são bitcoin (FR-020). Fica na linha do rótulo "Valor", à
+direita; o `MoneyInput` logo abaixo muda de moeda.
+
+```
+Valor                                   ( Bitcoin | Reais )
+┌──────────────────────────────────────────────────────────┐
+│ R$  200,00                                               │
+└──────────────────────────────────────────────────────────┘
+Disponível: ₿ 0,01000
+```
+
+| Parte | Classes |
+|---|---|
+| Linha do rótulo | `flex flex-wrap items-end justify-between gap-x-3 gap-y-2`; em 320 px / zoom 200 % o alternador desce para baixo do rótulo, sem cortar. O "Valor" continua sendo o `<label>` do `MoneyInput` (o `MoneyInput` precisa aceitar um acessório na linha do rótulo, ex. prop `labelAccessory`). |
+| Grupo | `<div role="group" aria-label="Informar valor em">` com `inline-flex gap-0.5 rounded-pill border border-border bg-surface p-1` (mesmo trilho do `SegmentedControl`). |
+| Botão | `<button type="button" aria-pressed={on}>` `min-h-touch min-w-[5.5rem] rounded-pill px-3 text-subhead font-semibold motion-safe:transition-colors`; pressionado `bg-brand-tint text-text`; solto `text-text-muted hover:text-text`. Rótulos `transaction.amountUnit.btc` / `.brl`. |
+
+- **`aria-pressed`, não `radiogroup`** (pedido do contrato): os dois botões ficam na ordem
+  normal de Tab (sem roving tabindex) e o leitor anuncia "Reais, botão de alternância,
+  pressionado". Exatamente um fica pressionado; tocar no que já está pressionado não faz nada.
+  O `aria-label` do grupo ("Informar valor em") é texto fixo do componente; sugerimos a chave
+  `transaction.amountUnit.label`.
+- **Troca de unidade**: limpa o valor digitado (evita que "200" em reais vire ₿ 200) e mantém
+  o foco no botão tocado. Em "Reais", o `MoneyInput` usa `currency=BRL` (prefixo `R$`,
+  placeholder `0,00`, 2 casas, descrição "em reais"); a ajuda "Disponível: ₿ 0,01000" continua
+  em bitcoin (é o saldo da origem).
+- **Reais + Continuar**: chama o preview com `amountBrl`; enquanto calcula, o texto existente
+  "Calculando a conversão…".
+
+### PreviewStep — confirmação de bitcoin informado em reais
+
+Mesmo esqueleto do `PreviewStep` atual (cartão de fluxo + `<dl>` + nota azul), com estas
+diferenças:
+
+1. **Cartão de fluxo**: valores em bitcoin com **8 casas fixas** (`₿ 0,00040000`). Aqui não
+   usar o `formatMoney` de 5 casas: o valor confirmado tem de ser exatamente o registrado
+   (SC-005). Ordem: "Sai de Ledger" (footnote muted) → `−₿ 0,00040000`
+   (`text-[1.75rem] font-bold tabular-nums text-negative`, `sr-only` "saída de") → linha
+   `text-subhead text-text-muted tabular-nums` "= R$ 200,00 informados" → `ArrowDown` →
+   `+₿ 0,00040000` (`text-positive`, `sr-only` "entrada de") → "Entra em Cofre".
+2. **`<dl>`** (`rounded-lg bg-surface px-4 py-2`; linhas `flex justify-between gap-3 py-2
+   text-subhead`; separador `border-t-[0.5px] border-separator`; valores `font-semibold
+   tabular-nums`), nesta ordem: "Tipo" Transferência · **"Valor informado" R$ 200,00** ·
+   **"Valor em bitcoin" ₿ 0,00040000** · "Cotação" ₿ 1 = R$ 500.000,00 · "Obtida às" 14:32 ·
+   "Titular do destino" Bruno. Rótulos novos sugeridos: `transaction.preview.amountBrl`
+   "Valor informado", `transaction.preview.amountBtc` "Valor em bitcoin" e
+   `transaction.preview.enteredBrl` "= {{value}} informados" (não estão na tabela do
+   contrato).
+
+- Título "Confirmar transferência"; botão "Registrar transferência". O registro envia
+  `amount = preview.sourceAmount`.
+- **Cotação indisponível (503)**: `Banner tone="warning" role="alert"` existente ("Cotação
+  indisponível" + texto) **com um botão dentro**: `Button variant="secondary" size="sm"
+  className="mt-2"` "Informar em bitcoin" (`transaction.enterInBtc`), que volta ao formulário
+  com o alternador em "Bitcoin", o valor limpo e o foco no `MoneyInput`. "Registrar
+  transferência" fica `disabled`; "Voltar" continua ativo.
+- **"Valor pequeno demais para conversão."** (422) e as demais mensagens novas da API ("Só é
+  possível transferir para pessoas da sua família.", "Conversão entre real e bitcoin só entre
+  carteiras da mesma pessoa."): `ServerErrorBanner` no topo do formulário, como hoje.
+
+### FormStep — o que sai
+- Remover a opção "Outra carteira (código)", o campo "Código da carteira", o botão "Buscar" e
+  o cartão de confirmação do titular (FR-013). O ícone `Hash` deixa de ser usado no lançamento.
+
+### Fab
+- Visual inalterado (§1 e §9). Passa a aparecer também em Família, página da pessoa, Conta e
+  Notificações; o `<main>` reserva o `padding-bottom` do FAB nessas rotas, para que a última
+  linha (dívida ou família) nunca fique sob ele. Some em `/depositar`, `/sacar` e
+  `/transferir`.

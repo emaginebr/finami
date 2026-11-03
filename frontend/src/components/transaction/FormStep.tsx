@@ -1,18 +1,23 @@
-import { useId } from "react";
-import { Check, ChevronsUpDown, CircleAlert, Hash, Search } from "lucide-react";
+import { useEffect, useId, useMemo, useRef } from "react";
+import { ChevronsUpDown, CircleAlert, Users, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Currency } from "../../types/api";
+import { Currency, isOfflineError } from "../../types/api";
 import { TransactionKind } from "../../types/transaction";
-import type { WalletInfo } from "../../types/wallet";
+import type { TransferDestination, TransferDestinationsResult, WalletInfo } from "../../types/wallet";
 import { cn } from "../../utils/cn";
 import { formatMoney } from "../../utils/money";
-import { Button } from "../ui/Button";
+import { errorMessage } from "../../utils/notify";
+import { Banner } from "../ui/Banner";
 import { listRowClasses } from "../ui/listRow";
 import { MoneyInput } from "../ui/MoneyInput";
+import { RetryBanner } from "../ui/RetryBanner";
+import { Skeleton } from "../ui/Skeleton";
 import { TextField } from "../ui/TextField";
-import { WalletIcon } from "../wallet/WalletIcon";
-import { DESCRIPTION_MAX, DestinationMode, initials } from "./sheetModel";
-import type { DestinationState, ResolvedDestination } from "./sheetModel";
+import { AmountUnitToggle } from "./AmountUnitToggle";
+import { WalletOption, WalletOptionContent } from "./WalletOption";
+import { AmountUnit, DESCRIPTION_MAX, FocusReturn, walletOptionLabel } from "./sheetModel";
+import { useRovingListbox } from "./useRovingListbox";
+import type { ResolvedDestination, WalletOptionData } from "./sheetModel";
 
 // ---------------------------------------------------------------------------
 // Faixa de erro do servidor (topo do passo)
@@ -42,30 +47,32 @@ export const ServerErrorBanner = ({ title, message }: ServerErrorBannerProps) =>
 
 interface SelectorRowProps {
   labelId: string;
-  wallet: WalletInfo | null;
-  subtitle: string | null;
+  wallet: WalletOptionData | null;
   placeholder: string;
   onClick: () => void;
   disabled: boolean;
   invalid: boolean;
   describedBy?: string;
-  codeMode?: boolean;
   dataAutofocus?: boolean;
 }
 
+/**
+ * Campo De/Para preenchido: o nome acessível vem de `aria-labelledby` (rótulo + texto em `sr-only`);
+ * o conteúdo visível fica `aria-hidden` (components.md §10 — sem `aria-label` em `<span>`).
+ */
 const SelectorRow = ({
   labelId,
   wallet,
-  subtitle,
   placeholder,
   onClick,
   disabled,
   invalid,
   describedBy,
-  codeMode = false,
   dataAutofocus = false,
 }: SelectorRowProps) => {
+  const { t } = useTranslation();
   const contentId = useId();
+  const chevron = <ChevronsUpDown aria-hidden="true" className="size-[18px] shrink-0 text-text-subtle" />;
   return (
     <div className={cn("overflow-hidden rounded-lg bg-surface", invalid && "ring-1 ring-negative")}>
       <button
@@ -78,26 +85,27 @@ const SelectorRow = ({
         disabled={disabled}
         onClick={onClick}
         className={cn(
-          listRowClasses({ twoLines: Boolean(wallet), withIcon: true, interactive: !disabled }),
+          listRowClasses({ twoLines: Boolean(wallet), withIcon: Boolean(wallet), interactive: !disabled }),
           "disabled:cursor-not-allowed disabled:opacity-60",
         )}
       >
         {wallet ? (
-          <WalletIcon currency={wallet.currency} />
-        ) : codeMode ? (
-          <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-sm bg-info-soft text-info">
-            <Hash className="size-[18px]" strokeWidth={1.75} />
-          </span>
-        ) : null}
-        <span id={contentId} className="min-w-0 flex-1">
-          <span className={cn("block truncate text-headline", !wallet && !codeMode && "font-normal text-text-subtle")}>
-            {wallet ? wallet.name : placeholder}
-          </span>
-          {wallet && subtitle ? (
-            <span className="mt-0.5 block truncate text-footnote text-text-muted">{subtitle}</span>
-          ) : null}
-        </span>
-        <ChevronsUpDown aria-hidden="true" className="size-[18px] shrink-0 text-text-subtle" />
+          <>
+            <span id={contentId} className="sr-only">
+              {walletOptionLabel(t, wallet)}
+            </span>
+            <span aria-hidden="true" className="flex min-w-0 flex-1 items-center gap-3">
+              <WalletOptionContent wallet={wallet} trailing={chevron} />
+            </span>
+          </>
+        ) : (
+          <>
+            <span id={contentId} className="min-w-0 flex-1 truncate text-headline font-normal text-text-subtle">
+              {placeholder}
+            </span>
+            {chevron}
+          </>
+        )}
       </button>
     </div>
   );
@@ -112,22 +120,28 @@ export interface FormStepProps {
   sourceWallet: WalletInfo | null;
   sourceError: string | null;
   onPickSource: () => void;
-  destination: DestinationState;
-  destinationOwnWallet: WalletInfo | null;
-  resolvedDestination: ResolvedDestination | null;
+  /** Destino escolhido no campo Para */
+  destination: ResolvedDestination | null;
   destinationError: string | null;
   onPickDestination: () => void;
-  onCodeChange: (code: string) => void;
-  onLookup: () => void;
-  onConfirmChange: (confirmed: boolean) => void;
+  /** Lista do Para carregada e vazia nos dois grupos: o campo vira aviso */
+  noDestinations: boolean;
+  /** `id` do aviso "sem destinos" (o Continuar aponta para ele com `aria-describedby`) */
+  noDestinationsId: string;
   amountText: string;
   onAmountChange: (text: string) => void;
   amountError: string | null;
+  /** Mostra o alternador "Bitcoin | Reais" (De e Para em bitcoin) */
+  showAmountUnit: boolean;
+  amountUnit: AmountUnit;
+  onAmountUnitChange: (unit: AmountUnit) => void;
+  /** Foco inicial no campo Valor ao voltar para o formulário (ex.: "Informar em bitcoin"); tem prioridade */
+  focusAmount: boolean;
+  /** Campo que abriu o seletor, que recebe o foco de volta (`Primary` fica com a página) */
+  returnFocusTo?: FocusReturn | null;
   description: string;
   onDescriptionChange: (text: string) => void;
   serverError: string | null;
-  /** Subtítulo de uma carteira no seletor ("Silva · Real") */
-  describeWallet: (wallet: WalletInfo) => string;
   /** Enviando: campos desabilitados */
   disabled: boolean;
 }
@@ -139,39 +153,41 @@ export const FormStep = ({
   sourceError,
   onPickSource,
   destination,
-  destinationOwnWallet,
-  resolvedDestination,
   destinationError,
   onPickDestination,
-  onCodeChange,
-  onLookup,
-  onConfirmChange,
+  noDestinations,
+  noDestinationsId,
   amountText,
   onAmountChange,
   amountError,
+  showAmountUnit,
+  amountUnit,
+  onAmountUnitChange,
+  focusAmount,
+  returnFocusTo = null,
   description,
   onDescriptionChange,
   serverError,
-  describeWallet,
   disabled,
 }: FormStepProps) => {
   const { t } = useTranslation();
+  // Um único alvo de `data-autofocus` por vez (o efeito da página foca o primeiro que achar)
+  const autofocusSource =
+    !focusAmount && (returnFocusTo === FocusReturn.Source || (returnFocusTo === null && !sourceWallet));
+  const autofocusDestination = !focusAmount && returnFocusTo === FocusReturn.Destination;
   const sourceLabelId = useId();
   const destinationLabelId = useId();
   const sourceErrorId = useId();
   const destinationErrorId = useId();
-  const confirmId = useId();
   const isTransfer = kind === TransactionKind.Transfer;
-  const codeMode = destination.mode === DestinationMode.Code;
-  const publicWallet = destination.publicWallet;
-  const needsOwnerConfirmation = Boolean(resolvedDestination && !resolvedDestination.isOwn);
+  const inReais = showAmountUnit && amountUnit === AmountUnit.Brl;
+  const amountCurrency = inReais ? Currency.BRL : (sourceWallet?.currency ?? Currency.BRL);
 
   return (
     <div>
       {serverError ? (
         <ServerErrorBanner title={t("transaction.serverErrorTitle")} message={serverError} />
       ) : null}
-
 
       <div className="flex flex-col gap-1.5">
         <span id={sourceLabelId} className="text-footnote font-medium text-text-muted">
@@ -180,13 +196,12 @@ export const FormStep = ({
         <SelectorRow
           labelId={sourceLabelId}
           wallet={sourceWallet}
-          subtitle={sourceWallet ? describeWallet(sourceWallet) : null}
           placeholder={t("transaction.chooseWallet")}
           onClick={onPickSource}
           disabled={disabled}
           invalid={Boolean(sourceError)}
           describedBy={sourceError ? sourceErrorId : undefined}
-          dataAutofocus={!sourceWallet}
+          dataAutofocus={autofocusSource}
         />
         {sourceError ? (
           <span id={sourceErrorId} role="alert" className="flex items-start gap-1.5 text-footnote text-negative">
@@ -201,95 +216,27 @@ export const FormStep = ({
           <span id={destinationLabelId} className="text-footnote font-medium text-text-muted">
             {t("transaction.to")}
           </span>
-          <SelectorRow
-            labelId={destinationLabelId}
-            wallet={codeMode ? null : destinationOwnWallet}
-            subtitle={destinationOwnWallet ? describeWallet(destinationOwnWallet) : null}
-            placeholder={codeMode ? t("transaction.otherWallet") : t("transaction.chooseDestination")}
-            onClick={onPickDestination}
-            disabled={disabled}
-            invalid={Boolean(destinationError) && !codeMode}
-            describedBy={destinationError && !codeMode ? destinationErrorId : undefined}
-            codeMode={codeMode}
-          />
-
-          {codeMode ? (
-            <div className="mt-3 flex flex-col gap-3">
-              <div className="flex items-end gap-2">
-                <TextField
-                  label={t("transaction.walletCode")}
-                  containerClassName="flex-1"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  data-autofocus=""
-                  className="tabular-nums"
-                  value={destination.code}
-                  disabled={disabled}
-                  error={destination.lookupError}
-                  onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      onLookup();
-                    }
-                  }}
-                />
-                <Button
-                  variant="secondary"
-                  className={destination.lookupError ? "mb-[1.875rem]" : undefined}
-                  icon={<Search className="size-[18px]" strokeWidth={1.75} />}
-                  loading={destination.lookingUp}
-                  disabled={disabled || destination.code.length === 0}
-                  onClick={onLookup}
-                >
-                  {t("actions.search")}
-                </Button>
-              </div>
-
-              {/* O resultado da busca é anunciado a leitores de tela (T093) */}
-              <div aria-live="polite">
-              {publicWallet && resolvedDestination ? (
-                <div className="rounded-lg border border-border bg-surface p-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      aria-hidden="true"
-                      className="grid size-10 shrink-0 place-items-center rounded-pill bg-family-yellow text-subhead font-bold text-on-family"
-                    >
-                      {initials(publicWallet.ownerName)}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate text-headline">{publicWallet.name}</div>
-                      <div className="text-footnote text-text-muted">
-                        {t("transaction.ownerLine", {
-                          currency: t(`currency.${publicWallet.currency}`),
-                          owner: publicWallet.ownerName,
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  {needsOwnerConfirmation && publicWallet.isActive ? (
-                    <label
-                      htmlFor={confirmId}
-                      className="mt-3 flex min-h-touch cursor-pointer items-center gap-3 text-subhead"
-                    >
-                      <input
-                        id={confirmId}
-                        type="checkbox"
-                        checked={destination.confirmed}
-                        disabled={disabled}
-                        onChange={(event) => onConfirmChange(event.target.checked)}
-                        className="size-[22px] shrink-0 accent-accent"
-                      />
-                      {t("transaction.confirmOwner", { owner: publicWallet.ownerName })}
-                    </label>
-                  ) : null}
-                </div>
-              ) : null}
-              </div>
+          {noDestinations ? (
+            // Regra, não falha: tom informativo; não adianta abrir um seletor vazio
+            <div id={noDestinationsId}>
+              <Banner tone="info" role="status" icon={Users}>
+                <span className="text-text">{t("transaction.noDestinations")}</span>
+              </Banner>
             </div>
-          ) : null}
+          ) : (
+            <SelectorRow
+              labelId={destinationLabelId}
+              wallet={destination}
+              placeholder={t("transaction.chooseDestination")}
+              onClick={onPickDestination}
+              disabled={disabled || !sourceWallet}
+              invalid={Boolean(destinationError)}
+              describedBy={destinationError ? destinationErrorId : undefined}
+              dataAutofocus={autofocusDestination}
+            />
+          )}
 
-          {destinationError ? (
+          {destinationError && !noDestinations ? (
             <span
               id={destinationErrorId}
               role="alert"
@@ -305,12 +252,19 @@ export const FormStep = ({
       <div className="mt-4">
         <MoneyInput
           label={t("transaction.amount")}
-          currency={sourceWallet?.currency ?? Currency.BRL}
+          currency={amountCurrency}
           value={amountText}
           onChange={onAmountChange}
           error={amountError}
           disabled={disabled}
-          dataAutofocus={Boolean(sourceWallet) && !isTransfer}
+          dataAutofocus={
+            Boolean(sourceWallet) && (focusAmount || (!isTransfer && returnFocusTo === null))
+          }
+          labelAccessory={
+            showAmountUnit ? (
+              <AmountUnitToggle value={amountUnit} onChange={onAmountUnitChange} disabled={disabled} />
+            ) : undefined
+          }
           hint={
             sourceWallet
               ? t("transaction.available", {
@@ -337,7 +291,7 @@ export const FormStep = ({
 };
 
 // ---------------------------------------------------------------------------
-// Seletor de carteira (sub-passo, role="listbox")
+// Seletor da carteira de origem (sub-passo, role="listbox")
 // ---------------------------------------------------------------------------
 
 export interface WalletPickerStepProps {
@@ -345,71 +299,196 @@ export interface WalletPickerStepProps {
   wallets: WalletInfo[];
   selectedWalletId: number | null;
   onSelect: (walletId: number) => void;
-  describeWallet: (wallet: WalletInfo) => string;
-  /** Mostra a opção "Outra carteira (código)" (destino da transferência) */
-  onChooseCode?: () => void;
-  codeSelected?: boolean;
 }
 
-export const WalletPickerStep = ({
-  labelId,
-  wallets,
-  selectedWalletId,
-  onSelect,
-  describeWallet,
-  onChooseCode,
-  codeSelected = false,
-}: WalletPickerStepProps) => {
+export const WalletPickerStep = ({ labelId, wallets, selectedWalletId, onSelect }: WalletPickerStepProps) => {
   const { t } = useTranslation();
+  const ids = useMemo(() => wallets.map((wallet) => wallet.walletId), [wallets]);
+  // Uma parada de Tab + setas (REVIEW-006 I-2); começa na selecionada (ou na primeira)
+  const roving = useRovingListbox(ids, selectedWalletId);
 
-  if (wallets.length === 0 && !onChooseCode) {
+  if (wallets.length === 0) {
     return <p className="py-8 text-center text-subhead text-text-muted">{t("transaction.noWallets")}</p>;
   }
 
   return (
-    <div role="listbox" aria-labelledby={labelId} className="overflow-hidden rounded-lg bg-surface">
-      {wallets.map((wallet, index) => {
-        const selected = wallet.walletId === selectedWalletId && !codeSelected;
+    <div
+      role="listbox"
+      aria-labelledby={labelId}
+      onKeyDown={roving.onKeyDown}
+      onFocus={roving.onFocus}
+      className="overflow-hidden rounded-lg bg-surface"
+    >
+      {wallets.map((wallet) => {
+        const tabStop = wallet.walletId === roving.tabStopId;
         return (
-          <button
+          <WalletOption
             key={wallet.walletId}
-            type="button"
-            role="option"
-            aria-selected={selected}
-            data-autofocus={selected || (selectedWalletId === null && index === 0) ? "" : undefined}
-            onClick={() => onSelect(wallet.walletId)}
-            className={listRowClasses({ twoLines: true, withIcon: true, interactive: true })}
-          >
-            <WalletIcon currency={wallet.currency} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-headline">{wallet.name}</span>
-              <span className="mt-0.5 block truncate text-footnote text-text-muted tabular-nums">
-                {describeWallet(wallet)}
-              </span>
-            </span>
-            {selected ? (
-              <Check aria-hidden="true" className="size-5 shrink-0 text-positive" strokeWidth={2.5} />
-            ) : null}
-          </button>
+            wallet={wallet}
+            selected={wallet.walletId === selectedWalletId}
+            onSelect={onSelect}
+            tabStop={tabStop}
+            autofocus={tabStop}
+          />
         );
       })}
-      {onChooseCode ? (
-        <button
-          type="button"
-          role="option"
-          aria-selected={codeSelected}
-          onClick={onChooseCode}
-          className={listRowClasses({ withIcon: true, interactive: true })}
-        >
-          <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-md bg-info-soft text-info">
-            <Hash className="size-[18px]" strokeWidth={1.75} />
-          </span>
-          <span className="min-w-0 flex-1 text-headline">{t("transaction.otherWallet")}</span>
-          {codeSelected ? (
-            <Check aria-hidden="true" className="size-5 shrink-0 text-positive" strokeWidth={2.5} />
-          ) : null}
-        </button>
-      ) : null}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Seletor do destino: grupos "Família" e "Converter" (APG "Listbox with grouped options")
+// ---------------------------------------------------------------------------
+
+export interface DestinationPickerStepProps {
+  labelId: string;
+  /** `null` enquanto carrega (ou com erro) */
+  destinations: TransferDestinationsResult | null;
+  error: unknown;
+  retrying: boolean;
+  onRetry: () => void;
+  selectedWalletId: number | null;
+  onSelect: (walletId: number) => void;
+}
+
+interface DestinationGroup {
+  key: string;
+  title: string;
+  wallets: TransferDestination[];
+}
+
+const DestinationSkeleton = () => (
+  <div className="overflow-hidden rounded-lg bg-surface">
+    {[0, 1, 2].map((index) => (
+      <div key={index} aria-hidden="true" className={listRowClasses({ twoLines: true, withIcon: true })}>
+        <Skeleton className="size-9 shrink-0" rounded="rounded-md" />
+        <span className="flex flex-col gap-1.5">
+          <Skeleton className="h-3.5 w-32" />
+          <Skeleton className="h-3 w-16" />
+        </span>
+        <Skeleton className="ml-auto h-4 w-20" />
+      </div>
+    ))}
+  </div>
+);
+
+export const DestinationPickerStep = ({
+  labelId,
+  destinations,
+  error,
+  retrying,
+  onRetry,
+  selectedWalletId,
+  onSelect,
+}: DestinationPickerStepProps) => {
+  const { t } = useTranslation();
+  const groupIdBase = useId();
+  const listboxRef = useRef<HTMLDivElement>(null);
+
+  // Opções na ordem da tela: "Família" e depois "Converter" (as setas atravessam os grupos)
+  const ids = useMemo(
+    () => (destinations ? [...destinations.sameCurrency, ...destinations.conversion].map((w) => w.walletId) : []),
+    [destinations],
+  );
+  const roving = useRovingListbox(ids, selectedWalletId);
+
+  // A lista chegou depois de o seletor abrir (esqueleto) ou depois de um "Tentar de novo" bem-sucedido
+  // (a faixa com o foco dentro some): o foco vai para a opção inicial, como na abertura do seletor
+  // (REVIEW-006 M-2 e I-1). Só se o foco tiver caído no <body> — nunca tira o foco de onde a pessoa
+  // foi (ex.: "‹ Voltar"). Se a nova tentativa falhar, o RetryBanner devolve o foco ao botão.
+  const focusOnArrival = useRef(destinations === null);
+  const hasDestinations = destinations !== null;
+  useEffect(() => {
+    if (!hasDestinations || !focusOnArrival.current) return;
+    focusOnArrival.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    listboxRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+  }, [hasDestinations]);
+
+  if (!destinations && error) {
+    if (isOfflineError(error)) {
+      return (
+        <Banner tone="warning" role="alert" icon={WifiOff}>
+          {t("pwa.offline.contentUnavailable")}
+        </Banner>
+      );
+    }
+    return (
+      <RetryBanner
+        retryLabel={t("pwa.offline.retry")}
+        retrying={retrying}
+        onRetry={() => {
+          focusOnArrival.current = true;
+          onRetry();
+        }}
+      >
+        {errorMessage(error)}
+      </RetryBanner>
+    );
+  }
+
+  if (!destinations) {
+    return (
+      <div aria-busy="true">
+        <span className="sr-only" role="status">
+          {t("app.loading")}
+        </span>
+        <DestinationSkeleton />
+      </div>
+    );
+  }
+
+  const groups: DestinationGroup[] = [
+    { key: "family", title: t("transaction.destinationGroups.family"), wallets: destinations.sameCurrency },
+    { key: "conversion", title: t("transaction.destinationGroups.conversion"), wallets: destinations.conversion },
+  ].filter((group) => group.wallets.length > 0);
+
+  if (groups.length === 0) {
+    return (
+      <Banner tone="info" role="status" icon={Users}>
+        <span className="text-text">{t("transaction.noDestinations")}</span>
+      </Banner>
+    );
+  }
+
+  return (
+    <div
+      ref={listboxRef}
+      role="listbox"
+      aria-labelledby={labelId}
+      onKeyDown={roving.onKeyDown}
+      onFocus={roving.onFocus}
+    >
+      {groups.map((group, groupIndex) => {
+        const headerId = `${groupIdBase}-${group.key}`;
+        return (
+          <div key={group.key} role="group" aria-labelledby={headerId} className={groupIndex > 0 ? "mt-6" : undefined}>
+            <div
+              role="presentation"
+              id={headerId}
+              className="mb-2 px-4 text-footnote font-semibold tracking-wide text-text-muted uppercase"
+            >
+              {group.title}
+            </div>
+            <div className="overflow-hidden rounded-lg bg-surface">
+              {group.wallets.map((wallet) => {
+                const tabStop = wallet.walletId === roving.tabStopId;
+                return (
+                  <WalletOption
+                    key={wallet.walletId}
+                    wallet={wallet}
+                    selected={wallet.walletId === selectedWalletId}
+                    onSelect={onSelect}
+                    tabStop={tabStop}
+                    autofocus={tabStop}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

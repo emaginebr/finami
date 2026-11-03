@@ -174,6 +174,34 @@ Spec: [`specs/005-pwa-webapp/`](../specs/005-pwa-webapp/).
 - **Instalação**: Conta → "Instalar o Finami" (diálogo nativo no Chrome/Edge; passo a passo no
   iPhone/iPad) e um convite dispensável na Home (`finami:install-dismissed-at`, 30 dias).
 
+## Dívidas e transferências na família (feature 006)
+
+Spec: [`specs/006-family-debts-transfers/`](../specs/006-family-debts-transfers/).
+
+- **Dívidas na página da pessoa** (`/pessoas/:userId`): seção "Dívidas" entre o total e as
+  famílias (`components/debt/DebtList.tsx`), com dados de `GET /api/users/{id}/debts`
+  (`balanceService.getUserDebts`, cache de sessão). Uma linha por contraparte e moeda; o valor
+  tem sinal do ponto de vista da pessoa da página ("+R$ 70,00" a receber, "−R$ 30,00" a pagar)
+  e a frase usa "você" só na página da pessoa logada. Recarrega com `ledgerVersion` e ao
+  reconectar; erro nessa seção não derruba a página.
+- **Campos De e Para** (`/transferir`): cada opção (`WalletOption`) mostra ícone do tipo, nome
+  da carteira, primeiro nome do titular (`ownerFirstName`) e saldo — ou "—" com "saldo oculto"
+  quando a visibilidade da família não permite. O Para vem de
+  `GET /api/wallets/{id}/transfer-destinations` (`walletService.getTransferDestinations`, cache
+  de sessão para uso offline), em dois grupos: **Família** (mesma moeda, sem a origem) e
+  **Converter** (carteiras do próprio titular na outra moeda). Sem opções, o Para vira um aviso
+  e o botão fica desabilitado. Trocar o De recarrega o Para e limpa o destino que deixou de valer.
+- **Transferência por código removida**: o modo "Outra carteira (código)" saiu do app; só é
+  possível transferir para a própria pessoa ou para quem divide família com o titular da origem
+  (o servidor recusa o resto com 422).
+- **Bitcoin em reais**: com De e Para em bitcoin, o alternador "Bitcoin | Reais" permite
+  informar o valor em R$. A prévia vai com `amountBrl`; a confirmação mostra o valor informado, o
+  BTC com 8 casas e a cotação; o registro envia `amount` = `preview.sourceAmount` (BTC), para
+  gravar exatamente o valor confirmado. Cotação indisponível oferece "Informar em bitcoin".
+- **Botão flutuante em todas as telas** do shell (Família, pessoa, Conta, Notificações…),
+  exceto `/depositar`, `/sacar` e `/transferir`; no extrato da carteira ela continua
+  pré-selecionada.
+
 ## Estrutura de pastas
 
 O casing das pastas é obrigatório (constituição, Princípio III): `Contexts/` e `Services/` com
@@ -204,7 +232,8 @@ frontend/
     │   ├── wallet/         # BalanceHero, WalletCard, WalletSection, WalletForm, …
     │   ├── group/          # MemberRow, MemberManager, GroupForm, VisibilityPicker
     │   ├── statement/      # PeriodPicker, StatementTotals, StatementEntryRow, detalhe
-    │   └── transaction/    # TransactionSheet (TypeStep, FormStep, PreviewStep)
+    │   ├── debt/           # DebtList (seção "Dívidas" da página da pessoa)
+    │   └── transaction/    # FormStep (De/Para, seletores), WalletOption, AmountUnitToggle, PreviewStep
     ├── pages/              # Login, Register, Home, Wallets, WalletStatement, Group, Member,
     │                       # Account, NotFound (+ *.test.tsx)
     ├── utils/              # money, dates, totals, walletGrouping, notify, validation, offlineCache, connectivity, …

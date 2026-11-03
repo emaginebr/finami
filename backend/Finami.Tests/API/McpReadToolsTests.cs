@@ -2,6 +2,7 @@ using Finami.API.Mcp;
 using Finami.API.Mcp.Tools;
 using Finami.Domain.Exceptions;
 using Finami.Domain.Interfaces;
+using Finami.DTO.Debts;
 using Finami.DTO.Quotes;
 using Finami.DTO.Statements;
 using Finami.DTO.Wallets;
@@ -237,5 +238,92 @@ public class McpReadToolsTests
 
         Structured(result).GetProperty("itens").GetArrayLength().Should().Be(1);
         Text(result).Should().Contain("0,00123456 BTC").And.Contain("R$ 400,00");
+    }
+
+    // ---------------- dividas_da_pessoa (feature 006) ----------------
+
+    [Fact]
+    public async Task Dividas_da_pessoa_defaults_to_the_token_user_and_summarizes_both_directions()
+    {
+        var debts = new Mock<IDebtService>();
+        debts.Setup(d => d.GetPersonDebtsAsync(USER, USER)).ReturnsAsync(new PersonDebtsResult
+        {
+            UserId = USER,
+            Debts = new List<PersonDebtInfo>
+            {
+                new() { CounterpartUserId = 9, CounterpartName = "Bruno Souza", CounterpartFirstName = "Bruno",
+                    Currency = "BRL", Amount = 70m, Direction = DebtDirections.OWED },
+                new() { CounterpartUserId = 9, CounterpartName = "Bruno Souza", CounterpartFirstName = "Bruno",
+                    Currency = "BTC", Amount = 0.0004m, Direction = DebtDirections.OWES }
+            }
+        });
+        var tools = new DebtTools(debts.Object, NullLogger<DebtTools>.Instance);
+
+        var result = await tools.DividasDaPessoa(Principal(READ_ONLY));
+
+        result.IsError.Should().NotBe(true);
+        var data = Structured(result);
+        data.GetProperty("userId").GetInt64().Should().Be(USER);
+        data.GetProperty("debts")[0].GetProperty("direction").GetString().Should().Be("owed");
+        data.GetProperty("debts")[1].GetProperty("counterpartFirstName").GetString().Should().Be("Bruno");
+        Text(result).Should().Be("2 dívidas: Bruno deve R$ 70,00 a você; você deve 0,0004 BTC a Bruno.");
+    }
+
+    [Fact]
+    public async Task Dividas_da_pessoa_for_another_person_and_not_found()
+    {
+        var debts = new Mock<IDebtService>();
+        debts.Setup(d => d.GetPersonDebtsAsync(USER, 12)).ReturnsAsync(new PersonDebtsResult { UserId = 12 });
+        debts.Setup(d => d.GetPersonDebtsAsync(USER, 13)).ThrowsAsync(new NotFoundException("Usuário não encontrado."));
+        var tools = new DebtTools(debts.Object, NullLogger<DebtTools>.Instance);
+
+        Text(await tools.DividasDaPessoa(Principal(READ_ONLY), 12)).Should().Be("Nenhuma dívida em aberto.");
+        Code(await tools.DividasDaPessoa(Principal(READ_ONLY), 13)).Should().Be("nao_encontrado");
+    }
+
+    // ---------------- destinos_de_transferencia (feature 006) ----------------
+
+    [Fact]
+    public async Task Destinos_de_transferencia_returns_groups_and_hidden_balance()
+    {
+        _wallets.Setup(w => w.GetTransferDestinationsAsync(USER, 5)).ReturnsAsync(new TransferDestinationsResult
+        {
+            SourceWalletId = 5,
+            SameCurrency = new List<TransferDestinationInfo>
+            {
+                new() { WalletId = 6, Name = "Poupança", Currency = "BRL", OwnerUserId = USER, OwnerFirstName = "Ana",
+                    IsOwn = true, Balance = 300m },
+                new() { WalletId = 12, Name = "Mesada", Currency = "BRL", OwnerUserId = 9, OwnerFirstName = "Bruno",
+                    Balance = null }
+            },
+            Conversion = new List<TransferDestinationInfo>
+            {
+                new() { WalletId = 8, Name = "Ledger", Currency = "BTC", OwnerUserId = USER, OwnerFirstName = "Ana",
+                    IsOwn = true, Balance = 0.01m }
+            }
+        });
+
+        var result = await WalletRead().DestinosDeTransferencia(Principal(READ_ONLY), 5);
+
+        result.IsError.Should().NotBe(true);
+        var data = Structured(result);
+        data.GetProperty("sourceWalletId").GetInt64().Should().Be(5);
+        data.GetProperty("sameCurrency").GetArrayLength().Should().Be(2);
+        data.GetProperty("sameCurrency")[1].GetProperty("balance").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+        data.GetProperty("conversion")[0].GetProperty("walletId").GetInt64().Should().Be(8);
+        Text(result).Should().Be("Mesma moeda: Poupança de Ana (id 6): R$ 300,00; Mesada de Bruno (id 12): saldo oculto. " +
+                                 "Converter: Ledger de Ana (id 8): 0,01 BTC.");
+    }
+
+    [Fact]
+    public async Task Destinos_de_transferencia_keeps_forbidden_message()
+    {
+        _wallets.Setup(w => w.GetTransferDestinationsAsync(USER, 5))
+            .ThrowsAsync(new ForbiddenException("Você não tem permissão sobre esta carteira."));
+
+        var result = await WalletRead().DestinosDeTransferencia(Principal(READ_ONLY), 5);
+
+        Code(result).Should().Be("sem_permissao");
+        Text(result).Should().Be("Você não tem permissão sobre esta carteira.");
     }
 }

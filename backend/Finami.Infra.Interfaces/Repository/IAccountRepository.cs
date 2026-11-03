@@ -14,4 +14,10 @@ public interface IAccountRepository<TModel> where TModel : class
     Task<TModel> UpdateAsync(TModel account);
     Task DeleteAsync(TModel account);
     Task<int> UnlinkFromGroupAsync(long groupId, long ownerUserId);
+
+    /// <summary>
+    /// Carteiras ativas do titular e das pessoas com ao menos uma família em comum com ele (feature 006, R-05),
+    /// candidatas ao campo Para de uma transferência.
+    /// </summary>
+    Task<List<TModel>> ListTransferDestinationsAsync(long ownerUserId);
 }

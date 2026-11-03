@@ -44,6 +44,9 @@ public class AccessPolicy : IAccessPolicy
     public async Task<bool> CanViewUserAsync(long userId, User target) =>
         CanEditUserProfile(userId, target) || await _groupRepository.ShareGroupAsync(userId, target.UserId);
 
+    public async Task<bool> AreFamilyAsync(long ownerUserId, long otherUserId) =>
+        ownerUserId == otherUserId || await _groupRepository.ShareGroupAsync(ownerUserId, otherUserId);
+
     public StatementAccess GroupStatementAccess(long userId, Group group)
     {
         if (group.IsResponsible(userId))

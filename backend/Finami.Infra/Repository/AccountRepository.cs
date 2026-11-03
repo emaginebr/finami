@@ -92,4 +92,16 @@ public class AccountRepository : IAccountRepository<Account>
         _context.Accounts
             .Where(a => a.GroupId == groupId && a.UserId == ownerUserId)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.GroupId, (long?)null));
+
+    public Task<List<Account>> ListTransferDestinationsAsync(long ownerUserId)
+    {
+        // Mesma noção de família do IGroupRepository.ShareGroupAsync (group_members).
+        var groupIds = _context.GroupMembers.Where(m => m.UserId == ownerUserId).Select(m => m.GroupId);
+        var familyUserIds = _context.GroupMembers.Where(m => groupIds.Contains(m.GroupId)).Select(m => m.UserId);
+        return _context.Accounts.AsNoTracking()
+            .Where(a => a.Kind == AccountKind.Wallet && a.IsActive && a.UserId != null
+                        && (a.UserId == ownerUserId || familyUserIds.Contains(a.UserId.Value)))
+            .OrderBy(a => a.Name)
+            .ToListAsync();
+    }
 }

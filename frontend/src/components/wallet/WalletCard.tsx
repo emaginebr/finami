@@ -119,7 +119,7 @@ export const WalletCard = ({
 /** Esqueleto de uma linha de carteira */
 export const WalletCardSkeleton = () => (
   <div aria-hidden="true" className={listRowClasses({ twoLines: true, withIcon: true })}>
-    <Skeleton className="size-9 rounded-md" />
+    <Skeleton className="size-9" rounded="rounded-md" />
     <span className="min-w-0 flex-1">
       <Skeleton className="h-3.5 w-[140px] max-w-full" />
       <Skeleton className="mt-2 h-3 w-20" />

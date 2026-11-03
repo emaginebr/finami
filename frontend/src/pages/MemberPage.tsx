@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ChevronRight, EyeOff, Plus } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { AppTab, readNavState } from "../components/layout/navigation";
 import type { NavState } from "../components/layout/navigation";
+import { DebtList } from "../components/debt/DebtList";
 import { OfflineContent } from "../components/pwa/OfflineContent";
 import { Avatar } from "../components/ui/Avatar";
 import { Button } from "../components/ui/Button";
@@ -27,6 +28,7 @@ import { useOnlineAction } from "../hooks/useOnlineAction";
 import { ApiError, isApiError, isOfflineError } from "../types/api";
 import { DetailLevel } from "../types/balance";
 import type { UserGroupBalancesResult } from "../types/balance";
+import type { PersonDebt } from "../types/debt";
 import { familyColorClass } from "../utils/familyColors";
 import { formatBrl, toCents } from "../utils/money";
 import { errorMessage, notifySuccess } from "../utils/notify";
@@ -44,7 +46,7 @@ const MemberPage = () => {
   const validId = Number.isInteger(userId) && userId > 0;
 
   const { session } = useAuth();
-  const { getUserGroupBalances } = useBalance();
+  const { getUserGroupBalances, getUserDebts } = useBalance();
   const { groups, loadGroups } = useGroup();
   const { createWallet } = useWallet();
   const { quote, status: quoteStatus, cached: quoteCached, loadQuote } = useQuote();
@@ -60,6 +62,44 @@ const MemberPage = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Dívidas (feature 006): requisição própria; o erro dela nunca derruba a página
+  const [debtsState, setDebtsState] = useState<{ userId: number; debts: PersonDebt[] } | null>(null);
+  const [debtsError, setDebtsError] = useState<unknown>(null);
+  const [debtsRetrying, setDebtsRetrying] = useState(false);
+
+  /** Última pessoa pedida em `loadDebts` (resposta atrasada da anterior é descartada) */
+  const requestedDebtsUserId = useRef<number | null>(null);
+
+  const loadDebts = useCallback(async () => {
+    if (!validId) return;
+    // A faixa de erro continua montada durante a nova tentativa (RetryBanner)
+    setDebtsRetrying(true);
+    requestedDebtsUserId.current = userId;
+    try {
+      const data = await getUserDebts(userId);
+      if (requestedDebtsUserId.current !== userId) return;
+      setDebtsState({ userId, debts: data.debts });
+      setDebtsError(null);
+    } catch (err) {
+      if (requestedDebtsUserId.current !== userId) return;
+      setDebtsError(err);
+    } finally {
+      if (requestedDebtsUserId.current === userId) setDebtsRetrying(false);
+    }
+  }, [getUserDebts, userId, validId]);
+
+  // Outra pessoa na mesma rota: não mostra o erro da anterior
+  useEffect(() => {
+    setDebtsError(null);
+  }, [userId]);
+
+  useEffect(() => {
+    void loadDebts();
+  }, [loadDebts, ledgerVersion]);
+
+  /** Última pessoa pedida em `load` */
+  const requestedUserId = useRef<number | null>(null);
+
   const load = useCallback(async () => {
     if (!validId) {
       setLoadError(new ApiError(404, t("errors.notFound")));
@@ -68,13 +108,18 @@ const MemberPage = () => {
     // "Sem internet" fica na tela durante a nova tentativa (REVIEW-005 M-5)
     setLoadError((previous: unknown) => (isOfflineError(previous) ? previous : null));
     setRetrying(true);
+    requestedUserId.current = userId;
     try {
-      setResult(await getUserGroupBalances(userId));
+      const data = await getUserGroupBalances(userId);
+      // Resposta atrasada de uma pessoa anterior não sobrescreve a atual
+      if (requestedUserId.current !== userId) return;
+      setResult(data);
       setLoadError(null);
     } catch (err) {
+      if (requestedUserId.current !== userId) return;
       setLoadError(err);
     } finally {
-      setRetrying(false);
+      if (requestedUserId.current === userId) setRetrying(false);
     }
   }, [getUserGroupBalances, userId, validId, t]);
 
@@ -85,6 +130,7 @@ const MemberPage = () => {
   // Conexão voltou: recarrega saldos e famílias (FR-012)
   useOnReconnected(() => {
     void load();
+    void loadDebts();
     loadGroups().catch(() => undefined);
   });
 
@@ -97,9 +143,29 @@ const MemberPage = () => {
     loadGroups().catch(() => undefined);
   }, [loadGroups]);
 
+  // Outra pessoa na mesma rota (link de uma dívida): o React Router reaproveita a página e `result`
+  // ainda é da pessoa anterior. Dado de outra pessoa conta como "carregando" (REVIEW-006 B-1).
+  const current = result?.userId === userId ? result : null;
+
+  // Depois que a nova pessoa carrega, o foco vai para o <h1> (o link tocado foi desmontado)
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const previousUserId = useRef(userId);
+  const focusTitlePending = useRef(false);
+  useEffect(() => {
+    if (previousUserId.current === userId) return;
+    previousUserId.current = userId;
+    focusTitlePending.current = true;
+  }, [userId]);
+  const loadedUserId = current?.userId ?? null;
+  useEffect(() => {
+    if (loadedUserId === null || !focusTitlePending.current) return;
+    focusTitlePending.current = false;
+    titleRef.current?.focus();
+  }, [loadedUserId]);
+
   const backTo = navState.backTo ?? "/carteiras";
   const backLabel = navState.backLabel ?? t("nav.wallets");
-  const quoteAvailable = isQuoteUsable(quoteStatus) && !(result?.btcExcluded ?? false);
+  const quoteAvailable = isQuoteUsable(quoteStatus) && !(current?.btcExcluded ?? false);
 
   if (loadError && isOfflineError(loadError)) {
     return (
@@ -135,7 +201,7 @@ const MemberPage = () => {
     );
   }
 
-  if (!result) {
+  if (!current) {
     return (
       <>
         <LargeTitleHeader title={t("balances.memberFallback")} backTo={backTo} backLabel={backLabel} />
@@ -149,7 +215,7 @@ const MemberPage = () => {
     );
   }
 
-  const name = `${result.firstName} ${result.lastName}`.trim();
+  const name = `${current.firstName} ${current.lastName}`.trim();
   const childState = (groupName: string, groupId: number): NavState => ({
     tab: navState.tab ?? AppTab.Wallets,
     backTo: `/familias/${groupId}`,
@@ -161,8 +227,8 @@ const MemberPage = () => {
   // quem é responsável de uma família em comum, com titular fixo e família obrigatória
   // ---------------------------------------------------------------------------
   const currentUserId = session?.user.userId ?? null;
-  const isSelf = currentUserId !== null && result.userId === currentUserId;
-  const sharedGroupIds = new Set(result.groups.map((group) => group.groupId));
+  const isSelf = currentUserId !== null && current.userId === currentUserId;
+  const sharedGroupIds = new Set(current.groups.map((group) => group.groupId));
   const formGroups = (
     isSelf ? [...groups] : groups.filter((group) => group.isResponsible && sharedGroupIds.has(group.groupId))
   ).sort((a, b) => collator.compare(a.name, b.name));
@@ -215,24 +281,34 @@ const MemberPage = () => {
       {/* Avatar à esquerda do nome (REVIEW M-1), na mesma cor da tela de origem (M-2) */}
       <LargeTitleHeader
         title={name}
+        titleRef={titleRef}
         backTo={backTo}
         backLabel={backLabel}
         actions={addWalletAction}
-        leading={<Avatar name={name} colorIndex={navState.colorIndex ?? result.userId} size="lg" />}
-        subtitle={<span className="text-footnote">{t("balances.memberOf", { count: result.groups.length })}</span>}
+        leading={<Avatar name={name} colorIndex={navState.colorIndex ?? current.userId} size="lg" />}
+        subtitle={<span className="text-footnote">{t("balances.memberOf", { count: current.groups.length })}</span>}
       />
 
       <BalanceHero
         label={t("balances.memberTotal")}
-        totalCents={toCents(result.totalBrl)}
-        btcExcluded={result.btcExcluded}
+        totalCents={toCents(current.totalBrl)}
+        btcExcluded={current.btcExcluded}
         quote={quote}
         quoteStatus={quoteStatus}
         quoteFromCache={quoteCached}
         btcExcludedBody={t("balances.btcExcludedBody")}
       />
 
-      {result.groups.map((group, index) => {
+      <DebtList
+        person={{ userId: current.userId, firstName: current.firstName, isSelf }}
+        debts={debtsState?.userId === userId ? debtsState.debts : null}
+        error={debtsError}
+        retrying={debtsRetrying}
+        onRetry={() => void loadDebts()}
+        tab={navState.tab}
+      />
+
+      {current.groups.map((group, index) => {
         const headingId = `member-group-${group.groupId}`;
         return (
           <section key={group.groupId} aria-labelledby={headingId} className="mt-7">
@@ -296,7 +372,7 @@ const MemberPage = () => {
             formId={walletFormId}
             groups={formGroups}
             currentUserId={currentUserId}
-            fixedOwner={isSelf ? null : { userId: result.userId, name }}
+            fixedOwner={isSelf ? null : { userId: current.userId, name }}
             requireGroup={!isSelf}
             onSubmit={(values) => void submitWallet(values)}
             disabled={saving}

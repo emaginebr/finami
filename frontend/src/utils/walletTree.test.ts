@@ -16,7 +16,7 @@ describe("buildWalletTree", () => {
   it("agrupa Família → Pessoa → Carteira, com a pessoa logada primeiro e tudo em ordem alfabética", () => {
     const tree = buildWalletTree(
       [
-        makeWallet({ walletId: 1, name: "Mesada", groupId: 1, ownerUserId: 9, ownerName: "Pedro Silva" }),
+        makeWallet({ walletId: 1, name: "Mesada", groupId: 1, ownerUserId: 9, ownerName: "Pedro Silva", ownerFirstName: "Pedro" }),
         makeWallet({ walletId: 2, name: "Zeta", groupId: 1 }),
         makeWallet({ walletId: 3, name: "Alfa", groupId: 1 }),
         makeWallet({ walletId: 4, name: "Nubank", groupId: null }),
