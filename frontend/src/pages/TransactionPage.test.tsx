@@ -187,6 +187,70 @@ describe("TransactionPage", () => {
     expect(requestsTo(fetchMock, "POST /api/transactions/income")).toHaveLength(0);
   });
 
+  it("depósito em carteira bitcoin: alternador Bitcoin | Satoshis | Reais; satoshis viram BTC de 8 casas", async () => {
+    const { container, fetchMock, router, user } = setup(
+      TransactionKind.Income,
+      { "POST /api/transactions/income": { status: 201, body: makeTransaction() } },
+      2,
+    );
+
+    await ready(/^Carteira Ana, Reserva BTC,/);
+    const toggle = screen.getByRole("group", { name: "Informar valor em" });
+    expect(within(toggle).getAllByRole("button").map((b) => b.textContent)).toEqual(["Bitcoin", "Satoshis", "Reais"]);
+    expect(within(toggle).getByRole("button", { name: "Bitcoin" })).toHaveAttribute("aria-pressed", "true");
+    expect(await axe(container)).toHaveNoViolations();
+
+    await user.click(within(toggle).getByRole("button", { name: "Satoshis" }));
+    await user.type(screen.getByLabelText("Valor"), "12345");
+    await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
+    expect(requestsTo(fetchMock, "POST /api/transactions/income")).toEqual([
+      { walletId: 2, amount: "0.00012345", description: null },
+    ]);
+  });
+
+  it("saque em carteira bitcoin informado em reais: converte pela cotação e envia o BTC exibido", async () => {
+    const { fetchMock, router, user } = setup(
+      TransactionKind.Expense,
+      {
+        "GET /api/quotes/btc": { body: { ...QUOTE, isStale: false } },
+        "POST /api/transactions/expense": { status: 201, body: makeTransaction() },
+      },
+      2,
+    );
+
+    await ready(/^Carteira Ana, Reserva BTC,/);
+    await user.click(screen.getByRole("button", { name: "Reais" }));
+    expect(screen.getByLabelText("Valor")).toHaveAccessibleDescription(/em reais/);
+    await user.type(screen.getByLabelText("Valor"), "500");
+
+    // R$ 500 / R$ 512.340 = ₿ 0,00097591 (truncado em 8 casas)
+    expect(await screen.findByText(/^= ₿\s0,00097591 \(₿ 1 = R\$\s512\.340,00\)$/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Registrar saque" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
+    expect(requestsTo(fetchMock, "POST /api/transactions/expense")).toEqual([
+      { walletId: 2, amount: "0.00097591", description: null },
+    ]);
+  });
+
+  it("saque em reais sem cotação: avisa e não envia", async () => {
+    const { fetchMock, user } = setup(
+      TransactionKind.Expense,
+      { "GET /api/quotes/btc": { status: 503, body: { message: "Cotação indisponível." } } },
+      2,
+    );
+
+    await ready(/^Carteira Ana, Reserva BTC,/);
+    await user.click(screen.getByRole("button", { name: "Reais" }));
+    await user.type(screen.getByLabelText("Valor"), "500");
+
+    expect(await screen.findByText("Cotação do bitcoin indisponível no momento.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registrar saque" })).toBeDisabled();
+    expect(requestsTo(fetchMock, "POST /api/transactions/expense")).toHaveLength(0);
+  });
+
   it("bloqueia o envio de 0,001 em reais", async () => {
     const { fetchMock, user } = setup(TransactionKind.Expense);
 

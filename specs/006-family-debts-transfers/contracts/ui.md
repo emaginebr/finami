@@ -40,6 +40,15 @@ as telas seguem o Princípio IX (WCAG 2.1 AA).
 - Cotação indisponível (503): mensagem existente + ação "Informar em bitcoin" que volta o
   alternador.
 
+### Depósito e saque em carteira bitcoin (`/depositar`, `/sacar`)
+
+- O mesmo alternador "Bitcoin | Satoshis | Reais" aparece quando a carteira é BTC.
+- Satoshis: inteiro convertido no app para BTC com 8 casas.
+- Reais: o app busca a cotação atual, converte (`trunc8(reais / preço)`) e mostra junto ao campo
+  "= ₿ 0,00097591 (₿ 1 = R$ 512.340,00)"; o registro envia esse `amount` em BTC. Sem cotação:
+  "Cotação do bitcoin indisponível no momento." e o envio fica bloqueado; abaixo de 1 satoshi:
+  "Valor pequeno demais para conversão.".
+
 ### Mensagens de erro do servidor
 
 As novas mensagens (contrato da API) aparecem no banner de erro da folha, como as atuais.
