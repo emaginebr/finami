@@ -13,7 +13,20 @@ export interface GroupMemberInfo {
   firstName: string;
   lastName: string;
   joinedAt: string;
+  /** "Pode lançar" nas carteiras da família (feature 008; responsável: sempre `true`) */
+  canCreateTransactions: boolean;
+  /** "Pode estornar" lançamentos das carteiras da família (feature 008; responsável: sempre `true`) */
+  canReverse: boolean;
 }
+
+/** Permissões efetivas de um membro numa família (feature 008) */
+export interface MemberPermissions {
+  canCreateTransactions: boolean;
+  canReverse: boolean;
+}
+
+/** Corpo de `PUT /api/groups/{groupId}/members/{userId}/permissions` (os dois obrigatórios) */
+export type MemberPermissionsInfo = MemberPermissions;
 
 /** Família como devolvida pela API */
 export interface GroupInfo {
@@ -24,6 +37,8 @@ export interface GroupInfo {
   isResponsible: boolean;
   statementVisibility: StatementVisibility;
   members: GroupMemberInfo[];
+  /** Permissões de quem consulta nesta família (feature 008; responsável: tudo `true`) */
+  myPermissions: MemberPermissions;
 }
 
 /** Corpo de `POST /api/groups` */

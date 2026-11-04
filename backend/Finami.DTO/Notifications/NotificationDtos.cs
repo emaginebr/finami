@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Finami.DTO.Groups;
 using Finami.DTO.Users;
 
 namespace Finami.DTO.Notifications;
@@ -8,7 +9,10 @@ public class NotificationInfo
     [JsonPropertyName("notificationId")]
     public long NotificationId { get; set; }
 
-    /// <summary>"GroupInvitationReceived", "GroupInvitationAccepted" ou "GroupInvitationDeclined".</summary>
+    /// <summary>
+    /// "GroupInvitationReceived", "GroupInvitationAccepted", "GroupInvitationDeclined", "MemberPermissionsChanged"
+    /// ou "TransactionReversed".
+    /// </summary>
     [JsonPropertyName("type")]
     public string Type { get; set; } = string.Empty;
 
@@ -26,6 +30,25 @@ public class NotificationInfo
 
     [JsonPropertyName("invitation")]
     public NotificationInvitationInfo? Invitation { get; set; }
+
+    /// <summary>
+    /// Feature 008: em MemberPermissionsChanged, as permissões DEPOIS da mudança registrada no histórico (não o
+    /// estado atual).
+    /// </summary>
+    [JsonPropertyName("permissions")]
+    public MemberPermissionsResult? Permissions { get; set; }
+
+    /// <summary>Feature 008: em TransactionReversed, o id do estorno.</summary>
+    [JsonPropertyName("transactionId")]
+    public long? TransactionId { get; set; }
+
+    /// <summary>Feature 008: em TransactionReversed, id da carteira do destinatário afetada pelo estorno.</summary>
+    [JsonPropertyName("walletId")]
+    public long? WalletId { get; set; }
+
+    /// <summary>Feature 008: em TransactionReversed, nome da carteira do destinatário afetada pelo estorno.</summary>
+    [JsonPropertyName("walletName")]
+    public string? WalletName { get; set; }
 }
 
 public class NotificationGroupInfo

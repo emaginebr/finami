@@ -180,6 +180,7 @@
     ['pwa-states.html', 'PWA (offline, atualização, instalação)'],
     ['family-debts-transfers.html', 'Dívidas e transferências (006)'],
     ['loan-transfer-types.html', 'Tipos de transferência (007)'],
+    ['family-permissions.html', 'Permissões e estorno (008)'],
   ];
   const here = location.pathname.split('/').pop();
   document.querySelectorAll('nav[data-pages]').forEach((nav) => {

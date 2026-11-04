@@ -49,6 +49,7 @@ export const makeWallet = (overrides: Partial<WalletInfo> = {}): WalletInfo => (
   balance: 0,
   estimatedBrl: null,
   canControl: true,
+  canCreateTransactions: true,
   createdAt: "2026-01-01T00:00:00Z",
   ...overrides,
 });
@@ -60,5 +61,6 @@ export const makeGroup = (overrides: Partial<GroupInfo> = {}): GroupInfo => ({
   isResponsible: true,
   statementVisibility: StatementVisibility.AllMembers,
   members: [],
+  myPermissions: { canCreateTransactions: true, canReverse: true },
   ...overrides,
 });

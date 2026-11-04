@@ -69,6 +69,7 @@ const TRANSACTION = {
   createdByUserId: 7,
   reversedTransactionId: null,
   reversedByTransactionId: null,
+  canReverse: true,
 };
 
 const statementSearches = (fetchMock: ReturnType<typeof mockFetch>): string[] =>

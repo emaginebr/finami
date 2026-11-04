@@ -69,6 +69,7 @@ const GroupPage = ({ groupId: rootGroupId }: GroupPageProps = {}) => {
   const renameFormId = useId();
   const membersHeadingId = useId();
   const addMemberRef = useRef<HTMLButtonElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const onlineAction = useOnlineAction();
 
   const [balances, setBalances] = useState<GroupBalancesResult | null>(null);
@@ -200,6 +201,21 @@ const GroupPage = ({ groupId: rootGroupId }: GroupPageProps = {}) => {
 
   const currentVisibility = group?.statementVisibility ?? balances?.statementVisibility ?? visibility;
 
+  // A folha "Gerenciar família" só existe para o responsável; a família recarregada (ex.: depois de um 403
+  // ao mudar permissões) pode dizer que a pessoa deixou de ser — a folha fecha e o foco vai para o título
+  // da página em vez de cair no <body> (REVIEW-008 M-3)
+  const sheetAvailable = isResponsible && (group?.isResponsible ?? true);
+  const wasManaging = useRef(false);
+  useEffect(() => {
+    if (wasManaging.current && !sheetAvailable) {
+      setManageOpen(false);
+      titleRef.current?.focus();
+      // Saldos e papel também mudaram (lápis, "Adicionar membro")
+      void load();
+    }
+    wasManaging.current = manageOpen && sheetAvailable;
+  }, [manageOpen, sheetAvailable, load]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -258,6 +274,7 @@ const GroupPage = ({ groupId: rootGroupId }: GroupPageProps = {}) => {
     <>
       <LargeTitleHeader
         title={name}
+        titleRef={titleRef}
         subtitle={balances ? subtitle : undefined}
         titleAccessory={
           isRoot ? <NotificationBell variant={NotificationBellVariant.Header} className="md:hidden" /> : undefined
@@ -328,16 +345,28 @@ const GroupPage = ({ groupId: rootGroupId }: GroupPageProps = {}) => {
               ) : null}
             </div>
             <div className="overflow-hidden rounded-lg bg-surface">
-              {balances.members.map((member, index) => (
-                <MemberRow
-                  key={member.userId}
-                  member={member}
-                  index={index}
-                  detailLevel={detailLevel}
-                  currentUserId={userId}
-                  linkState={childState}
-                />
-              ))}
+              {balances.members.map((member, index) => {
+                // Permissões vêm da família (o saldo não as traz); junta pelo userId
+                const groupMember = group?.members.find((m) => m.userId === member.userId);
+                return (
+                  <MemberRow
+                    key={member.userId}
+                    member={member}
+                    index={index}
+                    detailLevel={detailLevel}
+                    currentUserId={userId}
+                    linkState={childState}
+                    permissions={
+                      groupMember
+                        ? {
+                            canCreateTransactions: groupMember.canCreateTransactions,
+                            canReverse: groupMember.canReverse,
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </div>
             {!isResponsible ? (
               <p className="m-0 px-4 pt-2 text-footnote text-text-muted">{t("groups.members.onlyResponsible")}</p>
@@ -371,7 +400,7 @@ const GroupPage = ({ groupId: rootGroupId }: GroupPageProps = {}) => {
         />
       ) : null}
 
-      {isResponsible && group ? (
+      {sheetAvailable && group ? (
         <Sheet
           open={manageOpen}
           onOpenChange={(open) => {

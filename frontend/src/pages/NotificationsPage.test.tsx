@@ -67,7 +67,10 @@ const setup = (routes: Record<string, MockResponse | MockHandler>, withBell = fa
     ),
     {
       path: "/notificacoes",
-      extraRoutes: [{ path: "/familias/:groupId", element: <p>Tela da família</p> }],
+      extraRoutes: [
+        { path: "/familias/:groupId", element: <p>Tela da família</p> },
+        { path: "/carteiras/:walletId", element: <p>Extrato da carteira</p> },
+      ],
     },
   );
   return { fetchMock, user, ...view };
@@ -251,6 +254,87 @@ describe("NotificationsPage", () => {
     expect(link).toHaveAttribute("href", "/familias/3");
     await user.click(link);
     expect(await screen.findByText("Tela da família")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Feature 008 — permissões e estornos (T046)
+  // -------------------------------------------------------------------------
+
+  const permissionsChanged = (overrides: Partial<NotificationInfo> = {}): NotificationInfo =>
+    received({
+      notificationId: 60,
+      isRead: true,
+      type: NotificationType.MemberPermissionsChanged,
+      invitation: null,
+      permissions: { canCreateTransactions: true, canReverse: false },
+      ...overrides,
+    });
+
+  const transactionReversed = (overrides: Partial<NotificationInfo> = {}): NotificationInfo =>
+    received({
+      notificationId: 61,
+      isRead: true,
+      type: NotificationType.TransactionReversed,
+      actor: { userId: 9, firstName: "Bruno", lastName: "Silva" },
+      invitation: null,
+      transactionId: 61250,
+      walletId: 12,
+      walletName: "Mesada",
+      ...overrides,
+    });
+
+  it("permissões mudadas: frase com os dois lados do resumo e toque abre a família", async () => {
+    const { container, user } = setup({
+      "GET /api/notifications": page([
+        permissionsChanged(),
+        permissionsChanged({ notificationId: 59, permissions: { canCreateTransactions: false, canReverse: false } }),
+        permissionsChanged({ notificationId: 58, permissions: null }),
+      ]),
+    });
+
+    const items = await listItems();
+    const sentence = (item: HTMLElement | undefined) => (item as HTMLElement).querySelector("p") as HTMLElement;
+    // Na tela " · "; para o leitor, vírgula (o ponto médio fica aria-hidden — REVIEW-008 M-1)
+    const visible = (element: HTMLElement) => {
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll(".sr-only").forEach((node) => node.remove());
+      return clone.textContent;
+    };
+    expect(visible(sentence(items[0]))).toBe(
+      "Ana Silva mudou suas permissões na família Silva: pode lançar · não pode estornar.",
+    );
+    const separator = within(sentence(items[0])).getByText("·", { exact: false });
+    expect(separator).toHaveAttribute("aria-hidden", "true");
+    expect(separator.nextElementSibling).toHaveClass("sr-only");
+    expect(separator.nextElementSibling).toHaveTextContent(",");
+    expect(items[1]).toHaveTextContent("Ana Silva mudou suas permissões na família Silva: somente leitura.");
+    expect(items[2]).toHaveTextContent(/^Ana Silva mudou suas permissões na família Silva\./);
+    expect(await axe(container)).toHaveNoViolations();
+
+    const link = within(items[0] as HTMLElement).getByRole("link", { name: /mudou suas permissões/ });
+    expect(link).toHaveAttribute("href", "/familias/3");
+    await user.click(link);
+    expect(await screen.findByText("Tela da família")).toBeInTheDocument();
+  });
+
+  it("estorno feito por outra pessoa: frase com a carteira e toque abre o extrato dela", async () => {
+    const { user } = setup({
+      "GET /api/notifications": page([
+        transactionReversed(),
+        transactionReversed({ notificationId: 57, walletId: null, walletName: null }),
+      ]),
+    });
+
+    const items = await listItems();
+    expect(items[0]).toHaveTextContent("Bruno Silva estornou um lançamento da sua carteira Mesada.");
+    expect(items[1]).toHaveTextContent("Bruno Silva estornou um lançamento de uma carteira sua.");
+    // Sem a carteira, o item fica estático
+    expect(within(items[1] as HTMLElement).queryByRole("link")).not.toBeInTheDocument();
+
+    const link = within(items[0] as HTMLElement).getByRole("link", { name: /estornou um lançamento/ });
+    expect(link).toHaveAttribute("href", "/carteiras/12");
+    await user.click(link);
+    expect(await screen.findByText("Extrato da carteira")).toBeInTheDocument();
   });
 
   it("\"Carregar mais\" busca a próxima página e marca as novas como lidas", async () => {

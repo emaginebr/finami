@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Permissões na família e estorno — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Permissões na família e estorno <span class="muted" style="font-weight:400">· feature 008 · T001</span></h1>
+    <p>Interruptores <b>Pode lançar</b> / <b>Pode estornar</b> por membro (só o responsável, na folha "Gerenciar família"), resumo em texto na lista de membros, estado vazio quando não há carteira em que lançar, confirmação do estorno com <b>O que acontece</b>, ligações <b>Estornado por #id</b> / <b>Estorno de #id</b> e as duas notificações novas. Especificação em <code>docs/design/components.md §12</code>; comportamento em <code>specs/008-reversal-family-permissions/contracts/ui.md</code>. Nenhum token novo.</p>
+    <p>Cenário: família Silva — Ana (responsável), Bruno (membro com login) e Caio (membro). Cotação ₿ 1 = R$ 500.000,00.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">1 · Interruptores do responsável ("Gerenciar família")</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="pm-ready" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Padrão.</b> Um cartão por membro (<code>role="group"</code> com o nome). Ana, a responsável, não tem interruptores: "Todas as permissões". Membros novos começam com "Pode lançar" ligado e "Pode estornar" desligado (FR-014). Rótulo clicável (<code>&lt;label for&gt;</code>); a ajuda vai no <code>aria-describedby</code>. Extratos visíveis a todos → sem nota de alcance.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="pm-busy" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Salvando + nota de alcance.</b> Ana ligou "Pode estornar" de Bruno: o trilho já mostra o estado novo, com spinner no botão e <code>aria-busy="true"</code>; o outro interruptor de Bruno fica <code>aria-disabled</code> até o PUT voltar (os de Caio seguem livres). Como só a responsável vê os extratos, a nota ⓘ explica o alcance do estorno e está no <code>aria-describedby</code> de todo "Pode estornar".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="pm-success" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Salvo.</b> Toast "Permissões de Bruno atualizadas."; o foco continua no interruptor.</figcaption></figure>
+  </div>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="pm-error" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Erro.</b> Ana tentou desligar "Pode lançar" de Caio e o envio falhou: o interruptor <b>volta</b> a ligado e a mensagem aparece no cartão (<code>role="alert"</code>, ícone + texto, ligada aos dois interruptores). Sem toast de erro.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="pm-offline" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Sem internet.</b> Nota "Sem conexão…" no topo de Membros; interruptores com <code>aria-disabled</code> (continuam focáveis e mostram o estado atual) e a nota no <code>aria-describedby</code>. Tocar mostra o toast da feature 005. A faixa global "Sem internet" continua no topo do app (omitida aqui).</figcaption></figure>
+    <figure class="shot"><div class="device phone w320" data-screen="pm-320" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>320 px.</b> Rótulo e ajuda quebram; o interruptor fica no topo (<code>items-start</code>). A área de toque do interruptor é 59×47 px e a linha inteira responde ao toque.</figcaption></figure>
+  </div>
+
+  <h2 class="group">2 · Resumo para quem não é responsável (lista Membros)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="fam-member" data-tab="wallets" data-user="CS|Caio Silva"></div>
+      <figcaption><b>Caio vê a família.</b> Linha 2 de cada membro = permissões em texto ("Pode lançar · Pode estornar", "Somente leitura"), no mesmo lugar do selo "Responsável". Junto ao próprio nome, Caio vê que só consulta. Nenhum controle de adicionar, retirar ou mudar permissões; o rodapé explica.</figcaption></figure>
+  </div>
+
+  <h2 class="group">3 · Lançar sem carteira permitida</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="tx-dep" data-tab="home" data-user="CS|Caio Silva"></div>
+      <figcaption><b>Depositar — uma família.</b> "Você só pode consultar a família Silva." no lugar do formulário. "Depositar" fica <code>aria-disabled</code> com o estado vazio no <code>aria-describedby</code> (mesmo padrão do "sem destinos").</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="tx-xfer" data-tab="home" data-user="CS|Caio Silva"></div>
+      <figcaption><b>Transferir — mais de uma família.</b> "Você não tem carteiras em que possa lançar.". Receber transferências continua possível; só a origem depende da permissão.</figcaption></figure>
+  </div>
+
+  <h2 class="group">4 · Confirmação do estorno com o efeito</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="rv-expense" data-tab="wallets" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Despesa.</b> Bloco "O que acontece": "R$ 80,00 voltam para Mesada.". O bloco entra no <code>aria-describedby</code> do <code>alertdialog</code>; foco inicial em "Cancelar".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="rv-convert" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Compra de bitcoin.</b> "R$ 500,00 voltam para Nubank e ₿ 0,00100000 saem de Ledger." — valores originais, bitcoin com 8 casas, sem cotação atual.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="rv-settle" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Quitação.</b> Frase do dinheiro + "Dívida de Bruno com Ana: R$ 70,00 → R$ 100,00." (antes em cinza, depois em negrito). Sem a dívida atual (carregando/erro), a 2ª frase vira "A dívida de Bruno com Ana aumenta R$ 30,00." e "Estornar" continua ativo.</figcaption></figure>
+  </div>
+
+  <h2 class="group">5 · Ligações no detalhe</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="ln-original" data-tab="wallets" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Original estornado.</b> Valor riscado + selo "estornado"; abaixo, a linha "Estornado por #61250 · Abrir o estorno" (botão, 60 px) substitui o aviso azul antigo. Sem "Estornar".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="ln-reversal" data-tab="wallets" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>O estorno (aberto pela ligação).</b> A mesma folha troca de conteúdo e ganha "‹ Voltar". "Estorno de #61204 · Abrir o lançamento original" leva de volta ao original. Um estorno nunca mostra "Estornar".</figcaption></figure>
+  </div>
+
+  <h2 class="group">6 · Notificações novas</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="nt-list" data-tab="home" data-bell-active data-user="CS|Caio Silva"></div>
+      <figcaption><b>Lista.</b> Permissões mudadas (<code>ShieldCheck</code> azul) — o resumo diz os dois lados ("pode lançar · não pode estornar"; os dois desligados = "somente leitura") e o toque abre a família. Estorno feito por outra pessoa (<code>Undo2</code> cinza) — o toque abre a carteira (precisa de <code>walletId</code> na notificação).</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="pm-busy" data-tab="wallets" data-user="AS|Ana Silva"></div></div>
+      <figcaption><b>"Gerenciar família" ≥ 768 px.</b> A folha vira modal de 480 px; mesmo layout.</figcaption></figure>
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="rv-settle" data-tab="wallets" data-user="AS|Ana Silva"></div></div>
+      <figcaption><b>Confirmação ≥ 768 px.</b> Botões lado a lado ("Estornar" à direita).</figcaption></figure>
+  </div>
+</div>
+
+<!-- =====================================================================
+     1 · Interruptores do responsável
+     ===================================================================== -->
+<template id="pm-ready">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="pr-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="pr-t">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="list">
+          <button class="row"><span class="row-main"><span class="row-title regular">Quem vê os extratos</span></span><span class="value-r foot">Todos os membros</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+        </div>
+        <div class="section-head" style="margin-top:12px"><h3 style="font:inherit;margin:0">Membros (3)</h3></div>
+        <div class="perm-stack">
+          <div class="perm-card">
+            <div class="row r2 has-icon static"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub"><span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span> · você · Todas as permissões</span></span></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="pr-bn">
+            <div class="row r2 has-icon static"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title" id="pr-bn">Bruno Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Bruno Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pr-b1">Pode lançar</label><span class="sw-help" id="pr-b1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="pr-b1" class="switch" role="switch" aria-checked="true" aria-describedby="pr-b1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pr-b2">Pode estornar</label><span class="sw-help" id="pr-b2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="pr-b2" class="switch is-focus" role="switch" aria-checked="false" aria-describedby="pr-b2h"></button></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="pr-cn">
+            <div class="row r2 has-icon static"><span class="avatar fam-2">CS</span><span class="row-main"><span class="row-title" id="pr-cn">Caio Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Caio Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pr-c1">Pode lançar</label><span class="sw-help" id="pr-c1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="pr-c1" class="switch" role="switch" aria-checked="false" aria-describedby="pr-c1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pr-c2">Pode estornar</label><span class="sw-help" id="pr-c2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="pr-c2" class="switch" role="switch" aria-checked="false" aria-describedby="pr-c2h"></button></div>
+          </div>
+        </div>
+        <p class="list-foot">Para incluir pessoas, use "Adicionar membro" na tela da família.</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="pm-busy">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="pb-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="pb-t">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="list">
+          <button class="row"><span class="row-main"><span class="row-title regular">Quem vê os extratos</span></span><span class="value-r foot">Somente o responsável</span><i data-i="chevron-right" data-s="18" class="chev"></i></button>
+        </div>
+        <div class="section-head" style="margin-top:12px"><h3 style="font:inherit;margin:0">Membros (3)</h3></div>
+        <div class="perm-stack">
+          <div class="perm-card">
+            <div class="row r2 has-icon static"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub"><span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span> · você · Todas as permissões</span></span></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="pb-bn">
+            <div class="row r2 has-icon static"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title" id="pb-bn">Bruno Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Bruno Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pb-b1">Pode lançar</label><span class="sw-help" id="pb-b1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="pb-b1" class="switch" role="switch" aria-checked="true" aria-disabled="true" aria-describedby="pb-b1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pb-b2">Pode estornar</label><span class="sw-help" id="pb-b2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="pb-b2" class="switch is-focus" role="switch" aria-checked="true" aria-busy="true" aria-describedby="pb-b2h pb-scope"><span class="sw-spin" aria-hidden="true"><i data-i="loader" data-s="14" data-w="2.5"></i></span></button></div>
+            <span class="sr-only" role="status">Salvando…</span>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="pb-cn">
+            <div class="row r2 has-icon static"><span class="avatar fam-2">CS</span><span class="row-main"><span class="row-title" id="pb-cn">Caio Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Caio Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pb-c1">Pode lançar</label><span class="sw-help" id="pb-c1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="pb-c1" class="switch" role="switch" aria-checked="false" aria-describedby="pb-c1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pb-c2">Pode estornar</label><span class="sw-help" id="pb-c2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="pb-c2" class="switch" role="switch" aria-checked="false" aria-describedby="pb-c2h pb-scope"></button></div>
+          </div>
+        </div>
+        <div class="sheet-note after"><p class="note" id="pb-scope"><i data-i="info" data-s="16"></i><span>Os extratos desta família não estão visíveis a todos: com "Pode estornar", o membro só estorna lançamentos das carteiras dele.</span></p></div>
+        <p class="list-foot">Para incluir pessoas, use "Adicionar membro" na tela da família.</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="pm-success">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="ps-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="ps-t">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="section-head"><h3 style="font:inherit;margin:0">Membros (3)</h3></div>
+        <div class="perm-stack">
+          <div class="perm-card" role="group" aria-labelledby="ps-bn">
+            <div class="row r2 has-icon static"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title" id="ps-bn">Bruno Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Bruno Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="ps-b1">Pode lançar</label><span class="sw-help" id="ps-b1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="ps-b1" class="switch" role="switch" aria-checked="true" aria-describedby="ps-b1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="ps-b2">Pode estornar</label><span class="sw-help" id="ps-b2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="ps-b2" class="switch is-focus" role="switch" aria-checked="true" aria-describedby="ps-b2h"></button></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="ps-cn">
+            <div class="row r2 has-icon static"><span class="avatar fam-2">CS</span><span class="row-main"><span class="row-title" id="ps-cn">Caio Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Caio Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="ps-c1">Pode lançar</label><span class="sw-help" id="ps-c1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="ps-c1" class="switch" role="switch" aria-checked="false" aria-describedby="ps-c1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="ps-c2">Pode estornar</label><span class="sw-help" id="ps-c2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="ps-c2" class="switch" role="switch" aria-checked="false" aria-describedby="ps-c2h"></button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="check" data-s="20" data-w="2.5"></i><span>Permissões de Bruno atualizadas.</span></div></div>
+</template>
+
+<template id="pm-error">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="pe-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="pe-t">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="section-head"><h3 style="font:inherit;margin:0">Membros (3)</h3></div>
+        <div class="perm-stack">
+          <div class="perm-card" role="group" aria-labelledby="pe-bn">
+            <div class="row r2 has-icon static"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title" id="pe-bn">Bruno Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Bruno Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pe-b1">Pode lançar</label><span class="sw-help" id="pe-b1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="pe-b1" class="switch" role="switch" aria-checked="true" aria-describedby="pe-b1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pe-b2">Pode estornar</label><span class="sw-help" id="pe-b2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="pe-b2" class="switch" role="switch" aria-checked="true" aria-describedby="pe-b2h"></button></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="pe-cn">
+            <div class="row r2 has-icon static"><span class="avatar fam-2">CS</span><span class="row-main"><span class="row-title" id="pe-cn">Caio Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Caio Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pe-c1">Pode lançar</label><span class="sw-help" id="pe-c1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="pe-c1" class="switch is-focus" role="switch" aria-checked="true" aria-describedby="pe-c1h pe-err"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="pe-c2">Pode estornar</label><span class="sw-help" id="pe-c2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="pe-c2" class="switch" role="switch" aria-checked="false" aria-describedby="pe-c2h pe-err"></button></div>
+            <p class="perm-err" id="pe-err" role="alert"><i data-i="circle-alert" data-s="16"></i><span>Não foi possível salvar as permissões de Caio. Tente novamente.</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="pm-offline">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="po-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="po-t">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="section-head"><h3 style="font:inherit;margin:0">Membros (3)</h3></div>
+        <div class="sheet-note"><p class="note warn" id="po-off"><i data-i="wifi-off" data-s="16"></i><span>Sem conexão. As permissões podem ser mudadas quando a internet voltar.</span></p></div>
+        <div class="perm-stack">
+          <div class="perm-card">
+            <div class="row r2 has-icon static"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span class="row-sub"><span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span> · você · Todas as permissões</span></span></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="po-bn">
+            <div class="row r2 has-icon static"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title" id="po-bn">Bruno Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-disabled="true" aria-label="Retirar Bruno Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="po-b1">Pode lançar</label><span class="sw-help" id="po-b1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="po-b1" class="switch" role="switch" aria-checked="true" aria-disabled="true" aria-describedby="po-b1h po-off"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="po-b2">Pode estornar</label><span class="sw-help" id="po-b2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="po-b2" class="switch is-focus" role="switch" aria-checked="true" aria-disabled="true" aria-describedby="po-b2h po-off"></button></div>
+          </div>
+          <div class="perm-card" role="group" aria-labelledby="po-cn">
+            <div class="row r2 has-icon static"><span class="avatar fam-2">CS</span><span class="row-main"><span class="row-title" id="po-cn">Caio Silva</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-disabled="true" aria-label="Retirar Caio Silva">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="po-c1">Pode lançar</label><span class="sw-help" id="po-c1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="po-c1" class="switch" role="switch" aria-checked="false" aria-disabled="true" aria-describedby="po-c1h po-off"></button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="layer" style="pointer-events:none"><div class="toast" role="status" aria-live="polite"><i data-i="wifi-off" data-s="20" style="color:var(--color-warning)"></i><span>Sem internet. Conecte-se para fazer alterações.</span></div></div>
+</template>
+
+<template id="pm-320">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="p3-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="p3-t">Gerenciar família</h2><button class="back r" style="padding:0 8px;font-weight:600">OK</button></div>
+      <div class="sheet-body">
+        <div class="section-head"><h3 style="font:inherit;margin:0">Membros (3)</h3></div>
+        <div class="perm-stack">
+          <div class="perm-card" role="group" aria-labelledby="p3-bn">
+            <div class="row r2 has-icon static"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title" id="p3-bn">Bruno Silva Albuquerque</span><span class="row-sub">membro</span></span><button class="btn ghost destructive sm" aria-label="Retirar Bruno Silva Albuquerque">Retirar</button></div>
+            <div class="sw-row"><span class="sw-text"><label for="p3-b1">Pode lançar</label><span class="sw-help" id="p3-b1h">Receitas, despesas e transferências nas carteiras da família.</span></span><button id="p3-b1" class="switch" role="switch" aria-checked="true" aria-describedby="p3-b1h"></button></div>
+            <div class="sw-row"><span class="sw-text"><label for="p3-b2">Pode estornar</label><span class="sw-help" id="p3-b2h">Desfazer qualquer lançamento das carteiras da família.</span></span><button id="p3-b2" class="switch" role="switch" aria-checked="false" aria-describedby="p3-b2h p3-scope"></button></div>
+          </div>
+        </div>
+        <div class="sheet-note after"><p class="note" id="p3-scope"><i data-i="info" data-s="16"></i><span>Os extratos desta família não estão visíveis a todos: com "Pode estornar", o membro só estorna lançamentos das carteiras dele.</span></p></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- =====================================================================
+     2 · Resumo para quem não é responsável
+     ===================================================================== -->
+<template id="fam-member">
+  <div class="navbar"><a class="back" href="wallets.html" aria-label="Voltar para Carteiras"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Silva</h1>
+  <p class="subtitle" style="margin-bottom:16px">3 membros · todos veem os extratos</p>
+  <section class="hero" aria-labelledby="fm-h">
+    <p class="label" id="fm-h">Total da família</p>
+    <p class="value"><span class="cur">R$</span>11.655,15</p>
+  </section>
+  <section class="section" aria-labelledby="fm-m">
+    <div class="section-head"><h2 id="fm-m">Membros</h2></div>
+    <div class="list">
+      <a class="row r2 has-icon" href="member.html" aria-label="Ana Silva, responsável, total R$ 8.420,15" style="min-height:76px"><span class="avatar fam-0">AS</span><span class="row-main"><span class="row-title">Ana Silva</span><span style="display:block;margin-top:2px"><span class="badge resp"><i data-i="crown" data-s="12"></i>Responsável</span></span><span class="row-sub num">R$ 8.420,15</span></span><span class="row-end"><span class="amount num">R$ 8.420,15</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon" href="member.html" aria-label="Bruno Silva, pode lançar, pode estornar, total R$ 3.150,00: R$ 2.900,00 e 0,00048796 bitcoin" style="min-height:76px"><span class="avatar fam-1">BS</span><span class="row-main"><span class="row-title">Bruno Silva</span><span class="perm-sum">Pode lançar · Pode estornar</span><span class="row-sub num">R$ 2.900,00 · ₿ 0,00048796</span></span><span class="row-end"><span class="amount num">R$ 3.150,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+      <a class="row r2 has-icon is-focus" href="member.html" aria-label="Caio Silva, somente leitura, você, total R$ 85,00" style="min-height:76px"><span class="avatar fam-2">CS</span><span class="row-main"><span class="row-title">Caio Silva</span><span class="perm-sum">Somente leitura</span><span class="row-sub num">você · R$ 85,00</span></span><span class="row-end"><span class="amount num">R$ 85,00</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></a>
+    </div>
+    <p class="list-foot">Só o responsável pode incluir ou retirar pessoas, mudar permissões, renomear a família e definir quem vê os extratos.</p>
+  </section>
+</template>
+
+<!-- =====================================================================
+     3 · Lançar sem carteira permitida
+     ===================================================================== -->
+<template id="tx-dep">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Depositar</h1>
+  <div id="td-empty" class="state" style="padding-top:32px;padding-bottom:24px"><span class="ic"><i data-i="eye" data-s="36"></i></span><h2 style="margin:0;font-size:var(--text-headline);line-height:var(--text-headline--line-height)">Você só pode consultar a família Silva.</h2><p>O responsável pela família decide quem pode lançar.</p></div>
+  <button class="btn primary block is-focus" aria-disabled="true" aria-describedby="td-empty">Depositar</button>
+</template>
+
+<template id="tx-xfer">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div id="tx2-empty" class="state" style="padding-top:32px;padding-bottom:24px"><span class="ic"><i data-i="eye" data-s="36"></i></span><h2 style="margin:0;font-size:var(--text-headline);line-height:var(--text-headline--line-height)">Você não tem carteiras em que possa lançar.</h2><p>O responsável pela família decide quem pode lançar.</p></div>
+  <button class="btn primary block" aria-disabled="true" aria-describedby="tx2-empty">Transferir</button>
+</template>
+
+<!-- =====================================================================
+     4 · Confirmação do estorno
+     ===================================================================== -->
+<template id="rv-expense">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Mesada</h1>
+  <h2 class="day-head">Hoje</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm out"><i data-i="arrow-up-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Cinema</span><span class="row-sub num">16:10 · Despesa</span></span><span class="row-end"><span class="amount num neg">−R$ 80,00</span></span></button>
+  </div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="re-t" aria-describedby="re-d re-e">
+      <h2 id="re-t"><i data-i="triangle-alert" data-s="22" style="color:var(--color-negative)"></i>Estornar lançamento?</h2>
+      <p id="re-d">Será registrado um estorno de R$ 80,00 que desfaz o lançamento (despesa) de 03/11/2026. O lançamento original fica marcado como estornado.</p>
+      <section class="effect" id="re-e" aria-labelledby="re-et"><h3 id="re-et">O que acontece</h3>
+        <p><span class="v">R$ 80,00</span> voltam para Mesada.</p></section>
+      <div class="actions"><button class="btn destructive block">Estornar</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="rv-convert">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Nubank</h1>
+  <h2 class="day-head">Hoje</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm btc"><i data-i="bitcoin" data-s="18"></i></span><span class="row-main"><span class="row-title">Compra de bitcoin</span><span class="row-sub num">11:20 · → Ledger</span></span><span class="row-end"><span class="amount num neg">−R$ 500,00</span></span></button>
+  </div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rc-t" aria-describedby="rc-d rc-e">
+      <h2 id="rc-t"><i data-i="triangle-alert" data-s="22" style="color:var(--color-negative)"></i>Estornar lançamento?</h2>
+      <p id="rc-d">Será registrado um estorno de R$ 500,00 que desfaz o lançamento (compra de bitcoin) de 03/11/2026. O lançamento original fica marcado como estornado.</p>
+      <section class="effect" id="rc-e" aria-labelledby="rc-et"><h3 id="rc-et">O que acontece</h3>
+        <p><span class="v">R$ 500,00</span> voltam para Nubank e <span class="v">₿ 0,00100000</span> saem de Ledger.</p></section>
+      <div class="actions"><button class="btn destructive block">Estornar</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<template id="rv-settle">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Nubank</h1>
+  <h2 class="day-head">Hoje</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Quitação de Bruno</span><span class="row-sub num">14:40</span></span><span class="row-end"><span class="amount num pos">+R$ 30,00</span></span></button>
+  </div>
+  <div class="layer"><div class="scrim"></div>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rs-t" aria-describedby="rs-d rs-e">
+      <h2 id="rs-t"><i data-i="triangle-alert" data-s="22" style="color:var(--color-negative)"></i>Estornar lançamento?</h2>
+      <p id="rs-d">Será registrado um estorno de R$ 30,00 que desfaz o lançamento (quitação) de 03/11/2026. O lançamento original fica marcado como estornado.</p>
+      <section class="effect" id="rs-e" aria-labelledby="rs-et"><h3 id="rs-et">O que acontece</h3>
+        <p><span class="v">R$ 30,00</span> voltam para Conta do Bruno e <span class="v">R$ 30,00</span> saem de Nubank.</p>
+        <p>Dívida de Bruno com Ana: <span class="v before">R$ 70,00</span> <span aria-hidden="true">→</span><span class="sr-only">para</span> <span class="v">R$ 100,00</span>.</p></section>
+      <div class="actions"><button class="btn destructive block">Estornar</button><button class="btn secondary block is-focus">Cancelar</button></div>
+    </div>
+  </div>
+</template>
+
+<!-- =====================================================================
+     5 · Ligações no detalhe
+     ===================================================================== -->
+<template id="ln-original">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Mesada</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lo-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="lo-t">Lançamento</h2><button class="back r" style="padding:0 8px">OK</button></div>
+      <div class="sheet-body">
+        <div class="flow" style="padding-top:4px"><span class="wicon out" style="width:48px;height:48px;border-radius:14px"><i data-i="arrow-up-right" data-s="26"></i></span><span class="big neg" style="margin-top:8px;text-decoration:line-through;text-decoration-thickness:2px"><span class="sr-only">saída de </span>−R$ 80,00</span><span class="foot muted">Despesa · <span class="badge neutral"><i data-i="undo-2" data-s="12"></i>estornado</span></span></div>
+        <div class="list link-row" style="margin-bottom:12px"><button class="row r2 has-icon is-focus"><span class="wicon sm rev"><i data-i="undo-2" data-s="18"></i></span><span class="row-main"><span class="row-title">Estornado por #61250</span><span class="row-sub">Abrir o estorno</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+        <dl class="card" style="padding:8px 16px;margin:0">
+          <div class="kv"><dt>Data</dt><dd class="num">03/11/2026 16:10</dd></div>
+          <div class="kv"><dt>De</dt><dd>Mesada</dd></div>
+          <div class="kv"><dt>Para</dt><dd>Fora do Finami</dd></div>
+          <div class="kv"><dt>Descrição</dt><dd>Cinema</dd></div>
+          <div class="kv"><dt>Código</dt><dd class="num">#61204</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="ln-reversal">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Mesada</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lr-t">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><button class="back l"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 class="title" id="lr-t" tabindex="-1">Lançamento</h2><button class="back r" style="padding:0 8px">OK</button></div>
+      <div class="sheet-body">
+        <div class="flow" style="padding-top:4px"><span class="wicon rev" style="width:48px;height:48px;border-radius:14px"><i data-i="undo-2" data-s="26"></i></span><span class="big pos" style="margin-top:8px"><span class="sr-only">entrada de </span>+R$ 80,00</span><span class="foot muted">Estorno</span></div>
+        <div class="list link-row" style="margin-bottom:12px"><button class="row r2 has-icon"><span class="wicon sm rev"><i data-i="undo-2" data-s="18"></i></span><span class="row-main"><span class="row-title">Estorno de #61204</span><span class="row-sub">Abrir o lançamento original</span></span><i data-i="chevron-right" data-s="18" class="chev"></i></button></div>
+        <dl class="card" style="padding:8px 16px;margin:0">
+          <div class="kv"><dt>Data</dt><dd class="num">03/11/2026 17:02</dd></div>
+          <div class="kv"><dt>De</dt><dd>Fora do Finami</dd></div>
+          <div class="kv"><dt>Para</dt><dd>Mesada</dd></div>
+          <div class="kv"><dt>Código</dt><dd class="num">#61250</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- =====================================================================
+     6 · Notificações
+     ===================================================================== -->
+<template id="nt-list">
+  <div class="navbar"><a class="back" href="home.html" aria-label="Voltar para Home"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title" style="margin-bottom:16px">Notificações</h1>
+  <ul class="list notif-list" aria-label="Notificações">
+    <li><a class="notif" href="#fam-member"><span class="unread-dot" aria-hidden="true"></span><span class="wicon xfer" aria-hidden="true"><i data-i="shield-check" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Ana Silva</b> mudou suas permissões na família <b>Silva</b>: pode lançar · não pode estornar.</p><div class="notif-meta"><time datetime="2026-11-03T15:10">Hoje às 15:10</time></div></div><i data-i="chevron-right" data-s="18" class="chev"></i></a></li>
+    <li><a class="notif" href="wallet-statement.html"><span class="unread-dot" aria-hidden="true"></span><span class="wicon rev" aria-hidden="true"><i data-i="undo-2" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><span class="sr-only">Não lida. </span><b>Bruno Silva</b> estornou um lançamento da sua carteira <b>Mesada</b>.</p><div class="notif-meta"><time datetime="2026-11-03T14:02">Hoje às 14:02</time></div></div><i data-i="chevron-right" data-s="18" class="chev"></i></a></li>
+    <li><a class="notif" href="#fam-member"><span class="wicon xfer" aria-hidden="true"><i data-i="shield-check" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Ana Silva</b> mudou suas permissões na família <b>Silva</b>: somente leitura.</p><div class="notif-meta"><time datetime="2026-11-02T19:05">Ontem às 19:05</time></div></div><i data-i="chevron-right" data-s="18" class="chev"></i></a></li>
+    <li class="notif"><span class="wicon xfer" aria-hidden="true"><i data-i="user-plus" data-s="20"></i></span><div class="notif-main"><p class="notif-text"><b>Ana Silva</b> convidou você para a família <b>Silva</b></p><div class="notif-meta"><time datetime="2026-10-20T18:40">20 de out.</time><span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>Você aceitou</span></div></div></li>
+  </ul>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

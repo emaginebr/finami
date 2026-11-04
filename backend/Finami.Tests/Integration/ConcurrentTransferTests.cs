@@ -30,7 +30,8 @@ public class ConcurrentTransferTests
         new AmountInfoValidator(),
         new TransferInfoValidator(),
         Mock.Of<IQuoteService>(),
-        new BtcQuoteRepository(context));
+        new BtcQuoteRepository(context),
+        new NotificationRepository(context));
 
     [IntegrationFact]
     public async Task Parallel_transfers_exceeding_balance_are_all_posted_and_ledger_stays_balanced()
@@ -109,5 +110,20 @@ public class ConcurrentTransferTests
             group.IsResponsible(userId) ? StatementAccess.Full : StatementAccess.Denied;
 
         public Task<bool> CanViewWalletStatementAsync(long userId, Account wallet) => CanControlWalletAsync(userId, wallet);
+        // Feature 008: sem famílias aqui, as regras novas equivalem às de controle do titular.
+        public Task<bool> CanCreateTransactionsAsync(long userId, Account wallet) => CanControlWalletAsync(userId, wallet);
+
+        public Task EnsureCanCreateTransactionsAsync(long userId, Account wallet) => EnsureCanControlWalletAsync(userId, wallet);
+
+        public Task<bool> CanViewTransactionAsync(long userId, IEnumerable<Account> accounts) =>
+            Task.FromResult(accounts.Any(a => a.IsWallet && a.UserId == userId));
+
+        public Task<bool> CanReverseAsync(long userId, Transaction transaction, IEnumerable<Account> accounts,
+            bool alreadyReversed) =>
+            Task.FromResult(transaction.Type != TransactionType.Reversal && !alreadyReversed
+                            && accounts.Any(a => a.IsWallet && a.UserId == userId));
+
+        public Task EnsureCanReverseAsync(long userId, IEnumerable<Account> accounts) =>
+            accounts.Any(a => a.IsWallet && a.UserId == userId) ? Task.CompletedTask : throw new ForbiddenException();
     }
 }

@@ -6,7 +6,7 @@ public interface INotificationRepository<TModel> where TModel : class
 
     /// <summary>
     /// Notificações do usuário, da mais recente para a mais antiga, com convite (estado atual),
-    /// família e ator carregados. <paramref name="beforeId"/> é o cursor (exclusivo).
+    /// família, ator, registro do histórico de permissões e lançamento (feature 008) carregados. <paramref name="beforeId"/> é o cursor (exclusivo).
     /// </summary>
     Task<List<TModel>> ListAsync(long userId, long? beforeId, int limit);
 

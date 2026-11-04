@@ -248,8 +248,20 @@
       "removeTitle": "Retirar {{name}}?",
       "removeBody": "As carteiras de {{name}} deixarão de pertencer à família {{family}} e não entrarão mais no total da família. Os saldos não mudam.",
       "removed": "{{name}} foi retirada da família.",
-      "onlyResponsible": "Só o responsável pode incluir ou retirar pessoas, renomear a família e definir quem vê os extratos.",
+      "onlyResponsible": "Só o responsável pode incluir ou retirar pessoas, mudar permissões, renomear a família e definir quem vê os extratos.",
       "useAddMember": "Para incluir pessoas, use \"Adicionar membro\" na tela da família."
+    },
+    "permissions": {
+      "create": "Pode lançar",
+      "reverse": "Pode estornar",
+      "createHelp": "Receitas, despesas e transferências nas carteiras da família.",
+      "reverseHelp": "Desfazer qualquer lançamento das carteiras da família.",
+      "reverseScopeNote": "Os extratos desta família não estão visíveis a todos: com \"Pode estornar\", o membro só estorna lançamentos das carteiras dele.",
+      "readOnly": "Somente leitura",
+      "all": "Todas as permissões",
+      "separator": " · ",
+      "updated": "Permissões de {{name}} atualizadas.",
+      "unconfirmed": "Não foi possível confirmar a mudança. Confira as permissões de {{name}} quando a conexão voltar."
     },
     "addMember": {
       "open": "Adicionar membro",
@@ -326,7 +338,18 @@
     "yesterday": "Ontem às {{time}}",
     "loadMore": "Carregar mais",
     "emptyTitle": "Nenhuma notificação por enquanto",
-    "emptyBody": "Convites para famílias aparecem aqui."
+    "emptyBody": "Convites, mudanças de permissão e estornos aparecem aqui.",
+    "memberPermissionsChanged": "<b>{{actor}}</b> mudou suas permissões na família <b>{{family}}</b>:",
+    "memberPermissionsChangedShort": "<b>{{actor}}</b> mudou suas permissões na família <b>{{family}}</b>.",
+    "transactionReversed": "<b>{{actor}}</b> estornou um lançamento da sua carteira <b>{{wallet}}</b>.",
+    "transactionReversedNoWallet": "<b>{{actor}}</b> estornou um lançamento de uma carteira sua.",
+    "permissionSummary": {
+      "canCreate": "pode lançar",
+      "cannotCreate": "não pode lançar",
+      "canReverse": "pode estornar",
+      "cannotReverse": "não pode estornar",
+      "readOnly": "somente leitura"
+    }
   },
   "balances": {
     "familyTotal": "Total da família",
@@ -387,12 +410,24 @@
     "received": "Recebido",
     "code": "Código",
     "outside": "Fora do Finami",
-    "reversedBy": "Este lançamento foi estornado (lançamento #{{id}}).",
     "reverse": "Estornar lançamento",
     "reverseTitle": "Estornar lançamento?",
     "reverseBody": "Será registrado um estorno de {{amount}} que desfaz o lançamento ({{type}}) de {{date}}. O lançamento original fica marcado como estornado.",
     "reverseConfirm": "Estornar",
     "reverseSuccess": "Estorno registrado.",
+    "reversing": "Estornando…",
+    "reverseEffect": {
+      "title": "O que acontece",
+      "returnTo": "<b>{{amount}}</b> voltam para {{wallet}}.",
+      "leaveFrom": "<b>{{amount}}</b> saem de {{wallet}}.",
+      "transfer": "<b>{{returned}}</b> voltam para {{source}} e <b>{{left}}</b> saem de {{destination}}.",
+      "debtDown": "A dívida de {{debtor}} com {{creditor}} diminui <b>{{amount}}</b>.",
+      "debtUp": "A dívida de {{debtor}} com {{creditor}} aumenta <b>{{amount}}</b>."
+    },
+    "reversalOf": "Estorno de #{{id}}",
+    "reversedByLink": "Estornado por #{{id}}",
+    "openOriginal": "Abrir o lançamento original",
+    "openReversal": "Abrir o estorno",
     "kind": {
       "loanTo": "Empréstimo para {{name}}",
       "loanFrom": "Empréstimo de {{name}}",
@@ -578,6 +613,9 @@
     "pickerTitleSource": "Carteira",
     "pickerTitleDestination": "Destino",
     "noWallets": "Você não tem carteiras ativas para lançar.",
+    "readOnlyFamily": "Você só pode consultar a família {{name}}.",
+    "noWritableWallet": "Você não tem carteiras em que possa lançar.",
+    "readOnlyHint": "O responsável pela família decide quem pode lançar.",
     "walletOption": "{{owner}}, {{wallet}}, {{currency}}, saldo {{balance}}",
     "walletOptionHidden": "{{owner}}, {{wallet}}, {{currency}}, saldo oculto",
     "walletCurrency": {

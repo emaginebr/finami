@@ -19,6 +19,16 @@ public class FinamiPrompts
         "quitação abate; pagamento não gera dívida (dividas_da_pessoa). Entre carteiras de bitcoin, o valor pode ser " +
         "informado em reais (valor_em_reais), convertido pela cotação atual.";
 
+    /// <summary>
+    /// Feature 008: permissões por família, repetidas nas instruções do servidor
+    /// (<see cref="McpServerSetup.INSTRUCTIONS"/>).
+    /// </summary>
+    public const string PERMISSION_GUIDANCE =
+        "Em carteiras de família, lançar (receita, despesa e a origem de uma transferência) exige a permissão de " +
+        "lançar naquela família, e estornar exige ser o responsável ou ter a permissão de estornar; carteiras " +
+        "pessoais não mudam. Só o responsável muda as permissões (alterar_permissoes_membro), adiciona, convida ou " +
+        "retira membros. Veja as permissões em obter_familia; sem permissão, explique a mensagem à pessoa.";
+
     private readonly TimeProvider _time;
 
     public FinamiPrompts(TimeProvider time)
@@ -62,6 +72,7 @@ public class FinamiPrompts
         3. Depois da confirmação, chame registrar_despesa com carteira_id, valor, descricao e uma chave_repeticao nova
            (ex.: um UUID), para que uma repetição não lance o gasto duas vezes.
         4. Mostre o saldo novo da carteira.
+        {PERMISSION_GUIDANCE}
         """;
 
     [McpServerPrompt(Name = "revisar_convites", Title = "Revisar convites")]

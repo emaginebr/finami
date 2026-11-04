@@ -267,7 +267,7 @@ public class LedgerServiceTransferTests
         _ctx.Wallet(300, CARLA, Currency.Brl);
         _ctx.Wallet(200, PEDRO, Currency.Brl);
         // A responsável (ANA) controla a carteira do dependente e é da família de Carla; Caio não é.
-        _ctx.AccessPolicy.Setup(p => p.EnsureCanControlWalletAsync(ANA, It.Is<Account>(a => a.AccountId == 400)))
+        _ctx.AccessPolicy.Setup(p => p.EnsureCanCreateTransactionsAsync(ANA, It.Is<Account>(a => a.AccountId == 400)))
             .Returns(Task.CompletedTask);
         _ctx.ShareFamily(ANA, CARLA);
         _ctx.ShareFamily(CAIO, PEDRO);

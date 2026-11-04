@@ -1,4 +1,5 @@
 /** Tipos da área de notificações (specs/003 data-model, contracts/api.md) */
+import type { MemberPermissions } from "./group";
 import type { GroupInvitationStatus, UserSummaryInfo } from "./invitation";
 
 /** Tipos de notificação desta versão */
@@ -9,6 +10,10 @@ export enum NotificationType {
   GroupInvitationAccepted = "GroupInvitationAccepted",
   /** O convidado recusou (para quem convidou) */
   GroupInvitationDeclined = "GroupInvitationDeclined",
+  /** O responsável mudou as permissões do destinatário numa família (feature 008) */
+  MemberPermissionsChanged = "MemberPermissionsChanged",
+  /** Outra pessoa estornou um lançamento de uma carteira do destinatário (feature 008) */
+  TransactionReversed = "TransactionReversed",
 }
 
 /** Família citada na notificação */
@@ -33,6 +38,14 @@ export interface NotificationInfo {
   /** Quem causou (convidante ou convidado) */
   actor: UserSummaryInfo | null;
   invitation: NotificationInvitationInfo | null;
+  /** `MemberPermissionsChanged`: permissões **depois** da mudança registrada (não o estado atual) */
+  permissions?: MemberPermissions | null;
+  /** `TransactionReversed`: id do estorno */
+  transactionId?: number | null;
+  /** `TransactionReversed`: carteira do destinatário afetada */
+  walletId?: number | null;
+  /** `TransactionReversed`: nome da carteira do destinatário afetada */
+  walletName?: string | null;
 }
 
 /** Página de `GET /api/notifications` (cursor `beforeId`) */

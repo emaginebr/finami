@@ -1,7 +1,7 @@
 import { createContext, useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { groupService } from "../Services/groupService";
-import type { GroupInfo, GroupInsertInfo, GroupUpdateInfo } from "../types/group";
+import type { GroupInfo, GroupInsertInfo, GroupUpdateInfo, MemberPermissionsInfo } from "../types/group";
 import { OFFLINE_CONTENT_MESSAGE } from "../types/api";
 import { errorMessage } from "../utils/notify";
 import { useOnUserChange } from "../hooks/useOnUserChange";
@@ -20,6 +20,8 @@ export interface GroupContextType {
   updateGroup: (groupId: number, data: GroupUpdateInfo) => Promise<GroupInfo>;
   addMember: (groupId: number, userId: number) => Promise<void>;
   removeMember: (groupId: number, userId: number) => Promise<void>;
+  /** Muda "Pode lançar"/"Pode estornar" de um membro (só o responsável); devolve a família atualizada */
+  setMemberPermissions: (groupId: number, userId: number, data: MemberPermissionsInfo) => Promise<GroupInfo>;
   clearError: () => void;
 }
 
@@ -132,6 +134,21 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
     [handleError],
   );
 
+  const setMemberPermissions = useCallback(
+    async (groupId: number, userId: number, data: MemberPermissionsInfo): Promise<GroupInfo> => {
+      try {
+        setError(null);
+        const group = await groupService.setMemberPermissions(groupId, userId, data);
+        // A API devolve a família inteira, já com as permissões novas
+        setGroups((prev) => upsert(prev, group));
+        return group;
+      } catch (err) {
+        return handleError(err);
+      }
+    },
+    [handleError],
+  );
+
   const clearError = useCallback(() => setError(null), []);
   const offline = error === OFFLINE_CONTENT_MESSAGE;
 
@@ -147,9 +164,23 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
       updateGroup,
       addMember,
       removeMember,
+      setMemberPermissions,
       clearError,
     }),
-    [groups, loading, error, offline, loadGroups, getGroup, createGroup, updateGroup, addMember, removeMember, clearError],
+    [
+      groups,
+      loading,
+      error,
+      offline,
+      loadGroups,
+      getGroup,
+      createGroup,
+      updateGroup,
+      addMember,
+      removeMember,
+      setMemberPermissions,
+      clearError,
+    ],
   );
 
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>;

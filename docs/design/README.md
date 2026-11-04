@@ -64,6 +64,15 @@ Nenhum token novo. Ícones lucide novos: `Bot`, `Unplug`, `ExternalLink`.
 Nenhum token novo (a faixa de aviso usa `warning-soft`/`warning`/`text`). Ícones lucide novos:
 `Download`, `Share`, `SquarePlus`, `RefreshCw`, `Wifi`.
 
+## Feature `008-reversal-family-permissions` — estorno e permissões na família
+
+| Artefato | Propósito | Tarefa |
+|---|---|---|
+| [`mockups/family-permissions.html`](./mockups/family-permissions.html) | "Gerenciar família" com interruptores Pode lançar / Pode estornar (padrão, salvando + nota de alcance, salvo, erro, sem internet, 320 px), resumo de permissões na lista de membros, estado vazio em Depositar/Transferir, confirmação do estorno com "O que acontece" (despesa, conversão, quitação), ligações "Estornado por #id" / "Estorno de #id", notificações novas (390 e 1440 px) | T001 |
+| [`components.md` §12](./components.md#12-feature-008--estorno-e-permissões-dos-membros-na-família) | `SwitchRow` (ocupado, `aria-disabled`, rótulo clicável, área de toque), `MemberPermissions`, resumo no `MemberRow`, estado vazio de lançar, `ConfirmModal.details` + `ReverseEffect`, ligações no `TransactionDetailSheet`, `NotificationItem` (2 tipos), chaves i18n e divergências | T001 |
+
+Nenhum token novo. Ícones lucide novos no app: `ShieldCheck`, `Eye`.
+
 ## Como ver os mockups
 
 Abrir qualquer `mockups/*.html` no navegador (arquivo local). Cada página mostra a tela em 390 px

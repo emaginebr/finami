@@ -23,6 +23,11 @@ export interface WalletInfo {
   estimatedBrl: number | null;
   /** A pessoa logada pode movimentar a carteira */
   canControl: boolean;
+  /**
+   * A pessoa logada pode lançar (receita, despesa, origem de transferência) nesta carteira
+   * (feature 008). Carteira pessoal do titular: sempre `true`.
+   */
+  canCreateTransactions: boolean;
   createdAt: string;
 }
 

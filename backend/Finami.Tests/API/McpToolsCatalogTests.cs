@@ -12,7 +12,7 @@ using ModelContextProtocol.Protocol;
 namespace Finami.Tests.API;
 
 /// <summary>
-/// T059 — contrato do catálogo (contracts/mcp-tools.md + feature 006): exatamente as 40 ferramentas, anotações corretas,
+/// T059 — contrato do catálogo (contracts/mcp-tools.md + feature 006): exatamente as 41 ferramentas (feature 008: alterar_permissoes_membro), anotações corretas,
 /// descrições em pt-BR, <c>chave_repeticao</c> só nas marcadas ⟲ e nada de senha/conta/conexões (FR-020).
 /// Também confere recursos e prompts publicados.
 /// </summary>
@@ -60,6 +60,7 @@ public class McpToolsCatalogTests : IClassFixture<FinamiApiFactory>
         ["convidar_para_familia"] = new(false, false, false, true),
         ["cancelar_convite"] = new(false, true, true),
         ["retirar_membro"] = new(false, true, true),
+        ["alterar_permissoes_membro"] = new(false, false, true),
         ["aceitar_convite"] = new(false, false, true),
         ["recusar_convite"] = new(false, true, true),
         ["marcar_notificacoes_como_lidas"] = new(false, false, true),
@@ -81,9 +82,9 @@ public class McpToolsCatalogTests : IClassFixture<FinamiApiFactory>
     }
 
     [Fact]
-    public void Contract_has_40_tools()
+    public void Contract_has_41_tools()
     {
-        CONTRACT.Should().HaveCount(40);
+        CONTRACT.Should().HaveCount(41);
     }
 
     [Fact]

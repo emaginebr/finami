@@ -1,5 +1,6 @@
+import { Fragment } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, UserCheck, UserPlus, UserX } from "lucide-react";
+import { ChevronRight, ShieldCheck, Undo2, UserCheck, UserPlus, UserX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
@@ -11,6 +12,7 @@ import { cn } from "../../utils/cn";
 import { RelativeDay, formatShortDate, formatTime, relativeDayOf, toIsoInstant } from "../../utils/dates";
 import type { NavState } from "../layout/navigation";
 import { notificationFocusId } from "./notificationFocus";
+import { notificationPermissionParts } from "../group/permissionSummary";
 import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Button } from "../ui/Button";
@@ -38,12 +40,41 @@ const TILES: Record<NotificationType, TileStyle> = {
   [NotificationType.GroupInvitationReceived]: { icon: UserPlus, className: "bg-info-soft text-info" },
   [NotificationType.GroupInvitationAccepted]: { icon: UserCheck, className: "bg-positive-soft text-positive" },
   [NotificationType.GroupInvitationDeclined]: { icon: UserX, className: "bg-surface-3 text-text-muted" },
+  [NotificationType.MemberPermissionsChanged]: { icon: ShieldCheck, className: "bg-info-soft text-info" },
+  [NotificationType.TransactionReversed]: { icon: Undo2, className: "bg-surface-3 text-text-muted" },
 };
 
-const MESSAGE_KEYS: Record<NotificationType, string> = {
-  [NotificationType.GroupInvitationReceived]: "notifications.received",
-  [NotificationType.GroupInvitationAccepted]: "notifications.accepted",
-  [NotificationType.GroupInvitationDeclined]: "notifications.declined",
+/** Chave da frase; as da feature 008 têm variações conforme os dados que vieram */
+const messageKeyOf = (notification: NotificationInfo): string => {
+  switch (notification.type) {
+    case NotificationType.GroupInvitationAccepted:
+      return "notifications.accepted";
+    case NotificationType.GroupInvitationDeclined:
+      return "notifications.declined";
+    case NotificationType.MemberPermissionsChanged:
+      return notification.permissions
+        ? "notifications.memberPermissionsChanged"
+        : "notifications.memberPermissionsChangedShort";
+    case NotificationType.TransactionReversed:
+      return notification.walletName
+        ? "notifications.transactionReversed"
+        : "notifications.transactionReversedNoWallet";
+    default:
+      return "notifications.received";
+  }
+};
+
+/** Destino do toque: família (aceito, permissões) ou extrato da carteira (estorno); `null` = item estático */
+const linkTargetOf = (notification: NotificationInfo): string | null => {
+  const { type, group, walletId } = notification;
+  if (
+    (type === NotificationType.GroupInvitationAccepted || type === NotificationType.MemberPermissionsChanged) &&
+    group
+  ) {
+    return `/familias/${group.groupId}`;
+  }
+  if (type === NotificationType.TransactionReversed && walletId != null) return `/carteiras/${walletId}`;
+  return null;
 };
 
 const FINAL_BADGES: Partial<Record<GroupInvitationStatus, { variant: BadgeVariant; labelKey: string }>> = {
@@ -77,7 +108,9 @@ export const NotificationItem = ({
   const isReceived = type === NotificationType.GroupInvitationReceived;
   const showActions = isReceived && invitation?.status === GroupInvitationStatus.Pending && !error;
   const finalBadge = isReceived && invitation ? FINAL_BADGES[invitation.status] : undefined;
-  const linksToGroup = type === NotificationType.GroupInvitationAccepted && group !== null;
+  const linkTarget = linkTargetOf(notification);
+  const linksToGroup = linkTarget !== null;
+  const summaryParts = notification.permissions ? notificationPermissionParts(t, notification.permissions) : null;
   const focusId = notificationFocusId(notificationId);
 
   const relative = relativeDayOf(createdAt);
@@ -108,10 +141,28 @@ export const NotificationItem = ({
         >
           {!isRead ? <span className="sr-only">{t("notifications.unread")}</span> : null}
           <Trans
-            i18nKey={MESSAGE_KEYS[type] ?? MESSAGE_KEYS[NotificationType.GroupInvitationReceived]}
-            values={{ actor: actorName, family }}
+            i18nKey={messageKeyOf(notification)}
+            values={{ actor: actorName, family, wallet: notification.walletName ?? "" }}
             components={{ b: <b className="font-semibold" /> }}
           />
+          {summaryParts ? (
+            <>
+              {" "}
+              {summaryParts.map((part, index) => (
+                <Fragment key={part}>
+                  {index > 0 ? (
+                    // " · " na tela; vírgula para o leitor, que não fala o ponto médio (REVIEW-008 M-1)
+                    <>
+                      <span aria-hidden="true">{t("groups.permissions.separator")}</span>
+                      <span className="sr-only">, </span>
+                    </>
+                  ) : null}
+                  {part}
+                </Fragment>
+              ))}
+              .
+            </>
+          ) : null}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote text-text-muted">
           <time dateTime={toIsoInstant(createdAt)}>{dateLabel}</time>
@@ -163,10 +214,10 @@ export const NotificationItem = ({
 
   return (
     <li className="group relative">
-      {linksToGroup && group ? (
+      {linkTarget ? (
         <Link
           id={focusId}
-          to={`/familias/${group.groupId}`}
+          to={linkTarget}
           state={linkState}
           className={cn(
             rowClasses,

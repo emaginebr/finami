@@ -13,8 +13,8 @@ const SILVA = makeGroup({
   name: "Silva",
   isResponsible: true,
   members: [
-    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
-    { userId: 9, firstName: "Pedro", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
+    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
+    { userId: 9, firstName: "Pedro", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
   ],
 });
 
@@ -24,8 +24,8 @@ const PRAIA = makeGroup({
   isResponsible: false,
   responsibleUserId: 30,
   members: [
-    { userId: 30, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z" },
-    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
+    { userId: 30, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
+    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
   ],
 });
 

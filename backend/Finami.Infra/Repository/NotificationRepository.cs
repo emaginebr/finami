@@ -26,6 +26,8 @@ public class NotificationRepository : INotificationRepository<Notification>
             .Include(n => n.Invitation)
             .Include(n => n.Group)
             .Include(n => n.Actor)
+            .Include(n => n.PermissionChange)
+            .Include(n => n.Transaction)
             .Where(n => n.UserId == userId && (beforeId == null || n.NotificationId < beforeId))
             .OrderByDescending(n => n.NotificationId)
             .Take(limit)

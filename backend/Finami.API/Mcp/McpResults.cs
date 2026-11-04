@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Finami.DTO.Groups;
 using Finami.DTO.Notifications;
 using Finami.DTO.Quotes;
 using Finami.DTO.Statements;
@@ -82,6 +83,61 @@ public class McpWalletDeletedResult
 
     [JsonPropertyName("deleted")]
     public bool Deleted { get; set; }
+}
+
+/// <summary>
+/// Feature 008 (contracts/mcp.md): <c>obter_familia</c> e <c>alterar_permissoes_membro</c>. O <see cref="GroupInfo"/>
+/// do domínio (mesmos campos da API) mais as permissões com os nomes do contrato MCP.
+/// </summary>
+public class McpGroupResult : GroupInfo
+{
+    /// <summary>Permissões da pessoa conectada nesta família.</summary>
+    [JsonPropertyName("minhas_permissoes")]
+    public McpPermissions MinhasPermissoes { get; set; } = new();
+
+    /// <summary>Permissões de cada membro (o responsável tem sempre as duas).</summary>
+    [JsonPropertyName("permissoes_membros")]
+    public List<McpMemberPermissions> PermissoesMembros { get; set; } = new();
+
+    public static McpGroupResult From(GroupInfo info)
+    {
+        var result = JsonSerializer.Deserialize<McpGroupResult>(JsonSerializer.Serialize(info))!;
+        result.MinhasPermissoes = new McpPermissions
+        {
+            PodeLancar = info.MyPermissions.CanCreateTransactions,
+            PodeEstornar = info.MyPermissions.CanReverse
+        };
+        result.PermissoesMembros = info.Members.Select(m => new McpMemberPermissions
+        {
+            PessoaId = m.UserId,
+            Nome = $"{m.FirstName} {m.LastName}".Trim(),
+            Responsavel = m.UserId == info.ResponsibleUserId,
+            PodeLancar = m.CanCreateTransactions,
+            PodeEstornar = m.CanReverse
+        }).ToList();
+        return result;
+    }
+}
+
+public class McpPermissions
+{
+    [JsonPropertyName("pode_lancar")]
+    public bool PodeLancar { get; set; }
+
+    [JsonPropertyName("pode_estornar")]
+    public bool PodeEstornar { get; set; }
+}
+
+public class McpMemberPermissions : McpPermissions
+{
+    [JsonPropertyName("pessoa_id")]
+    public long PessoaId { get; set; }
+
+    [JsonPropertyName("nome")]
+    public string Nome { get; set; } = string.Empty;
+
+    [JsonPropertyName("responsavel")]
+    public bool Responsavel { get; set; }
 }
 
 /// <summary><c>finami://notificacoes/nao-lidas</c>.</summary>

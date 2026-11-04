@@ -1,4 +1,10 @@
-import type { AddMemberInfo, GroupInfo, GroupInsertInfo, GroupUpdateInfo } from "../types/group";
+import type {
+  AddMemberInfo,
+  GroupInfo,
+  GroupInsertInfo,
+  GroupUpdateInfo,
+  MemberPermissionsInfo,
+} from "../types/group";
 import { apiFetch } from "./apiHelpers";
 
 const API_BASE = "/api/groups";
@@ -32,6 +38,17 @@ class GroupService {
   async addMember(groupId: number, data: AddMemberInfo): Promise<GroupInfo | undefined> {
     return apiFetch<GroupInfo | undefined>(`${API_BASE}/${groupId}/members`, {
       method: "POST",
+      body: data,
+    });
+  }
+
+  /**
+   * Muda "Pode lançar" e "Pode estornar" de um membro; só o responsável
+   * (`PUT /api/groups/{id}/members/{userId}/permissions`, feature 008).
+   */
+  async setMemberPermissions(groupId: number, userId: number, data: MemberPermissionsInfo): Promise<GroupInfo> {
+    return apiFetch<GroupInfo>(`${API_BASE}/${groupId}/members/${userId}/permissions`, {
+      method: "PUT",
       body: data,
     });
   }

@@ -98,7 +98,10 @@ em **Conta → Assistentes conectados**.
 - Endereço: `https://<domínio>/mcp` (dev e homolog: `http://localhost:5145/mcp`).
 - Claude: Configurações → Conectores → *Adicionar conector personalizado* com esse endereço.
 - Claude Code: `claude mcp add --transport http finami https://<domínio>/mcp` e `/mcp` para autenticar.
-- Escopos `finami:read` e `finami:write`; 38 ferramentas em português, 4 recursos e 3 prompts.
+- Escopos `finami:read` e `finami:write`; 41 ferramentas em português, 4 recursos e 3 prompts.
+- Permissões na família (feature 008): o responsável define, por membro, quem pode lançar e quem pode
+  estornar (`PUT /api/groups/{groupId}/members/{userId}/permissions` ou a ferramenta
+  `alterar_permissoes_membro`); as regras valem igual no app, na API e no MCP.
 
 Detalhes (ferramentas, erros, limites, auditoria) em [`backend/README.md`](backend/README.md#servidor-mcp-feature-004)
 e em [`specs/004-mcp-oauth-server/`](specs/004-mcp-oauth-server/).

@@ -30,4 +30,33 @@ public interface IAccessPolicy
 
     /// <summary>Quem controla a carteira, ou membro do grupo vinculado com visibilidade AllMembers.</summary>
     Task<bool> CanViewWalletStatementAsync(long userId, Account wallet);
+
+    /// <summary>
+    /// Feature 008 (R-03): controla a carteira e, se ela é de uma família, é o responsável ou um membro com
+    /// "Pode lançar" naquela família. Vale para depósito, saque e a origem de toda transferência.
+    /// </summary>
+    Task<bool> CanCreateTransactionsAsync(long userId, Account wallet);
+
+    /// <summary>
+    /// 403 "Você não tem permissão sobre esta carteira." sem controle; 403 "Você não tem permissão para criar
+    /// lançamentos na família {nome}." sem a permissão da família.
+    /// </summary>
+    Task EnsureCanCreateTransactionsAsync(long userId, Account wallet);
+
+    /// <summary>Feature 008 (R-05): pode ver o extrato de alguma das carteiras do lançamento.</summary>
+    Task<bool> CanViewTransactionAsync(long userId, IEnumerable<Account> accounts);
+
+    /// <summary>
+    /// Feature 008 (R-04): o lançamento não é um estorno, não foi estornado e o usuário tem permissão de estorno
+    /// em alguma das carteiras (<see cref="EnsureCanReverseAsync"/>).
+    /// </summary>
+    Task<bool> CanReverseAsync(long userId, Transaction transaction, IEnumerable<Account> accounts, bool alreadyReversed);
+
+    /// <summary>
+    /// Feature 008 (R-04), só a permissão: para alguma carteira do lançamento, sem família → controla a carteira;
+    /// com família → é o responsável, ou membro com "Pode estornar" que vê o extrato da carteira. Sem permissão:
+    /// 403 "Você não tem permissão para estornar lançamentos na família {nome}." (família da primeira carteira de
+    /// família) ou "Você não tem permissão sobre esta transação." quando não há carteira de família.
+    /// </summary>
+    Task EnsureCanReverseAsync(long userId, IEnumerable<Account> accounts);
 }

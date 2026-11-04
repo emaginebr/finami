@@ -607,3 +607,39 @@ a.notif:hover { background: var(--color-surface-3); }
 .effect .v { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .effect .v.before { font-weight: 400; color: var(--color-text-muted); }
 .effect .badge { margin-left: 4px; }
+
+/* =============================================================================
+   Feature 008 — permissões na família e estorno
+   ============================================================================= */
+/* Interruptor: área de toque 59×47 (o ::after é o botão branco), ocupado e desabilitado */
+.switch::before { content: ""; position: absolute; inset: -8px -4px; }
+.switch:focus-visible, .switch.is-focus { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.switch[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
+.switch .sw-spin { position: absolute; z-index: 1; top: 7.5px; left: 7.5px; width: 14px; height: 14px; color: var(--color-brand); display: grid; place-items: center; }
+.switch[aria-checked="true"] .sw-spin { left: 27.5px; }
+.switch .sw-spin svg { animation: spin 1s linear infinite; }
+/* Cartão de permissões de um membro */
+.perm-stack { display: flex; flex-direction: column; gap: 12px; }
+.perm-card { background: var(--color-surface); border-radius: var(--radius-lg); overflow: hidden; }
+.perm-card > * + * { border-top: .5px solid var(--color-separator); }
+.perm-card .row { cursor: default; }
+.perm-card .row:hover { background: transparent; }
+.sw-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+.sw-row .sw-text { flex: 1; min-width: 0; }
+.sw-row label { display: block; font-size: var(--text-body); line-height: var(--text-body--line-height); cursor: pointer; }
+.sw-row .sw-help { display: block; margin-top: 2px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+.sw-row .switch { margin-top: 2px; }
+.perm-err { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 12px 16px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-negative); }
+.perm-err svg { flex-shrink: 0; margin-top: 1px; }
+.note.warn svg { color: var(--color-warning); }
+.sheet-note { padding: 0 16px 8px; }
+.sheet-note.after { padding: 8px 16px 0; }
+/* Resumo de permissões na lista de membros */
+.perm-sum { display: block; margin-top: 2px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Confirmação com o efeito */
+.modal .effect { margin: 0 0 20px; background: var(--color-surface); }
+.modal .effect p { margin: 0; color: var(--color-text); font-size: var(--text-body); }
+.modal .effect p + p { margin-top: 4px; }
+/* Ligação original ↔ estorno no detalhe */
+.link-row .row-title { color: var(--color-accent); }
+.sheet-head .back.l { justify-self: start; }

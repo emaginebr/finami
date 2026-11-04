@@ -25,6 +25,7 @@ public class LedgerService : ILedgerService
     private readonly IValidator<TransferInfo> _transferValidator;
     private readonly IQuoteService _quoteService;
     private readonly IBtcQuoteRepository<BtcQuote> _quoteRepository;
+    private readonly INotificationRepository<Notification> _notificationRepository;
 
     public LedgerService(
         IAccountRepository<Account> accountRepository,
@@ -35,7 +36,8 @@ public class LedgerService : ILedgerService
         IValidator<WalletMovementInfo> movementValidator,
         IValidator<TransferInfo> transferValidator,
         IQuoteService quoteService,
-        IBtcQuoteRepository<BtcQuote> quoteRepository)
+        IBtcQuoteRepository<BtcQuote> quoteRepository,
+        INotificationRepository<Notification> notificationRepository)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
@@ -46,30 +48,32 @@ public class LedgerService : ILedgerService
         _transferValidator = transferValidator;
         _quoteService = quoteService;
         _quoteRepository = quoteRepository;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<TransactionInfo> IncomeAsync(long userId, IncomeInfo info)
     {
         await _movementValidator.ValidateOrThrowAsync(info);
         var wallet = await LoadWalletAsync(info.WalletId);
-        await _accessPolicy.EnsureCanControlWalletAsync(userId, wallet);
+        // Feature 008 (R-03): controle da carteira + "Pode lançar" na família dela.
+        await _accessPolicy.EnsureCanCreateTransactionsAsync(userId, wallet);
         var source = await _accountRepository.GetSystemAccountAsync((int)AccountKind.ExternalSource, (int)wallet.Currency);
 
         var transaction = await PostAsync(new PostingRequest(TransactionType.ExternalIncome, source, wallet,
             info.Amount, info.Amount, userId, info.Description));
-        return await ToInfoAsync(transaction);
+        return await ToInfoAsync(transaction, userId);
     }
 
     public async Task<TransactionInfo> ExpenseAsync(long userId, ExpenseInfo info)
     {
         await _movementValidator.ValidateOrThrowAsync(info);
         var wallet = await LoadWalletAsync(info.WalletId);
-        await _accessPolicy.EnsureCanControlWalletAsync(userId, wallet);
+        await _accessPolicy.EnsureCanCreateTransactionsAsync(userId, wallet);
         var destination = await _accountRepository.GetSystemAccountAsync((int)AccountKind.ExternalSink, (int)wallet.Currency);
 
         var transaction = await PostAsync(new PostingRequest(TransactionType.ExternalExpense, wallet, destination,
             info.Amount, info.Amount, userId, info.Description));
-        return await ToInfoAsync(transaction);
+        return await ToInfoAsync(transaction, userId);
     }
 
     public async Task<TransactionInfo> TransferAsync(long userId, TransferInfo info)
@@ -89,7 +93,7 @@ public class LedgerService : ILedgerService
             plan.Quote?.BtcQuoteId, plan.Quote?.PriceBrl,
             TransferKind: plan.Kind, DebtCurrency: debt?.Currency, DebtAmount: debt?.Amount,
             ValidateInLock: validateInLock));
-        return await ToInfoAsync(transaction);
+        return await ToInfoAsync(transaction, userId);
     }
 
     public async Task<TransferPreviewResult> PreviewTransferAsync(long userId, TransferInfo info)
@@ -159,8 +163,9 @@ public class LedgerService : ILedgerService
             ?? throw new NotFoundException("Conta da transação não encontrada.");
         var destination = await _accountRepository.GetByIdAsync(original.SourceAccountId)
             ?? throw new NotFoundException("Conta da transação não encontrada.");
-        var accountToControl = source.IsWallet ? source : destination;
-        await _accessPolicy.EnsureCanControlWalletAsync(userId, accountToControl);
+        // Feature 008 (R-04): responsável, membro com "Pode estornar" (que vê o lançamento) ou titular de carteira pessoal.
+        var accounts = new[] { source, destination };
+        await _accessPolicy.EnsureCanReverseAsync(userId, accounts);
 
         var description = string.IsNullOrWhiteSpace(info?.Description)
             ? $"Estorno da transação {original.TransactionId}"
@@ -174,12 +179,36 @@ public class LedgerService : ILedgerService
                 // Feature 007 (R-01): o mesmo efeito com origem e destino invertidos desfaz o efeito na dívida,
                 // inclusive o valor abatido por uma quitação em outra moeda (sem nova cotação).
                 TransferKind: original.TransferKind, DebtCurrency: original.DebtCurrency,
-                DebtAmount: original.DebtAmount));
-            return await ToInfoAsync(reversal);
+                DebtAmount: original.DebtAmount,
+                OnPosted: reversal => NotifyReversalAsync(userId, reversal, accounts)));
+            return await ToInfoAsync(reversal, userId);
         }
         catch (Exception ex) when (IsReversalUniqueViolation(ex))
         {
             throw new ConflictException("Esta transação já foi estornada.");
+        }
+    }
+
+    /// <summary>
+    /// Feature 008 (R-06): cada titular de carteira do lançamento, exceto quem estornou, recebe TransactionReversed
+    /// apontando para o estorno. Roda dentro da transação do registro.
+    /// </summary>
+    private async Task NotifyReversalAsync(long actorUserId, Transaction reversal, IEnumerable<Account> accounts)
+    {
+        var recipients = accounts
+            .Where(a => a.IsWallet && a.UserId.HasValue && a.UserId.Value != actorUserId)
+            .GroupBy(a => a.UserId!.Value);
+        foreach (var recipient in recipients)
+        {
+            await _notificationRepository.InsertAsync(new Notification
+            {
+                UserId = recipient.Key,
+                Type = NotificationType.TransactionReversed,
+                GroupId = recipient.Select(a => a.GroupId).FirstOrDefault(g => g.HasValue),
+                ActorUserId = actorUserId,
+                TransactionId = reversal.TransactionId,
+                CreatedAt = reversal.OccurredAt
+            });
         }
     }
 
@@ -213,7 +242,8 @@ public class LedgerService : ILedgerService
         EnsureContractMessages(info);
         await _transferValidator.ValidateOrThrowAsync(info!);
         var source = await LoadWalletAsync(info!.SourceWalletId);
-        await _accessPolicy.EnsureCanControlWalletAsync(userId, source);
+        // Feature 008 (R-03): só a origem exige "Pode lançar"; receber nunca depende de permissão.
+        await _accessPolicy.EnsureCanCreateTransactionsAsync(userId, source);
         var destination = await LoadWalletAsync(info.DestinationWalletId);
         source.EnsureActive();
         destination.EnsureActive();
@@ -391,7 +421,7 @@ public class LedgerService : ILedgerService
         var transaction = await _transactionRepository.GetByIdAsync(transactionId)
             ?? throw new NotFoundException("Transação não encontrada.");
         await EnsureCanViewAsync(userId, transaction);
-        return await ToInfoAsync(transaction);
+        return await ToInfoAsync(transaction, userId);
     }
 
     /// <summary>Dados para gravar uma transação.</summary>
@@ -409,7 +439,8 @@ public class LedgerService : ILedgerService
         TransferKind? TransferKind = null,
         Currency? DebtCurrency = null,
         decimal? DebtAmount = null,
-        Func<Task>? ValidateInLock = null);
+        Func<Task>? ValidateInLock = null,
+        Func<Transaction, Task>? OnPosted = null);
 
     /// <summary>
     /// Grava cabeçalho + lançamentos de forma atômica (FR-031): bloqueia as carteiras envolvidas,
@@ -466,6 +497,9 @@ public class LedgerService : ILedgerService
             // Saldo de carteira pode ficar negativo: não há checagem de saldo disponível.
 
             await _transactionRepository.InsertWithEntriesAsync(transaction);
+            // Feature 008: efeitos que precisam do id gravado e andam na mesma transação (notificação do estorno).
+            if (request.OnPosted != null)
+                await request.OnPosted(transaction);
             await _unitOfWork.CommitAsync();
             return transaction;
         }
@@ -513,18 +547,16 @@ public class LedgerService : ILedgerService
         return wallet;
     }
 
+    /// <summary>Feature 008 (R-05): quem controla uma das carteiras ou pode ver o extrato de uma delas.</summary>
     private async Task EnsureCanViewAsync(long userId, Transaction transaction)
     {
         var accounts = await _accountRepository.GetByIdsAsync(new[] { transaction.SourceAccountId, transaction.DestinationAccountId });
-        foreach (var account in accounts)
-        {
-            if (await _accessPolicy.CanControlWalletAsync(userId, account))
-                return;
-        }
-        throw new ForbiddenException("Você não tem permissão sobre esta transação.");
+        if (!await _accessPolicy.CanViewTransactionAsync(userId, accounts))
+            throw new ForbiddenException("Você não tem permissão sobre esta transação.");
     }
 
-    protected internal async Task<TransactionInfo> ToInfoAsync(Transaction transaction)
+    /// <param name="viewerUserId">Quem consulta: decide <see cref="TransactionInfo.CanReverse"/> (feature 008).</param>
+    protected internal async Task<TransactionInfo> ToInfoAsync(Transaction transaction, long viewerUserId)
     {
         var accounts = (await _accountRepository.GetByIdsAsync(new[] { transaction.SourceAccountId, transaction.DestinationAccountId }))
             .ToDictionary(a => a.AccountId);
@@ -574,7 +606,9 @@ public class LedgerService : ILedgerService
             ReversedByTransactionId = reversal?.TransactionId,
             TransferKind = transaction.TransferKind?.ToCode(),
             DebtCurrency = transaction.DebtCurrency?.ToCode(),
-            DebtAmount = transaction.DebtAmount
+            DebtAmount = transaction.DebtAmount,
+            CanReverse = await _accessPolicy.CanReverseAsync(viewerUserId, transaction, accounts.Values,
+                alreadyReversed: reversal != null)
         };
     }
 }

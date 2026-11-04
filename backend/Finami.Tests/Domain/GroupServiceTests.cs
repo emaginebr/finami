@@ -46,7 +46,8 @@ public class GroupServiceTests
             .Callback<User>(u => u.UserId = NEW_USER).ReturnsAsync((User u) => u);
         _service = new GroupService(_groups.Object, _users.Object, _accounts.Object, _invitations.Object,
             _unitOfWork.Object, new GroupInsertInfoValidator(), new GroupUpdateInfoValidator(),
-            new MemberLookupInfoValidator(), new NewMemberInfoValidator());
+            new MemberLookupInfoValidator(), new NewMemberInfoValidator(), new MemberPermissionsInfoValidator(),
+            new Mock<INotificationRepository<Notification>>().Object);
     }
 
     [Fact]

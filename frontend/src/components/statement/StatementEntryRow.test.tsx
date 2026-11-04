@@ -91,6 +91,7 @@ describe("TransactionDetailSheet — Tipo e Abatido da dívida (feature 007)", (
     createdByUserId: 7,
     reversedTransactionId: null,
     reversedByTransactionId: null,
+    canReverse: false,
     transferKind: TransferKind.Settlement,
     debtCurrency: Currency.BRL,
     debtAmount: 100,
@@ -109,7 +110,7 @@ describe("TransactionDetailSheet — Tipo e Abatido da dívida (feature 007)", (
     });
 
     const { baseElement } = renderWithProviders(
-      <TransactionDetailSheet entry={entry} onClose={vi.fn()} canControl={false} />,
+      <TransactionDetailSheet entry={entry} onClose={vi.fn()} />,
     );
 
     const sheet = await screen.findByRole("dialog", { name: "Lançamento" });
@@ -152,7 +153,7 @@ describe("TransactionDetailSheet — Tipo e Abatido da dívida (feature 007)", (
       destinationName: "Reserva BTC",
     });
 
-    renderWithProviders(<TransactionDetailSheet entry={entry} onClose={vi.fn()} canControl={false} />);
+    renderWithProviders(<TransactionDetailSheet entry={entry} onClose={vi.fn()} />);
 
     const sheet = await screen.findByRole("dialog", { name: "Lançamento" });
     const kindLabel = await within(sheet).findByText("Tipo");
@@ -178,7 +179,7 @@ describe("TransactionDetailSheet — Tipo e Abatido da dívida (feature 007)", (
       },
     });
 
-    renderWithProviders(<TransactionDetailSheet entry={makeEntry()} onClose={vi.fn()} canControl={false} />);
+    renderWithProviders(<TransactionDetailSheet entry={makeEntry()} onClose={vi.fn()} />);
 
     const sheet = await screen.findByRole("dialog", { name: "Lançamento" });
     const kindLabel = await within(sheet).findByText("Tipo");
