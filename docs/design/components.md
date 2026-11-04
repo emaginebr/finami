@@ -1155,3 +1155,297 @@ diferenças:
   Notificações; o `<main>` reserva o `padding-bottom` do FAB nessas rotas, para que a última
   linha (dívida ou família) nunca fique sob ele. Some em `/depositar`, `/sacar` e
   `/transferir`.
+
+---
+
+## 11. Feature 007 — Tipos de transferência (Empréstimo, Quitação, Pagamento)
+
+Mockup: [`loan-transfer-types.html`](./mockups/loan-transfer-types.html). Contrato (fonte da
+verdade de comportamento, textos e i18n): `specs/007-loan-transfer-types/contracts/ui.md`.
+Tudo o que a §10 definiu continua valendo (campos De/Para com `WalletOption`, alternador
+**Bitcoin | Satoshis | Reais**, prévia obrigatória entre pessoas, `aria-disabled` com motivo).
+
+**Direção visual**: a mesma "Noite Roxa" — lista agrupada estilo Ajustes, controles em trilho
+de pílula. **Nenhum token novo** e **nenhum ícone lucide novo** (`Info`, `Check`, `CircleAlert`,
+`ArrowDown`, `ArrowLeftRight`, `Undo2`, `TriangleAlert` já são usados). O tipo da
+transferência é dito **por texto** em todos os lugares (extrato, detalhe, prévia, toast); o ícone
+de transferência (`ArrowLeftRight` azul) não muda por tipo.
+
+| Combinação usada aqui | Contraste | Onde |
+|---|---|---|
+| `text-text` sobre `bg-brand-tint` | 12,26:1 | segmento escolhido do "Tipo"/"Quitar dívida em"; "Quitar tudo" ligado |
+| `text-text-muted` sobre `bg-surface` | 8,81:1 | segmento solto, ajuda curta, nota de conversão |
+| `border-border` sobre `bg-bg` | 4,21:1 | trilho do seletor (componente ≥ 3:1) |
+| `border-negative` sobre `bg-bg` | 8,31:1 | trilho em erro (+ ícone e texto) |
+| `text-negative` sobre `bg-bg` | 8,31:1 | mensagem "Escolha o tipo da transferência." |
+| `text-info` / `text-text` sobre `bg-info-soft` | 6,94 / ≥ 12,87:1 | aviso "Você não tem dívida com Ana." |
+| `text-info` (ícone 16 px) sobre `bg-surface` | 8,33:1 | ícone da nota "Convertido pela cotação…" |
+| `text-positive` sobre `bg-positive-soft` | 8,02:1 | selo "quitada" na prévia |
+| `text-text-disabled` sobre `bg-surface` | — (isento, 1.4.3) | segmento de moeda sem dívida (inativo) |
+| `focus` (anel) sobre `bg-bg` / `bg-surface` | 10,62 / 9,92:1 | foco de todos os controles |
+
+Arquivos previstos (o nome final é do `frontend-react-developer`; aqui só a anatomia):
+`components/transaction/TransferKindPicker.tsx` (seletor "Tipo" + ajuda + erro),
+`components/transaction/SettlementPanel.tsx` (painel de quitação). Mudanças em
+`SegmentedControl` (valor nulo e opção desabilitada), `MoneyInput` (estado somente leitura),
+`FormStep`, `PreviewStep`, `StatementEntryRow`, `TransactionDetailSheet` e `TransactionPage`.
+
+### Ordem dos campos em `/transferir`
+
+```
+De            [WalletOption · Nubank · Bruno            R$ 310,00  ⇕]
+Para          [WalletOption · Conta da Ana · Ana        R$ 1.234,56 ⇕]
+Tipo          ( Empréstimo | Quitação | Pagamento )         ← só se Para é de outro titular
+              Abate uma dívida de Bruno com Ana.            ← ajuda da opção escolhida
+              ┌ painel de quitação ───────────────────────┐ ← só com Quitação
+              │ Você deve R$ 100,00 a Ana   [Quitar tudo] │
+              └───────────────────────────────────────────┘
+Valor                         ( Bitcoin | Satoshis | Reais )
+              [R$ 100,00                                  ]
+              Disponível: R$ 310,00
+Descrição (opcional)
+[                Continuar                                 ]
+```
+
+Espaçamento vertical: o bloco "Tipo" é um campo como os outros (`mt-4 flex flex-col gap-1.5`);
+o painel de quitação fica **dentro** do bloco "Tipo", `mt-3` depois da ajuda, para ficar claro
+que pertence à escolha. Nada se move acima do "Tipo" quando ele aparece ou some.
+
+### TransferKindPicker — seletor "Tipo"
+
+Aparece **só** quando `destination.isOwn === false`, entre Para e Valor. Reaproveita o
+`SegmentedControl` (§3) — mesmo trilho e mesma semântica do seletor de período, para não criar
+um terceiro estilo de grupo de opções.
+
+| Parte | Classes / componente |
+|---|---|
+| Contêiner | `<div className="mt-4 flex flex-col gap-1.5 @container">` |
+| Rótulo | `<span id={kindLabelId} className="text-footnote font-medium text-text-muted">` "Tipo" (`transaction.kind.label`). Visível — mesmo padrão de "De"/"Para". |
+| Grupo | `SegmentedControl` com `ariaLabelledBy={kindLabelId}` (prop nova, preferível ao `aria-label` duplicado), `aria-describedby="{helpId} {errorId}"` (só os ids existentes), `aria-required="true"`, `aria-invalid` quando há erro. Opções na ordem **Empréstimo · Quitação · Pagamento** (`transaction.kind.loan` / `settlement` / `payment`). |
+| Trilho | o do `SegmentedControl`: `grid gap-0.5 rounded-pill border border-border bg-surface p-1`; erro troca `border-border` → `border-negative`. |
+| Segmento | o do `SegmentedControl`: `min-h-touch min-w-0 rounded-pill px-1.5 text-subhead leading-tight font-semibold break-words hyphens-auto max-[359px]:text-footnote`. |
+| Ajuda curta | `<p id={helpId} aria-live="polite" className="m-0 text-footnote text-text-muted">` com o texto da opção escolhida (abaixo). Não renderiza nada antes da escolha. |
+| Erro | `<span id={errorId} role="alert" className="flex items-start gap-1.5 text-footnote text-negative">` + `CircleAlert` `mt-px size-4 shrink-0` + "Escolha o tipo da transferência." (`transaction.validation.kindRequired`). Mesmo padrão dos erros do De/Para. |
+
+**Textos da ajuda** (nomes = primeiro nome do **titular** da carteira, não de quem lança):
+
+- Empréstimo → `transaction.kind.help.loan` { debtor: titular do Para, creditor: titular do De }
+  — "Bruno vai ficar devendo esse valor a Ana."
+- Quitação → `transaction.kind.help.settlement` { debtor: titular do De, creditor: titular do
+  Para } — "Abate uma dívida de Bruno com Ana."
+- Pagamento → `transaction.kind.help.payment` — "Não gera dívida."
+
+**Estados**
+
+| Estado | Visual | A11y |
+|---|---|---|
+| Padrão (nenhum escolhido) | Os três segmentos `text-text-muted`, nenhum com fundo. Sem ajuda. | Todos `aria-checked="false"`; o **primeiro** recebe `tabIndex={0}` (roving: a parada de Tab cai em "Empréstimo", sem marcá-lo). |
+| Hover | Segmento solto → `text-text`. | — |
+| Foco | Anel `outline-2 outline-offset-2 outline-focus` do segmento focado (regra comum `focus-visible`). Setas **não** pulam o anel: o foco anda e seleciona junto (padrão APG *Radio Group*). | — |
+| Selecionado | `bg-brand-tint text-text` (12,26:1) + ajuda abaixo. Reforço não-cromático: o segmento escolhido é o único com fundo **e** a ajuda nomeia o efeito. | `aria-checked="true"`, `tabIndex={0}` só nele. A ajuda está em `aria-describedby` **e** em `aria-live="polite"`, então a troca é anunciada ("Quitação, botão de opção, marcado… Abate uma dívida de Bruno com Ana."). |
+| Erro | Trilho `border-negative` + linha de erro com ícone. Some ao escolher qualquer opção. | `aria-invalid="true"` no `radiogroup`; erro em `role="alert"` e no `aria-describedby`. Ao tocar "Continuar" sem tipo: mostra o erro e **foca o primeiro segmento** (a parada de Tab do grupo). Se também houver erro no Valor, o foco vai para o **primeiro campo com erro na ordem da tela** (o Tipo vem antes do Valor). |
+| Desabilitado (enviando) | `opacity-60` no trilho (já existe no `SegmentedControl`). | `disabled` nos segmentos. |
+
+**Teclado**: uma parada de Tab no grupo; `←`/`↑` e `→`/`↓` movem **e** selecionam (com volta
+ao início/fim), `Home`/`End` primeira/última — já é o comportamento do `SegmentedControl`. Com
+nada escolhido, a primeira seta a partir do "Empréstimo" focado seleciona a vizinha; `Espaço`
+seleciona a opção focada.
+
+**Ajuste no `SegmentedControl`** (sem mudar quem já usa): `value: T | null`. Com `null`,
+nenhum `aria-checked="true"` e `tabIndex={0}` no primeiro (hoje o `Math.max(0, …)` marca o
+primeiro como escolhido — **não pode** acontecer aqui, FR-003). Mais as props `ariaLabelledBy`,
+`ariaDescribedBy`, `invalid` e `option.disabled` (usada no painel de quitação).
+
+**Troca de Para** (contrato): destino passa a ser do mesmo titular → o bloco "Tipo" (e o
+painel) some e o tipo é limpo; destino de outro titular diferente do anterior → tipo limpo, erro
+limpo. O foco continua voltando ao campo Para (§10, REVIEW-006 I-1).
+
+**320 px / zoom 200 %**: em 320 px o trilho tem 288 px — cada segmento ~94 px; "Empréstimo" em
+`text-footnote` (13 px, `max-[359px]`) cabe em uma linha. Com zoom 200 % (≈ 160 px CSS úteis)
+o `SegmentedControl` já quebra e hifeniza (`hyphens-auto`, `lang="pt-BR"` no `<html>`), e o
+segmento cresce em altura (`min-h`, nunca `h`). Para não hifenizar no meio de "Quita-ção",
+quando a **largura do contêiner** for menor que 16rem o grupo empilha:
+`@max-[16rem]:grid-cols-1` (o `style` inline de `gridTemplateColumns` precisa virar classe, ou
+a prop `stackBelow="16rem"` aplica `grid-template-columns: 1fr` por container query) e o
+trilho passa a `rounded-lg`. Nada é cortado nem rolado na horizontal (1.4.10).
+
+### SettlementPanel — painel de quitação (tipo = Quitação)
+
+Cartão logo abaixo da ajuda do "Tipo": `<section aria-labelledby={kindLabelId}
+aria-busy={loading || undefined} className="mt-3 overflow-hidden rounded-lg bg-surface">`.
+Não tem título próprio: o contexto é o "Tipo: Quitação" logo acima.
+
+```
+┌───────────────────────────────────────────────────────┐
+│ QUITAR DÍVIDA EM          ← só nos casos do contrato │
+│ (   Real   |   Bitcoin   )                           │
+│ ⓘ Convertido pela cotação atual na confirmação.      │ ← só se moeda da dívida ≠ das carteiras
+├───────────────────────────────────────────────────────┤
+│ Você deve R$ 100,00 a Ana            [ Quitar tudo ] │
+└───────────────────────────────────────────────────────┘
+```
+
+| Parte | Classes / componente |
+|---|---|
+| Bloco da moeda (opcional) | `<div className="flex flex-col gap-2 px-4 pt-3 pb-3">`; separador para a linha da dívida: `border-b-[0.5px] border-separator`. |
+| Rótulo "Quitar dívida em" | `<span id={currencyLabelId} className="text-footnote font-semibold tracking-wide text-text-muted uppercase">` (`transaction.settlement.debtCurrency`). Mesmo estilo dos cabeçalhos de grupo — é título de um bloco dentro do cartão. |
+| Grupo da moeda | `SegmentedControl` de 2 opções "Real" · "Bitcoin" (`currency.BRL` / `currency.BTC`, que já existem), `ariaLabelledBy={currencyLabelId}`. Ordem fixa Real, Bitcoin (= ordem BRL antes de BTC da §10). |
+| Nota de conversão | `<p id={noteId} className="m-0 flex items-start gap-1.5 text-footnote text-text-muted">` + `Info` `mt-px size-4 shrink-0 text-info` `aria-hidden` + "Convertido pela cotação atual na confirmação." (`transaction.settlement.convertedNote`). Ligada ao grupo de moeda por `aria-describedby`. |
+| Linha da dívida | `<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">` |
+| Frase | `<p id={debtTextId} aria-live="polite" className="m-0 min-w-[10rem] flex-1 text-body text-text break-words">`; o **valor** em `font-semibold tabular-nums whitespace-nowrap`. "Você deve R$ 100,00 a Ana" (`transaction.settlement.youOwe`) quando o titular do De é quem está logado; "Caio deve R$ 100,00 a Ana" (`…owes`) quando é um dependente. Valor em BTC com `formatMoney` (5 casas; < 0,00001 → 8 casas, como a `DebtRow`). |
+| "Quitar tudo" | `Button variant="secondary" size="sm"` (44 px) `className="ml-auto shrink-0"`, `aria-pressed={settleAll}`, `aria-describedby={debtTextId}`. Ligado: `bg-brand-tint text-text border-transparent` + `Check` `size-4` `strokeWidth={2.5}` à esquerda (o ✓ é o reforço não-cromático do "ligado"). |
+
+**Quando o grupo "Quitar dívida em" aparece** (contrato): dívida nas duas moedas, **ou** dívida
+só na moeda diferente da das carteiras. Com dívida só na moeda das carteiras: sem grupo, sem
+nota (o caso mais comum fica com uma linha só).
+
+- **Dívida só na outra moeda**: o grupo mostra as duas opções, com a da moeda das carteiras
+  **desabilitada** (`option.disabled` → `disabled`, `text-text-disabled`, sem hover, pulada
+  pelas setas) e a outra escolhida. Mostrar só um segmento pareceria um rótulo, não uma
+  escolha; desabilitar deixa claro que a outra moeda existe mas não tem dívida.
+- **Sugestão inicial**: a moeda das carteiras, se tiver dívida; senão, a outra.
+- **Trocar a moeda**: atualiza a frase (anunciada por `aria-live`), mostra/esconde a nota e
+  **desliga** "Quitar tudo" (limpa o Valor, se ele tinha sido preenchido pelo modo).
+
+**Estados do painel**
+
+| Estado | Visual | A11y |
+|---|---|---|
+| Carregando | Cartão com **uma** linha-esqueleto de 60 px: `Skeleton h-3.5 w-48` à esquerda e `Skeleton h-11 w-28` com `rounded="rounded-md"` à direita (forma do botão). | `aria-busy="true"` na `<section>` + `<span className="sr-only" role="status">` "Carregando…" (`app.loading`); blocos `aria-hidden`. |
+| Com dívida (mesma moeda) | Só a linha da dívida. | — |
+| Com dívida nas duas moedas | Bloco da moeda + linha da dívida da moeda escolhida. | — |
+| Dívida em outra moeda | Bloco da moeda + nota de conversão + linha da dívida. | Nota em `aria-describedby` do grupo de moeda. |
+| Quitar tudo — mesma moeda | Botão ligado; o `MoneyInput` recebe o total (editável). | `aria-pressed="true"`. Foco permanece no botão. |
+| Quitar tudo — outra moeda | Botão ligado; `MoneyInput` em **somente leitura** com "Valor calculado na confirmação" (ver abaixo); o alternador Bitcoin/Satoshis/Reais fica `disabled`. | `aria-pressed="true"`; o campo vira `readOnly`. |
+| Sem dívida | O cartão é **substituído** por `<div id={noDebtId}><Banner tone="info" role="status">` (ícone `Info` padrão do tom) com o texto em `text-text`: "Você não tem dívida com Ana." / "Caio não tem dívida com Ana." (`…noDebt` / `…noDebtOther`). Sem "Quitar tudo". | "Continuar" ganha `aria-disabled="true"` + `aria-describedby={noDebtId}` (mesmo padrão do aviso "sem destinos" da §10: fica na ordem de Tab e o motivo é lido). O Valor continua editável (a pessoa pode trocar o tipo para Empréstimo/Pagamento sem perder o que digitou). |
+| Erro ao carregar | No lugar do cartão, `RetryBanner` (tom erro, `role="alert"`) com `errorMessage(err)` e "Tentar de novo". "Continuar" segue ativo: o servidor valida (FR-009) e a mensagem volta pelo `ServerErrorBanner`. | Foco volta ao botão se a nova tentativa falhar (do `RetryBanner`). |
+| Enviando | Botões e grupo `disabled`. | — |
+
+**Desligar "Quitar tudo"** (contrato): digitar no Valor, trocar a moeda da dívida, ou tocar o
+botão de novo (é um botão de alternância). No caso "outra moeda" o Valor é somente leitura, então
+**o próprio botão é a saída**: tocar de novo desliga o modo, limpa o Valor, devolve a edição ao
+campo e move o foco para o `MoneyInput` (ver divergência 3).
+
+### MoneyInput — estado "Valor calculado na confirmação"
+
+Prop nova sugerida: `readOnlyText?: string`. Com ela:
+
+- O contêiner troca `bg-surface-2 border-border` por `bg-surface border-transparent` (regra
+  "somente leitura" do `TextField`, §3) — o campo deixa de parecer editável. Prefixo da moeda das
+  carteiras continua (`₿` ou `R$`).
+- O `<input>` fica `readOnly` com `value={readOnlyText}` e
+  `className="text-headline font-semibold text-text-muted"` (não os 2rem do valor: é uma frase,
+  não um número; em 320 px cabe em uma linha, e quebra se precisar).
+- Nome acessível inalterado ("Valor"); o leitor anuncia "Valor, somente leitura, Valor calculado
+  na confirmação, em bitcoin". A ajuda "Disponível: …" continua.
+- Foco ainda é possível (`readOnly`, não `disabled`), com o anel normal — 2.4.7.
+
+### PreviewStep — tipo e efeito na dívida
+
+Mesmo esqueleto (cartão de fluxo + `<dl>` + nota azul). Título continua "Confirmar
+transferência". Mudanças:
+
+1. **`<dl>` — linha "Tipo"**: entre pessoas diferentes, a linha "Tipo" que já existe (primeira
+   do `<dl>`) mostra **o tipo da transferência** ("Empréstimo", "Quitação", "Pagamento" —
+   `transaction.kind.*`) no lugar de "Transferência". **Uma** linha "Tipo", nunca duas (ver
+   divergência 1).
+2. **`<dl>` — "Abatido da dívida"** (só quitação em outra moeda): logo depois de "Tipo",
+   `transaction.preview.debtAbated` com o valor **na moeda da dívida** (`R$ 100,00`; BTC com 8
+   casas fixas, como na §10 — é o valor que será registrado, SC-004). Seguem as linhas que já
+   existem: "Cotação", "Obtida às", "Titular do destino".
+3. **Bloco "Efeito na dívida"** (só quando a prévia traz `debt`), **entre o `<dl>` e a nota
+   azul**:
+
+```html
+<section aria-labelledby="debt-effect-title" class="rounded-lg bg-surface px-4 py-3">
+  <h3 id="debt-effect-title" class="m-0 mb-1 text-footnote font-semibold tracking-wide
+      text-text-muted uppercase">Efeito na dívida</h3>
+  <p class="m-0 text-body text-text">…frase…</p>
+</section>
+```
+
+| Tipo | Frase | Detalhes |
+|---|---|---|
+| Empréstimo | `transaction.preview.loanEffect` — "Bruno vai dever R$ 100,00 a Ana" | Valor `font-semibold tabular-nums whitespace-nowrap`. |
+| Quitação | `transaction.preview.settlementEffect` — "Dívida de Bruno com Ana: R$ 100,00 → R$ 70,00" | `before` em `text-text-muted`, `after` em `font-semibold`; ambos `tabular-nums whitespace-nowrap` (a frase quebra entre eles, nunca dentro do valor). |
+| Quitação que zera | A mesma frase com `after = R$ 0,00`, seguida de `<Badge variant="settled">` "quitada" (`bg-positive-soft text-positive`, `Check` 12 px, 8,02:1) | A informação "zerou" está no texto do selo, não só na cor. Chave sugerida `transaction.preview.settled` (ver divergência 2). |
+| Pagamento | Sem bloco (a prévia não traz `debt`). A linha "Tipo: Pagamento" basta. | — |
+
+   O "→" é lido pelos leitores como "seta para a direita" — aceitável e compreensível; se o
+   frontend renderizar com `<Trans>`, pode trocar por `<span aria-hidden>→</span><span
+   className="sr-only">para</span>` sem mudar o texto visível.
+
+4. **Cartão de fluxo**: inalterado; em quitação em outra moeda os valores enviados aparecem com
+   8 casas (BTC) ou 2 (BRL), como na §10. Quitar tudo em outra moeda: o valor enviado já vem
+   arredondado para cima pelo servidor (FR-015) — mostrar exatamente `preview.sourceAmount`.
+5. **Botão principal**: "Registrar empréstimo" / "Registrar quitação" / "Registrar pagamento"
+   (`transaction.submit.loan` / `settlement` / `payment`); transferências do mesmo titular
+   continuam "Registrar transferência".
+6. **Cotação indisponível (503)** em quitação na outra moeda: o `Banner tone="warning"` existente;
+   "Registrar quitação" `disabled`. Não há "Informar em bitcoin" aqui (o valor da dívida é que
+   é convertido); "Voltar" leva ao formulário, onde a pessoa pode escolher a moeda da dívida
+   igual à das carteiras, se houver (US3 #4).
+7. **Foco**: inalterado (título do passo ao entrar; "Continuar" ao voltar).
+
+**Toast de sucesso**: textos do contrato via `notifySuccess` (sonner), sem layout novo.
+
+### StatementEntryRow — rótulo por tipo
+
+Ícone 32 px inalterado (`ArrowLeftRight` em `bg-info-soft text-info`; estorno `Undo2` cinza).
+Quando a entrada é uma transferência com `kind`:
+
+| Lado da carteira do extrato | Rótulo (`statement.kind.*`) |
+|---|---|
+| Saída (valor negativo) | "Empréstimo para Bruno" · "Quitação para Ana" · "Pagamento para Bruno" (`loanTo` / `settlementTo` / `paymentTo`) |
+| Entrada (valor positivo) | "Empréstimo de Ana" · "Quitação de Bruno" · "Pagamento de Ana" (`loanFrom` / `settlementFrom` / `paymentFrom`) |
+| Estorno de uma transferência com tipo | "Estorno de empréstimo" · "Estorno de quitação" · "Estorno de pagamento" (`reversalLoan` / `reversalSettlement` / `reversalPayment` — sugestão, ver divergência 4) |
+
+`{name}` = primeiro nome do **titular** da outra ponta.
+
+- **Sem descrição**: o rótulo é o título (`text-headline`, até 2 linhas, como hoje). Linha 2:
+  `HH:mm` + cotação (se houver) + selos.
+- **Com descrição**: a descrição é o título; o rótulo entra na linha 2 no lugar do tipo genérico
+  ("08:00 · Pagamento para Caio").
+- O pedaço `→ {destinationName}` / `← {sourceName}` **não** aparece quando há rótulo de tipo (o
+  nome já está nele; repetir alongaria a linha que trunca).
+- Transferências sem `kind` (mesmo titular) seguem como hoje: "Transferência · → Reserva".
+- O original estornado mantém o rótulo + selo `estornado` (já existe).
+- Nome acessível do botão = conteúdo ("Empréstimo para Bruno, 14:32, saída de −R$ 100,00").
+
+### TransactionDetailSheet — "Tipo" e "Abatido da dívida"
+
+- **Cabeçalho**: a linha abaixo do valor grande mostra o **rótulo do extrato** ("Quitação de
+  Bruno") no lugar de "Transferência".
+- **`<dl>`**: linha **"Tipo"** (`transaction.kind.label` → "Empréstimo" / "Quitação" /
+  "Pagamento") logo **depois de "Para"**; em quitação em outra moeda, **"Abatido da dívida"**
+  (`transaction.preview.debtAbated`) com o valor na moeda da dívida (BTC 8 casas), logo depois de
+  "Tipo" e antes de "Cotação". Mesmo `row()` de hoje.
+- **ConfirmModal de estorno**: o `{{type}}` do texto usa só o nome do tipo em minúsculas
+  ("empréstimo"), **nunca** o rótulo com o nome da pessoa — `toLowerCase()` em "Empréstimo para
+  Bruno" geraria "bruno".
+
+### Divergências e notas para o contrato
+
+O contrato prevalece; as decisões abaixo preenchem lacunas e não contradizem nada:
+
+1. **Duas linhas "Tipo" na prévia**: o `<dl>` já tem "Tipo: Transferência"
+   (`transaction.preview.type`). Somar `transaction.preview.kind` ("Tipo") criaria dois rótulos
+   iguais com valores diferentes. Decisão: entre pessoas, a linha existente mostra o tipo
+   (Empréstimo/Quitação/Pagamento). A chave `transaction.preview.kind` pode ser usada como
+   rótulo dessa linha nesse caso — o texto é o mesmo.
+2. **"quitada"**: o contrato pede a palavra, mas não lista chave. Sugestão:
+   `transaction.preview.settled` = "quitada", exibida como selo (`Badge`) depois da frase.
+3. **Sair do "Quitar tudo" em outra moeda**: o contrato diz que digitar no Valor desliga o
+   modo, mas também que o campo fica somente leitura. Decisão: "Quitar tudo" é botão de
+   alternância (`aria-pressed`); tocá-lo de novo desliga o modo e devolve o foco ao Valor. Trocar
+   a moeda da dívida também desliga, como no contrato.
+4. **Chaves do extrato**: o contrato lista `statement.kind.loanTo` / `loanFrom` / "…".
+   Sugestão para o restante: `settlementTo`, `settlementFrom`, `paymentTo`, `paymentFrom`,
+   `reversalLoan`, `reversalSettlement`, `reversalPayment`.
+5. **Moeda só na outra moeda**: o contrato só diz que o grupo "Quitar dívida em" aparece; a
+   opção sem dívida fica visível e **desabilitada** (decisão de layout acima).
+6. **Rótulos "Real" / "Bitcoin" do grupo de moeda**: não estão na tabela de chaves do
+   contrato; usar `currency.BRL` / `currency.BTC`, que já existem no `pt-BR.json` (sem chave
+   nova).
+7. **Ajuda "Pagamento"**: "Não gera dívida." é curta e fica correta para qualquer par de pessoas;
+   não há variação com nomes.

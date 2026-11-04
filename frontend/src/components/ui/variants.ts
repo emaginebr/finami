@@ -32,6 +32,8 @@ export enum BadgeVariant {
   /** Permissão de assistente conectado (feature 004) */
   ScopeReadWrite = "scopeReadWrite",
   ScopeReadOnly = "scopeReadOnly",
+  /** Dívida zerada na confirmação de uma quitação (feature 007) */
+  Settled = "settled",
 }
 
 export enum AvatarVariant {

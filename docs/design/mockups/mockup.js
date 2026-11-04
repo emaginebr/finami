@@ -179,6 +179,7 @@
     ['oauth-consent.html', 'Autorizar assistente'], ['account-connections.html', 'Assistentes conectados'], ['oauth-error.html', 'Erro OAuth (API)'],
     ['pwa-states.html', 'PWA (offline, atualização, instalação)'],
     ['family-debts-transfers.html', 'Dívidas e transferências (006)'],
+    ['loan-transfer-types.html', 'Tipos de transferência (007)'],
   ];
   const here = location.pathname.split('/').pop();
   document.querySelectorAll('nav[data-pages]').forEach((nav) => {

@@ -66,40 +66,55 @@ public class TransactionTools : McpToolBase
                  $"{t.Source.Name}.{BalanceText(t)}",
             t => t.TransactionId);
 
-    private const string TRANSFER_RULES =
+    /// <summary>Feature 007 (contracts/mcp.md): texto de regras das duas ferramentas de transferência.</summary>
+    internal const string TRANSFER_RULES =
         "Regras: o destino deve ser da própria pessoa ou de alguém da família (use destinos_de_transferencia); " +
-        "conversão entre real e bitcoin só entre carteiras da mesma pessoa; transferência entre pessoas " +
-        "diferentes vira dívida de quem recebeu com quem enviou (veja dividas_da_pessoa).";
+        "conversão entre real e bitcoin só entre carteiras da mesma pessoa. Entre pessoas diferentes, confirme o " +
+        "tipo com a pessoa: emprestimo (quem recebe passa a dever), quitacao (paga uma dívida de quem envia com " +
+        "quem recebe, total ou parcial; pode quitar dívida em real com bitcoin e vice-versa, pela cotação atual) " +
+        "ou pagamento (sem dívida). Veja dividas_da_pessoa antes de quitar.";
 
     private const string DESTINATION_HINT =
         "Id da carteira de destino (ex.: 8); deve ser da própria pessoa ou de alguém da família; use destinos_de_transferencia.";
 
     private const string AMOUNT_HINT =
-        "Opcional: valor na moeda da carteira de origem (ex.: 500.00). Informe valor ou valor_em_reais, nunca os dois.";
+        "Opcional: valor na moeda da carteira de origem (ex.: 500.00). Informe valor ou valor_em_reais, nunca os " +
+        "dois (ou nenhum, com quitar_tudo).";
 
     private const string AMOUNT_BRL_HINT =
         "Opcional: valor em reais para transferir bitcoin (origem e destino em bitcoin); o Finami converte pela " +
         "cotação atual. Informe valor ou valor_em_reais, nunca os dois.";
 
+    private const string KIND_HINT =
+        "Opcional: tipo quando o destino é de outra pessoa: emprestimo, quitacao ou pagamento (sem ele, vale " +
+        "emprestimo). Não use entre carteiras da mesma pessoa.";
+
+    private const string DEBT_CURRENCY_HINT =
+        "Opcional, só para quitacao: moeda da dívida que está sendo quitada (BRL ou BTC); padrão = moeda das carteiras.";
+
+    private const string SETTLE_ALL_HINT =
+        "Opcional, só para quitacao: true quita a dívida inteira; não informe valor nem valor_em_reais.";
+
     [McpServerTool(Name = "previa_transferencia", Title = "Prévia de transferência", ReadOnly = true,
         Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("Simula uma transferência sem gravar nada: mostra o tipo (Transfer, BtcPurchase ou BtcSale), o " +
-                 "valor que sai da origem, o valor que chega no destino e a cotação usada quando há conversão " +
-                 "entre BRL e BTC ou quando o valor de bitcoin foi informado em reais. Use antes de " +
-                 "registrar_transferencia para confirmar com a pessoa. " + TRANSFER_RULES)]
+                 "valor que sai da origem, o valor que chega no destino, a cotação usada quando há conversão " +
+                 "entre BRL e BTC ou quando o valor foi convertido, e, entre pessoas, o tipo e o efeito na dívida " +
+                 "(antes e depois). Use antes de registrar_transferencia para confirmar com a pessoa. " + TRANSFER_RULES)]
     public Task<CallToolResult> PreviaTransferencia(ClaimsPrincipal user,
         [Description("Id da carteira de origem (ex.: 5).")] long carteira_origem_id,
         [Description(DESTINATION_HINT)] long carteira_destino_id,
         [Description(AMOUNT_HINT)] decimal? valor = null,
         [Description(AMOUNT_BRL_HINT)] decimal? valor_em_reais = null,
-        [Description("Opcional: descrição.")] string? descricao = null) =>
+        [Description("Opcional: descrição.")] string? descricao = null,
+        [Description(KIND_HINT)] string? tipo = null,
+        [Description(DEBT_CURRENCY_HINT)] string? moeda_da_divida = null,
+        [Description(SETTLE_ALL_HINT)] bool? quitar_tudo = null) =>
         ExecuteReadAsync(user, "previa_transferencia",
             userId => _ledgerService.PreviewTransferAsync(userId,
-                Transfer(carteira_origem_id, carteira_destino_id, valor, valor_em_reais, descricao)),
-            p => p.Quote == null
-                ? $"Prévia ({p.Type}): sai {McpFormat.Money(p.SourceAmount, null)} da origem e chega o mesmo valor no destino."
-                : $"Prévia ({p.Type}): sai {p.SourceAmount} da origem e chegam {p.DestinationAmount} no destino, " +
-                  $"com 1 BTC = {McpFormat.Money(p.Quote.PriceBrl, McpFormat.BRL)}.");
+                Transfer(carteira_origem_id, carteira_destino_id, valor, valor_em_reais, descricao,
+                    tipo, moeda_da_divida, quitar_tudo)),
+            PreviewText);
 
     [McpServerTool(Name = "registrar_transferencia", Title = "Registrar transferência", ReadOnly = false,
         Destructive = false, Idempotent = false, OpenWorld = false)]
@@ -113,11 +128,15 @@ public class TransactionTools : McpToolBase
         [Description(AMOUNT_HINT)] decimal? valor = null,
         [Description(AMOUNT_BRL_HINT)] decimal? valor_em_reais = null,
         [Description("Opcional: descrição (ex.: \"Mesada\").")] string? descricao = null,
-        [Description("Opcional: chave de repetição segura (até 64 caracteres).")] string? chave_repeticao = null) =>
+        [Description("Opcional: chave de repetição segura (até 64 caracteres).")] string? chave_repeticao = null,
+        [Description(KIND_HINT)] string? tipo = null,
+        [Description(DEBT_CURRENCY_HINT)] string? moeda_da_divida = null,
+        [Description(SETTLE_ALL_HINT)] bool? quitar_tudo = null) =>
         ExecuteWriteAsync(user, "registrar_transferencia", chave_repeticao,
             async userId => await WithBalanceAsync(userId, carteira_origem_id,
                 await _ledgerService.TransferAsync(userId,
-                    Transfer(carteira_origem_id, carteira_destino_id, valor, valor_em_reais, descricao))),
+                    Transfer(carteira_origem_id, carteira_destino_id, valor, valor_em_reais, descricao,
+                        tipo, moeda_da_divida, quitar_tudo))),
             t => $"Transferência de {McpFormat.Money(t.SourceAmount, t.Source.Currency)} de {t.Source.Name} para " +
                  $"{t.Destination.Name}" +
                  (t.Source.Currency != t.Destination.Currency
@@ -126,7 +145,7 @@ public class TransactionTools : McpToolBase
                  (t.Quote != null && t.Source.Currency == t.Destination.Currency
                      ? $" (cotação 1 BTC = {McpFormat.Money(t.Quote.PriceBrl, McpFormat.BRL)})"
                      : string.Empty) +
-                 $" registrada.{BalanceText(t)}",
+                 $" registrada.{KindText(t)}{BalanceText(t)}",
             t => t.TransactionId);
 
     [McpServerTool(Name = "estornar_lancamento", Title = "Estornar lançamento", ReadOnly = false,
@@ -144,13 +163,83 @@ public class TransactionTools : McpToolBase
             t => t.TransactionId);
 
     private static TransferInfo Transfer(long source, long destination, decimal? amount, decimal? amountBrl,
-        string? description) => new()
+        string? description, string? kind = null, string? debtCurrency = null, bool? settleAll = null) => new()
     {
         SourceWalletId = source,
         DestinationWalletId = destination,
         Amount = amount,
         AmountBrl = amountBrl,
-        Description = description
+        Description = description,
+        Kind = KindCode(kind),
+        DebtCurrency = string.IsNullOrWhiteSpace(debtCurrency) ? null : debtCurrency.Trim().ToUpperInvariant(),
+        SettleAll = settleAll ?? false
+    };
+
+    /// <summary>Feature 007: <c>emprestimo → loan</c>, <c>quitacao → settlement</c>, <c>pagamento → payment</c>.</summary>
+    internal static string? KindCode(string? tipo)
+    {
+        if (string.IsNullOrWhiteSpace(tipo))
+            return null;
+        return tipo.Trim().ToLowerInvariant() switch
+        {
+            "emprestimo" or "empréstimo" => "loan",
+            "quitacao" or "quitação" => "settlement",
+            "pagamento" => "payment",
+            _ => throw new ValidationException(INVALID_KIND_MESSAGE, new[] { INVALID_KIND_MESSAGE })
+        };
+    }
+
+    internal const string INVALID_KIND_MESSAGE = "Tipo inválido em 'tipo': use emprestimo, quitacao ou pagamento.";
+
+    private static string KindLabel(string? kind) => kind switch
+    {
+        "loan" => "Empréstimo",
+        "settlement" => "Quitação",
+        "payment" => "Pagamento",
+        _ => string.Empty
+    };
+
+    /// <summary>
+    /// Texto da prévia: valores, cotação e, entre pessoas, o tipo e o efeito na dívida (contracts/mcp.md), ex.:
+    /// "Quitação: abate R$ 100,00 da dívida de Bruno com Ana (de R$ 100,00 para R$ 0,00), pela cotação ₿ 1 = R$ 500.000,00.".
+    /// </summary>
+    internal static string PreviewText(TransferPreviewResult p)
+    {
+        var text = p.Quote == null
+            ? $"Prévia ({p.Type}): sai {McpFormat.Money(p.SourceAmount, null)} da origem e chega o mesmo valor no destino."
+            : $"Prévia ({p.Type}): sai {p.SourceAmount} da origem e chegam {p.DestinationAmount} no destino, " +
+              $"com 1 BTC = {McpFormat.Money(p.Quote.PriceBrl, McpFormat.BRL)}.";
+        var debt = p.Debt;
+        switch (p.Kind)
+        {
+            case "payment":
+                return $"{text} Pagamento: não gera dívida.";
+            case "loan" when debt != null:
+                return $"{text} Empréstimo: {debt.DebtorFirstName} passa a dever " +
+                       $"{McpFormat.Money(debt.Amount, debt.Currency)} a {debt.CreditorFirstName} " +
+                       $"(dívida de {McpFormat.Money(debt.Before, debt.Currency)} para " +
+                       $"{McpFormat.Money(debt.After, debt.Currency)}).";
+            case "settlement" when debt != null:
+                return $"{text} Quitação: abate {McpFormat.Money(debt.Amount, debt.Currency)} da dívida de " +
+                       $"{debt.DebtorFirstName} com {debt.CreditorFirstName} " +
+                       $"(de {McpFormat.Money(debt.Before, debt.Currency)} para " +
+                       $"{McpFormat.Money(debt.After, debt.Currency)})" +
+                       (p.Quote != null ? $", pela cotação ₿ 1 = {McpFormat.Money(p.Quote.PriceBrl, McpFormat.BRL)}" : string.Empty) +
+                       ".";
+            default:
+                return text;
+        }
+    }
+
+    /// <summary>Tipo e efeito na dívida no resumo do registro (feature 007).</summary>
+    private static string KindText(McpTransactionResult t) => t.TransferKind switch
+    {
+        "loan" when t.DebtAmount.HasValue =>
+            $" {KindLabel(t.TransferKind)}: gera dívida de {McpFormat.Money(t.DebtAmount.Value, t.DebtCurrency)}.",
+        "settlement" when t.DebtAmount.HasValue =>
+            $" {KindLabel(t.TransferKind)}: abate {McpFormat.Money(t.DebtAmount.Value, t.DebtCurrency)} da dívida.",
+        "payment" => " Pagamento: não gera dívida.",
+        _ => string.Empty
     };
 
     /// <summary>Acrescenta o saldo novo da carteira; se ela não puder ser lida, o lançamento continua valendo.</summary>

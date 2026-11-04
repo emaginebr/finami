@@ -3,7 +3,9 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TransactionPage from "./TransactionPage";
 import { Currency } from "../types/api";
-import { TransactionKind, TransactionType } from "../types/transaction";
+import { DebtDirection } from "../types/debt";
+import type { PersonDebt } from "../types/debt";
+import { TransactionKind, TransactionType, TransferKind } from "../types/transaction";
 import type { TransactionInfo } from "../types/transaction";
 import type { TransferDestination, TransferDestinationsResult } from "../types/wallet";
 import { makeWallet, storeSession } from "../test/fixtures";
@@ -131,6 +133,13 @@ const pickDestination = async (user: User, option: RegExp) => {
 const pickSource = async (user: User, option: RegExp) => {
   await user.click(screen.getByRole("button", { name: /^De/ }));
   await user.click(await screen.findByRole("option", { name: option }));
+};
+
+/** Seletor "Tipo" da transferência entre pessoas (feature 007) */
+const kindGroup = () => screen.getByRole("radiogroup", { name: "Tipo" });
+
+const pickKind = async (user: User, name: "Empréstimo" | "Quitação" | "Pagamento") => {
+  await user.click(within(kindGroup()).getByRole("radio", { name }));
 };
 
 describe("TransactionPage", () => {
@@ -395,6 +404,7 @@ describe("TransactionPage", () => {
     await waitFor(() => expect(paraButton()).toHaveFocus());
 
     // Prévia: foco no título do passo
+    await pickKind(user, "Pagamento");
     await user.type(screen.getByLabelText("Valor"), "250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     const title = await screen.findByRole("heading", { level: 2, name: "Confirmar transferência" });
@@ -482,7 +492,7 @@ describe("TransactionPage", () => {
   it("transferência para a família passa pela confirmação com o titular e registra", async () => {
     const { fetchMock, router, user } = setup(TransactionKind.Transfer, {
       "POST /api/transactions/transfer/preview": {
-        body: { type: "Transfer", sourceAmount: 250, destinationAmount: 250, quote: null },
+        body: { type: "Transfer", sourceAmount: 250, destinationAmount: 250, quote: null, kind: "payment", debt: null },
       },
       "POST /api/transactions/transfer": {
         status: 201,
@@ -498,20 +508,21 @@ describe("TransactionPage", () => {
 
     await ready();
     await pickDestination(user, /Mesada/);
+    await pickKind(user, "Pagamento");
     await user.type(screen.getByLabelText("Valor"), "250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("Titular do destino")).toBeInTheDocument();
     expect(screen.getByText("Bruno")).toBeInTheDocument();
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
-      { sourceWalletId: 1, destinationWalletId: 12, amount: "250", description: null },
+      { sourceWalletId: 1, destinationWalletId: 12, amount: "250", kind: "payment", description: null },
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Registrar transferência" }));
+    await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/1"));
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([
-      { sourceWalletId: 1, destinationWalletId: 12, amount: "250", description: null },
+      { sourceWalletId: 1, destinationWalletId: 12, amount: "250", kind: "payment", description: null },
     ]);
   });
 
@@ -522,6 +533,7 @@ describe("TransactionPage", () => {
 
     await ready();
     await pickDestination(user, /Mesada/);
+    await pickKind(user, "Pagamento");
     await user.type(screen.getByLabelText("Valor"), "250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -649,13 +661,14 @@ describe("TransactionPage", () => {
 
     await ready(/^De Ana, Reserva BTC,/);
     await pickDestination(user, /Cofre/);
+    await pickKind(user, "Empréstimo");
     await user.click(screen.getByRole("button", { name: "Reais" }));
     await user.type(screen.getByLabelText("Valor"), "200");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("Valor informado")).toBeInTheDocument();
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
-      { sourceWalletId: 2, destinationWalletId: 14, amountBrl: "200", description: null },
+      { sourceWalletId: 2, destinationWalletId: 14, amountBrl: "200", kind: "loan", description: null },
     ]);
     expect(screen.getByText(/^R\$\s200,00$/)).toBeInTheDocument();
     expect(screen.getByText("Valor em bitcoin")).toBeInTheDocument();
@@ -664,11 +677,12 @@ describe("TransactionPage", () => {
     expect(screen.getByText("₿ 1 = R$ 500.000,00")).toBeInTheDocument();
     expect(screen.getByText("Obtida às")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Registrar transferência" }));
+    await user.click(screen.getByRole("button", { name: "Registrar empréstimo" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
+    // Regra existente (R-07) composta com o tipo: o registro envia o BTC da prévia
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([
-      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.0004", description: null },
+      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.0004", kind: "loan", description: null },
     ]);
   });
 
@@ -695,6 +709,7 @@ describe("TransactionPage", () => {
 
     await ready(/^De Ana, Reserva BTC,/);
     await pickDestination(user, /Cofre/);
+    await pickKind(user, "Pagamento");
     const sats = screen.getByRole("button", { name: "Satoshis" });
     await user.click(sats);
     expect(sats).toHaveAttribute("aria-pressed", "true");
@@ -707,15 +722,15 @@ describe("TransactionPage", () => {
     await user.type(screen.getByLabelText("Valor"), "12345");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    await screen.findByRole("button", { name: "Registrar transferência" });
+    await screen.findByRole("button", { name: "Registrar pagamento" });
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
-      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.00012345", description: null },
+      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.00012345", kind: "payment", description: null },
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Registrar transferência" }));
+    await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([
-      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.00012345", description: null },
+      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.00012345", kind: "payment", description: null },
     ]);
   });
 
@@ -728,12 +743,13 @@ describe("TransactionPage", () => {
 
     await ready(/^De Ana, Reserva BTC,/);
     await pickDestination(user, /Cofre/);
+    await pickKind(user, "Pagamento");
     await user.click(screen.getByRole("button", { name: "Reais" }));
     await user.type(screen.getByLabelText("Valor"), "200");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("Cotação indisponível")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Registrar transferência" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Registrar pagamento" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Informar em bitcoin" }));
 
     const amount = await screen.findByLabelText("Valor");
@@ -752,6 +768,7 @@ describe("TransactionPage", () => {
 
     await ready(/^De Ana, Reserva BTC,/);
     await pickDestination(user, /Cofre/);
+    await pickKind(user, "Pagamento");
     await user.click(screen.getByRole("button", { name: "Reais" }));
     await user.type(screen.getByLabelText("Valor"), "0,01");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -836,5 +853,578 @@ describe("TransactionPage", () => {
     await pickDestination(user, /Mesada/);
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Feature 007 — tipos de transferência (Empréstimo, Quitação, Pagamento)
+// ---------------------------------------------------------------------------
+
+/** Transferência registrada de Nubank (Ana) para Mesada (Bruno) */
+const transferToBruno = (overrides: Partial<TransactionInfo> = {}): TransactionInfo =>
+  makeTransaction({
+    type: TransactionType.Transfer,
+    source: { accountId: 1, name: "Nubank", kind: "Wallet", currency: Currency.BRL, ownerName: "Ana Silva" },
+    destination: { accountId: 12, name: "Mesada", kind: "Wallet", currency: Currency.BRL, ownerName: "Bruno Souza" },
+    ...overrides,
+  });
+
+const debtsOf = (userId: number, debts: PersonDebt[]): MockResponse => ({ body: { userId, debts } });
+
+const owes = (overrides: Partial<PersonDebt> = {}): PersonDebt => ({
+  counterpartUserId: 9,
+  counterpartName: "Bruno Souza",
+  counterpartFirstName: "Bruno",
+  currency: Currency.BRL,
+  amount: 100,
+  direction: DebtDirection.Owes,
+  ...overrides,
+});
+
+const continueButton = () => screen.getByRole("button", { name: "Continuar" });
+
+/** Frase do painel de quitação (o valor fica num <span> próprio): compara o texto inteiro do <p> */
+const debtSentence = (text: string) => (_content: string, element: Element | null) =>
+  element?.tagName === "P" && (element.textContent ?? "").replace(/\s+/g, " ") === text;
+
+describe("TransactionPage — tipo da transferência (US1)", () => {
+  it("seletor Tipo só aparece com destino de outra pessoa: radiogroup sem seleção, ajuda e axe", async () => {
+    const { container, user } = setup(TransactionKind.Transfer);
+
+    await ready();
+    await pickDestination(user, /Poupança/);
+    expect(screen.queryByRole("radiogroup", { name: "Tipo" })).not.toBeInTheDocument();
+
+    await pickDestination(user, /Mesada/);
+    const group = kindGroup();
+    const radios = within(group).getAllByRole("radio");
+    expect(radios.map((radio) => radio.textContent)).toEqual(["Empréstimo", "Quitação", "Pagamento"]);
+    expect(radios.every((radio) => radio.getAttribute("aria-checked") === "false")).toBe(true);
+    // Sem escolha, a parada de Tab cai na primeira opção sem marcá-la
+    expect(radios.map((radio) => radio.tabIndex)).toEqual([0, -1, -1]);
+    expect(group).toHaveAttribute("aria-required", "true");
+    // A região viva da ajuda já existe (vazia, `sr-only`, não `hidden`) antes da 1ª escolha (REVIEW-007 I-1)
+    const help = screen.getByText("Tipo").parentElement?.querySelector('p[aria-live="polite"]');
+    expect(help).toBeInTheDocument();
+    expect(help).toBeEmptyDOMElement();
+    expect(help).toHaveClass("empty:sr-only");
+    expect(help).not.toHaveClass("empty:hidden");
+    expect(await axe(container)).toHaveNoViolations();
+
+    await pickKind(user, "Empréstimo");
+    expect(help).toHaveTextContent("Bruno vai ficar devendo esse valor a Ana.");
+    expect(radios[0]).toHaveAttribute("aria-checked", "true");
+    expect(group).toHaveAccessibleDescription("Bruno vai ficar devendo esse valor a Ana.");
+    // Setas movem e selecionam
+    await user.keyboard("{ArrowRight}");
+    expect(radios[1]).toHaveFocus();
+    expect(radios[1]).toHaveAttribute("aria-checked", "true");
+    expect(group).toHaveAccessibleDescription("Abate uma dívida de Ana com Bruno.");
+    await user.keyboard("{End}");
+    expect(group).toHaveAccessibleDescription("Não gera dívida.");
+  });
+
+  it("Continuar sem tipo mostra \"Escolha o tipo da transferência.\" e foca o grupo", async () => {
+    const { container, fetchMock, user } = setup(TransactionKind.Transfer);
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await user.type(screen.getByLabelText("Valor"), "100");
+    await user.click(continueButton());
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Escolha o tipo da transferência.");
+    const group = kindGroup();
+    expect(group).toHaveAttribute("aria-invalid", "true");
+    expect(group).toHaveAccessibleDescription("Escolha o tipo da transferência.");
+    expect(within(group).getByRole("radio", { name: "Empréstimo" })).toHaveFocus();
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toHaveLength(0);
+    expect(await axe(container)).toHaveNoViolations();
+
+    // Escolher qualquer opção some com o erro
+    await pickKind(user, "Pagamento");
+    expect(screen.queryByText("Escolha o tipo da transferência.")).not.toBeInTheDocument();
+  });
+
+  it("trocar o Para limpa o tipo (mesmo titular some; outro titular, limpo)", async () => {
+    const caio = makeDestination({ walletId: 15, name: "Conta do Caio", ownerUserId: 11, ownerFirstName: "Caio", isOwn: false });
+    const { user } = setup(TransactionKind.Transfer, {
+      "GET /api/wallets/1/transfer-destinations": {
+        body: { ...FROM_NUBANK, sameCurrency: [POUPANCA, MESADA, caio] },
+      },
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Pagamento");
+
+    await pickDestination(user, /Poupança/);
+    expect(screen.queryByRole("radiogroup", { name: "Tipo" })).not.toBeInTheDocument();
+    await pickDestination(user, /Mesada/);
+    expect(within(kindGroup()).getAllByRole("radio").map((r) => r.getAttribute("aria-checked"))).toEqual([
+      "false",
+      "false",
+      "false",
+    ]);
+
+    await pickKind(user, "Empréstimo");
+    await pickDestination(user, /Conta do Caio/);
+    await waitFor(() =>
+      expect(within(kindGroup()).getByRole("radio", { name: "Empréstimo" })).toHaveAttribute("aria-checked", "false"),
+    );
+  });
+
+  it("empréstimo: prévia e registro enviam kind, prévia mostra Tipo e o efeito na dívida, toast por tipo", async () => {
+    const { container, fetchMock, router, user } = setup(TransactionKind.Transfer, {
+      "POST /api/transactions/transfer/preview": {
+        body: {
+          type: "Transfer",
+          sourceAmount: 100,
+          destinationAmount: 100,
+          quote: null,
+          kind: "loan",
+          debt: { currency: "BRL", amount: 100, before: 0, after: 100, debtorUserId: 9, creditorUserId: 7 },
+        },
+      },
+      "POST /api/transactions/transfer": {
+        status: 201,
+        body: transferToBruno({ transferKind: TransferKind.Loan, debtCurrency: Currency.BRL, debtAmount: 100 }),
+      },
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Empréstimo");
+    await user.type(screen.getByLabelText("Valor"), "100");
+    await user.click(continueButton());
+
+    const effect = await screen.findByRole("region", { name: "Efeito na dívida" });
+    expect(effect).toHaveTextContent("Bruno vai dever R$ 100,00 a Ana");
+    // Uma única linha "Tipo", com o tipo da transferência
+    expect(screen.getAllByText("Tipo")).toHaveLength(1);
+    expect(screen.getByText("Empréstimo")).toBeInTheDocument();
+    expect(screen.queryByText("Transferência")).not.toBeInTheDocument();
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
+      { sourceWalletId: 1, destinationWalletId: 12, amount: "100", kind: "loan", description: null },
+    ]);
+    expect(await axe(container)).toHaveNoViolations();
+
+    await user.click(screen.getByRole("button", { name: "Registrar empréstimo" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/1"));
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([
+      { sourceWalletId: 1, destinationWalletId: 12, amount: "100", kind: "loan", description: null },
+    ]);
+    expect(notifySuccess).toHaveBeenCalledWith("Empréstimo de R$ 100,00 para Bruno registrado.");
+  });
+
+  it("pagamento: sem efeito na dívida, \"Registrar pagamento\" e toast de pagamento", async () => {
+    const { fetchMock, router, user } = setup(TransactionKind.Transfer, {
+      "POST /api/transactions/transfer/preview": {
+        body: { type: "Transfer", sourceAmount: 50, destinationAmount: 50, quote: null, kind: "payment", debt: null },
+      },
+      "POST /api/transactions/transfer": {
+        status: 201,
+        body: transferToBruno({ sourceAmount: 50, destinationAmount: 50, transferKind: TransferKind.Payment }),
+      },
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Pagamento");
+    await user.type(screen.getByLabelText("Valor"), "50");
+    await user.click(continueButton());
+
+    await user.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
+    expect(screen.queryByRole("region", { name: "Efeito na dívida" })).not.toBeInTheDocument();
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/1"));
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([
+      { sourceWalletId: 1, destinationWalletId: 12, amount: "50", kind: "payment", description: null },
+    ]);
+    expect(notifySuccess).toHaveBeenCalledWith("Pagamento de R$ 50,00 para Bruno registrado.");
+  });
+});
+
+describe("TransactionPage — quitação na mesma moeda (US2)", () => {
+  it("carrega as dívidas do titular da origem e \"Quitar tudo\" envia settleAll: true", async () => {
+    const { container, fetchMock, router, user } = setup(TransactionKind.Transfer, {
+      "GET /api/users/7/debts": debtsOf(7, [owes(), owes({ counterpartUserId: 11, counterpartFirstName: "Caio" })]),
+      "POST /api/transactions/transfer/preview": {
+        body: {
+          type: "Transfer",
+          sourceAmount: 100,
+          destinationAmount: 100,
+          quote: null,
+          kind: "settlement",
+          debt: { currency: "BRL", amount: 100, before: 100, after: 0, debtorUserId: 7, creditorUserId: 9 },
+        },
+      },
+      "POST /api/transactions/transfer": {
+        status: 201,
+        body: transferToBruno({ transferKind: TransferKind.Settlement, debtCurrency: Currency.BRL, debtAmount: 100 }),
+      },
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Quitação");
+
+    expect(await screen.findByText(debtSentence("Você deve R$ 100,00 a Bruno"))).toBeInTheDocument();
+    expect(requestsTo(fetchMock, "GET /api/users/7/debts")).toHaveLength(1);
+    // Dívida só na moeda das carteiras: sem o grupo "Quitar dívida em"
+    expect(screen.queryByRole("radiogroup", { name: "Quitar dívida em" })).not.toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+
+    const settleAll = screen.getByRole("button", { name: "Quitar tudo" });
+    expect(settleAll).toHaveAttribute("aria-pressed", "false");
+    expect(settleAll).toHaveClass("bg-surface-2");
+    await user.click(settleAll);
+    expect(settleAll).toHaveAttribute("aria-pressed", "true");
+    // Ligado: as cores da variante são substituídas, não somadas (REVIEW-007 I-3)
+    expect(settleAll).toHaveClass("bg-brand-tint");
+    expect(settleAll).not.toHaveClass("bg-surface-2");
+    expect(settleAll).toHaveFocus();
+    expect(screen.getByLabelText("Valor")).toHaveValue("100,00");
+    expect(screen.getByLabelText("Valor")).not.toHaveClass("sr-only");
+    // O painel não vira um landmark "Tipo" (REVIEW-007 M-1)
+    expect(screen.queryByRole("region", { name: "Tipo" })).not.toBeInTheDocument();
+
+    await user.click(continueButton());
+    const effect = await screen.findByRole("region", { name: "Efeito na dívida" });
+    expect(effect).toHaveTextContent("Dívida de Ana com Bruno: R$ 100,00 → R$ 0,00");
+    expect(within(effect).getByText("quitada")).toBeInTheDocument();
+    const body = { sourceWalletId: 1, destinationWalletId: 12, kind: "settlement", debtCurrency: "BRL", settleAll: true, description: null };
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([body]);
+
+    await user.click(screen.getByRole("button", { name: "Registrar quitação" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/1"));
+    // O registro reenvia o mesmo corpo da prévia (sem valor derivado)
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([body]);
+    expect(notifySuccess).toHaveBeenCalledWith("Quitação de R$ 100,00 para Bruno registrada.");
+  });
+
+  it("digitar no Valor desliga o \"Quitar tudo\" e a prévia mostra R$ 100,00 → R$ 70,00", async () => {
+    const { fetchMock, user } = setup(TransactionKind.Transfer, {
+      "GET /api/users/7/debts": debtsOf(7, [owes()]),
+      "POST /api/transactions/transfer/preview": {
+        body: {
+          type: "Transfer",
+          sourceAmount: 30,
+          destinationAmount: 30,
+          quote: null,
+          kind: "settlement",
+          debt: { currency: "BRL", amount: 30, before: 100, after: 70, debtorUserId: 7, creditorUserId: 9 },
+        },
+      },
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Quitação");
+    const settleAll = await screen.findByRole("button", { name: "Quitar tudo" });
+    await user.click(settleAll);
+    await user.clear(screen.getByLabelText("Valor"));
+    expect(settleAll).toHaveAttribute("aria-pressed", "false");
+    await user.type(screen.getByLabelText("Valor"), "30");
+    await user.click(continueButton());
+
+    const effect = await screen.findByRole("region", { name: "Efeito na dívida" });
+    expect(effect).toHaveTextContent("Dívida de Ana com Bruno: R$ 100,00 → R$ 70,00");
+    expect(within(effect).queryByText("quitada")).not.toBeInTheDocument();
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
+      { sourceWalletId: 1, destinationWalletId: 12, amount: "30", kind: "settlement", debtCurrency: "BRL", description: null },
+    ]);
+  });
+
+  it("sem dívida: aviso no painel e Continuar aria-disabled com a explicação", async () => {
+    const { container, fetchMock, user } = setup(TransactionKind.Transfer, {
+      "GET /api/users/7/debts": debtsOf(7, [owes({ direction: DebtDirection.Owed })]),
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Quitação");
+    const notice = await screen.findByText("Você não tem dívida com Bruno.");
+    expect(notice.closest("[role='status']")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Quitar tudo" })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Valor"), "10");
+    const submit = continueButton();
+    expect(submit).not.toBeDisabled();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    expect(submit).toHaveAccessibleDescription("Você não tem dívida com Bruno.");
+    await user.click(submit);
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toHaveLength(0);
+    expect(await axe(container)).toHaveNoViolations();
+
+    // Trocar para Pagamento libera o Continuar sem perder o valor
+    await pickKind(user, "Pagamento");
+    expect(continueButton()).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByLabelText("Valor")).toHaveValue("10");
+  });
+
+  it("dívidas carregando: Continuar aria-disabled com \"Carregando…\" e sem ação (REVIEW-007 M-3)", async () => {
+    let release: (() => void) | null = null;
+    const { fetchMock, user } = setup(TransactionKind.Transfer, {
+      "GET /api/users/7/debts": () =>
+        new Promise<MockResponse>((resolve) => {
+          release = () => resolve(debtsOf(7, [owes()]));
+        }),
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await user.type(screen.getByLabelText("Valor"), "30");
+    await pickKind(user, "Quitação");
+
+    await waitFor(() => expect(release).not.toBeNull());
+    const submit = continueButton();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    expect(submit).toHaveAccessibleDescription("Carregando…");
+    await user.click(submit);
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toHaveLength(0);
+
+    act(() => (release as (() => void) | null)?.());
+    await screen.findByText(debtSentence("Você deve R$ 100,00 a Bruno"));
+    expect(continueButton()).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("em satoshis, \"Quitar tudo\" preenche sats inteiros e mantém a unidade; toast com 8 casas (REVIEW-007 M-4/M-5)", async () => {
+    const { router, user } = setup(
+      TransactionKind.Transfer,
+      {
+        "GET /api/users/7/debts": debtsOf(7, [owes({ currency: Currency.BTC, amount: 0.000004 })]),
+        "POST /api/transactions/transfer/preview": {
+          body: {
+            type: "Transfer",
+            sourceAmount: 0.000004,
+            destinationAmount: 0.000004,
+            quote: null,
+            kind: "settlement",
+            debt: { currency: "BTC", amount: 0.000004, before: 0.000004, after: 0, debtorUserId: 7, creditorUserId: 9 },
+          },
+        },
+        "POST /api/transactions/transfer": {
+          status: 201,
+          body: makeTransaction({
+            type: TransactionType.Transfer,
+            source: { accountId: 2, name: "Reserva BTC", kind: "Wallet", currency: Currency.BTC, ownerName: "Ana Silva" },
+            destination: { accountId: 14, name: "Cofre", kind: "Wallet", currency: Currency.BTC, ownerName: "Bruno Souza" },
+            sourceAmount: 0.000004,
+            destinationAmount: 0.000004,
+            transferKind: TransferKind.Settlement,
+            debtCurrency: Currency.BTC,
+            debtAmount: 0.000004,
+          }),
+        },
+      },
+      2,
+    );
+
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
+    await user.click(screen.getByRole("button", { name: "Satoshis" }));
+    await pickKind(user, "Quitação");
+    // 5 casas zerariam a dívida: o painel mostra 8
+    expect(await screen.findByText(debtSentence("Você deve ₿ 0,00000400 a Bruno"))).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Quitar tudo" }));
+    expect(screen.getByLabelText("Valor")).toHaveValue("400");
+    expect(screen.getByRole("button", { name: "Satoshis" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(continueButton());
+    await user.click(await screen.findByRole("button", { name: "Registrar quitação" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
+    expect(notifySuccess).toHaveBeenCalledWith("Quitação de ₿ 0,00000400 para Bruno registrada.");
+  });
+
+  it("origem de um dependente: \"Caio deve…\" com as dívidas do titular da origem", async () => {
+    const mesadaCaio = makeWallet({
+      walletId: 3,
+      name: "Mesada do Caio",
+      ownerUserId: 11,
+      ownerName: "Caio Silva",
+      ownerFirstName: "Caio",
+      balance: 80,
+    });
+    const nubankAna = makeDestination({ walletId: 1, name: "Nubank", ownerUserId: 7, ownerFirstName: "Ana", isOwn: false });
+    const { fetchMock, user } = setup(
+      TransactionKind.Transfer,
+      {
+        "GET /api/wallets": { body: [...WALLETS, mesadaCaio] },
+        "GET /api/wallets/3/transfer-destinations": {
+          body: { sourceWalletId: 3, sameCurrency: [nubankAna], conversion: [] },
+        },
+        "GET /api/users/11/debts": debtsOf(11, [
+          owes({ counterpartUserId: 7, counterpartName: "Ana Silva", counterpartFirstName: "Ana", amount: 40 }),
+        ]),
+      },
+      3,
+    );
+
+    await ready(/^De Caio, Mesada do Caio,/);
+    await pickDestination(user, /Nubank/);
+    await pickKind(user, "Quitação");
+
+    expect(await screen.findByText(debtSentence("Caio deve R$ 40,00 a Ana"))).toBeInTheDocument();
+    expect(kindGroup()).toHaveAccessibleDescription("Abate uma dívida de Caio com Ana.");
+    expect(requestsTo(fetchMock, "GET /api/users/11/debts")).toHaveLength(1);
+  });
+
+  it("erro 422 do registro aparece no banner do formulário", async () => {
+    const { user } = setup(TransactionKind.Transfer, {
+      "GET /api/users/7/debts": debtsOf(7, [owes({ amount: 70 })]),
+      "POST /api/transactions/transfer/preview": {
+        body: {
+          type: "Transfer",
+          sourceAmount: 70,
+          destinationAmount: 70,
+          quote: null,
+          kind: "settlement",
+          debt: { currency: "BRL", amount: 70, before: 70, after: 0, debtorUserId: 7, creditorUserId: 9 },
+        },
+      },
+      "POST /api/transactions/transfer": apiError(422, "O valor é maior que a dívida (R$ 40,00)."),
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Quitação");
+    await screen.findByText(debtSentence("Você deve R$ 70,00 a Bruno"));
+    await user.type(screen.getByLabelText("Valor"), "70");
+    await user.click(continueButton());
+    await user.click(await screen.findByRole("button", { name: "Registrar quitação" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("O valor é maior que a dívida (R$ 40,00).");
+    expect(screen.getByLabelText("Valor")).toHaveValue("70");
+  });
+});
+
+describe("TransactionPage — quitação em outra moeda (US3)", () => {
+  it("dívidas nas duas moedas: grupo \"Quitar dívida em\" sugere a moeda das carteiras; a outra mostra a nota", async () => {
+    const { container, user } = setup(TransactionKind.Transfer, {
+      "GET /api/users/7/debts": debtsOf(7, [owes(), owes({ currency: Currency.BTC, amount: 0.0002 })]),
+    });
+
+    await ready();
+    await pickDestination(user, /Mesada/);
+    await pickKind(user, "Quitação");
+
+    const currencyGroup = await screen.findByRole("radiogroup", { name: "Quitar dívida em" });
+    expect(within(currencyGroup).getByRole("radio", { name: "Real" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText(debtSentence("Você deve R$ 100,00 a Bruno"))).toBeInTheDocument();
+    expect(screen.queryByText("Convertido pela cotação atual na confirmação.")).not.toBeInTheDocument();
+
+    await user.click(within(currencyGroup).getByRole("radio", { name: "Bitcoin" }));
+    expect(screen.getByText(debtSentence("Você deve ₿ 0,00020 a Bruno"))).toBeInTheDocument();
+    expect(currencyGroup).toHaveAccessibleDescription("Convertido pela cotação atual na confirmação.");
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("dívida só na outra moeda: a moeda das carteiras fica desabilitada; quitar tudo deixa o Valor calculado na confirmação", async () => {
+    const quoteRef = { priceBrl: 500000, quotedAt: "2026-11-03T17:32:00Z", source: "coingecko" };
+    const { container, fetchMock, router, user } = setup(
+      TransactionKind.Transfer,
+      {
+        "GET /api/users/7/debts": debtsOf(7, [owes({ amount: 100 })]),
+        "POST /api/transactions/transfer/preview": {
+          body: {
+            type: "Transfer",
+            sourceAmount: 0.0002,
+            destinationAmount: 0.0002,
+            quote: quoteRef,
+            kind: "settlement",
+            debt: { currency: "BRL", amount: 100, before: 100, after: 0, debtorUserId: 7, creditorUserId: 9 },
+          },
+        },
+        "POST /api/transactions/transfer": {
+          status: 201,
+          body: makeTransaction({
+            type: TransactionType.Transfer,
+            source: { accountId: 2, name: "Reserva BTC", kind: "Wallet", currency: Currency.BTC, ownerName: "Ana Silva" },
+            destination: { accountId: 14, name: "Cofre", kind: "Wallet", currency: Currency.BTC, ownerName: "Bruno Souza" },
+            sourceAmount: 0.0002,
+            destinationAmount: 0.0002,
+            transferKind: TransferKind.Settlement,
+            debtCurrency: Currency.BRL,
+            debtAmount: 100,
+          }),
+        },
+      },
+      2,
+    );
+
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
+    await pickKind(user, "Quitação");
+
+    const currencyGroup = await screen.findByRole("radiogroup", { name: "Quitar dívida em" });
+    // Moeda sem dívida: inativa, com o motivo no nome acessível (REVIEW-007 M-2)
+    expect(within(currencyGroup).getByRole("radio", { name: "Bitcoin, sem dívida" })).toBeDisabled();
+    expect(within(currencyGroup).getByRole("radio", { name: "Real" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("Convertido pela cotação atual na confirmação.")).toBeInTheDocument();
+
+    const settleAll = screen.getByRole("button", { name: "Quitar tudo" });
+    await user.click(settleAll);
+    const amount = screen.getByLabelText("Valor");
+    expect(amount).toHaveAttribute("readonly");
+    expect(amount).toHaveValue("Valor calculado na confirmação");
+    // O <input> sai da tela (continua focável); a frase visível é um texto que quebra linha (REVIEW-007 I-2)
+    expect(amount).toHaveClass("sr-only");
+    const visible = screen.getByText("Valor calculado na confirmação");
+    expect(visible.tagName).toBe("SPAN");
+    expect(visible).toHaveAttribute("aria-hidden", "true");
+    expect(visible).toHaveClass("break-words");
+    const toggle = screen.getByRole("group", { name: "Informar valor em" });
+    expect(within(toggle).getByRole("button", { name: "Bitcoin" })).toBeDisabled();
+    expect(await axe(container)).toHaveNoViolations();
+
+    // Tocar de novo sai do modo e devolve a edição (e o foco) ao Valor
+    await user.click(settleAll);
+    expect(amount).not.toHaveAttribute("readonly");
+    expect(amount).toHaveValue("");
+    expect(amount).toHaveFocus();
+    await user.click(settleAll);
+
+    await user.click(continueButton());
+    expect(await screen.findByText("Abatido da dívida")).toBeInTheDocument();
+    expect(screen.getByText("Abatido da dívida").nextElementSibling).toHaveTextContent(/^R\$\s100,00$/);
+    expect(screen.getByText(/^−₿\s0,00020000$/)).toBeInTheDocument();
+    expect(screen.getByText("₿ 1 = R$ 500.000,00")).toBeInTheDocument();
+    expect(screen.getByText("Obtida às")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Efeito na dívida" })).toHaveTextContent(
+      "Dívida de Ana com Bruno: R$ 100,00 → R$ 0,00",
+    );
+    const body = { sourceWalletId: 2, destinationWalletId: 14, kind: "settlement", debtCurrency: "BRL", settleAll: true, description: null };
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([body]);
+
+    await user.click(screen.getByRole("button", { name: "Registrar quitação" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/carteiras/2"));
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer")).toEqual([body]);
+  });
+
+  it("quitação parcial em outra moeda envia debtCurrency; 503 mostra o aviso de cotação", async () => {
+    const { fetchMock, user } = setup(
+      TransactionKind.Transfer,
+      {
+        "GET /api/users/7/debts": debtsOf(7, [owes()]),
+        "POST /api/transactions/transfer/preview": apiError(503, "Cotação indisponível."),
+      },
+      2,
+    );
+
+    await ready(/^De Ana, Reserva BTC,/);
+    await pickDestination(user, /Cofre/);
+    await pickKind(user, "Quitação");
+    await screen.findByRole("radiogroup", { name: "Quitar dívida em" });
+    await user.type(screen.getByLabelText("Valor"), "0,0001");
+    await user.click(continueButton());
+
+    expect(await screen.findByText("Cotação indisponível")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registrar quitação" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Informar em bitcoin" })).not.toBeInTheDocument();
+    expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
+      { sourceWalletId: 2, destinationWalletId: 14, amount: "0.0001", kind: "settlement", debtCurrency: "BRL", description: null },
+    ]);
   });
 });

@@ -43,6 +43,8 @@ public class StatementServiceTests
         };
         _groups.Setup(g => g.GetByIdAsync(GROUP)).ReturnsAsync(_group);
         _users.Setup(u => u.GetByIdAsync(It.IsAny<long>())).ReturnsAsync((long id) => new User { UserId = id });
+        _users.Setup(u => u.GetByIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync((IEnumerable<long> ids) => ids.Select(id => new User { UserId = id }).ToList());
 
         _accounts.Setup(a => a.GetByIdAsync(It.IsAny<long>())).ReturnsAsync((long id) => _store.GetValueOrDefault(id));
         _accounts.Setup(a => a.GetByIdsAsync(It.IsAny<IEnumerable<long>>()))
@@ -142,6 +144,26 @@ public class StatementServiceTests
         brl.TotalOut.Should().Be(0m);
         brl.ClosingBalance.Should().Be(1000m);
         result.Entries.Where(e => e.Type == "Transfer").Should().HaveCount(2).And.OnlyContain(e => e.Internal);
+    }
+
+    [Fact]
+    public async Task Entries_carry_owner_first_names_for_transfer_kind_labels()
+    {
+        Wallet(100, RESPONSIBLE, Currency.Brl);
+        Wallet(200, MEMBER, Currency.Brl);
+        _users.Setup(u => u.GetByIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync((IEnumerable<long> ids) => ids
+                .Select(id => new User { UserId = id, FirstName = id == RESPONSIBLE ? "Ana" : "Bruno" }).ToList());
+        Post(new DateOnly(2026, 1, 3), TransactionType.Transfer, 100, 200, 100m, 100m);
+        Post(new DateOnly(2026, 1, 4), TransactionType.ExternalExpense, 100, 2, 10m, 10m);
+
+        var result = await Service().GetWalletStatementAsync(RESPONSIBLE, 100, JAN_1, JAN_31);
+
+        var transfer = result.Entries.Single(e => e.Type == "Transfer");
+        transfer.SourceOwnerFirstName.Should().Be("Ana");
+        transfer.DestinationOwnerFirstName.Should().Be("Bruno");
+        var expense = result.Entries.Single(e => e.Type == "ExternalExpense");
+        expense.DestinationOwnerFirstName.Should().BeNull();
     }
 
     [Fact]

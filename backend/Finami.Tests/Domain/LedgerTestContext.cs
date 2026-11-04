@@ -62,7 +62,14 @@ public class LedgerTestContext
         Transactions.Setup(r => r.GetReversalOfAsync(It.IsAny<long>()))
             .ReturnsAsync((long txId) => Inserted.FirstOrDefault(t => t.ReversedTransactionId == txId));
 
-        Users.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<long>>())).ReturnsAsync(new List<User>());
+        // Feature 007: dívida do par pela mesma regra do repositório, sobre os lançamentos gravados.
+        Transactions.Setup(r => r.GetPairDebtAsync(It.IsAny<long>(), It.IsAny<long>(), It.IsAny<int>()))
+            .ReturnsAsync((long debtor, long creditor, int currency) => PairDebt(debtor, creditor, (Currency)currency));
+
+        Users.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<long>>()))
+            .ReturnsAsync((IEnumerable<long> ids) => ids.Distinct().Where(UserStore.ContainsKey).Select(i => UserStore[i]).ToList());
+        Users.Setup(r => r.GetByIdAsync(It.IsAny<long>()))
+            .ReturnsAsync((long id) => UserStore.GetValueOrDefault(id));
 
         // Por padrão, só o titular controla a carteira.
         AccessPolicy.Setup(p => p.CanControlWalletAsync(It.IsAny<long>(), It.IsAny<Account>()))
@@ -74,6 +81,21 @@ public class LedgerTestContext
         AccessPolicy.Setup(p => p.AreFamilyAsync(It.IsAny<long>(), It.IsAny<long>()))
             .ReturnsAsync((long owner, long other) => owner == other || Families.Contains((owner, other)));
     }
+
+    public Dictionary<long, User> UserStore { get; } = new();
+
+    /// <summary>Cadastra a pessoa (nome usado nas mensagens e no efeito na dívida).</summary>
+    public void Person(long userId, string firstName) =>
+        UserStore[userId] = new User { UserId = userId, FirstName = firstName, LastName = "Teste" };
+
+    /// <summary>Saldo "devedor deve a credor" na moeda: Σ efeito com destino = devedor − Σ com origem = devedor.</summary>
+    public decimal PairDebt(long debtor, long creditor, Currency currency) => Inserted
+        .Where(t => t.DebtAmount.HasValue && t.DebtCurrency == currency)
+        .Select(t => (Source: AccountStore[t.SourceAccountId].UserId, Destination: AccountStore[t.DestinationAccountId].UserId,
+            Amount: t.DebtAmount!.Value))
+        .Sum(e => e.Destination == debtor && e.Source == creditor ? e.Amount
+            : e.Source == debtor && e.Destination == creditor ? -e.Amount
+            : 0m);
 
     public Account Add(Account account)
     {

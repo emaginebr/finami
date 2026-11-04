@@ -17,6 +17,7 @@ const VARIANT_STYLE: Record<BadgeVariant, { className: string; icon: LucideIcon 
   [BadgeVariant.InviteCanceled]: { className: "bg-surface-3 text-text-muted", icon: Ban },
   [BadgeVariant.ScopeReadWrite]: { className: "bg-warning-soft text-warning", icon: Pencil },
   [BadgeVariant.ScopeReadOnly]: { className: "bg-surface-3 text-text-muted", icon: Eye },
+  [BadgeVariant.Settled]: { className: "bg-positive-soft text-positive", icon: Check },
 };
 
 export interface BadgeProps {

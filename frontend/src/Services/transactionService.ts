@@ -9,14 +9,21 @@ import { apiFetch } from "./apiHelpers";
 
 const API_BASE = "/api/transactions";
 
-/** Envia só o campo de valor preenchido (`amount` ou `amountBrl`, nunca os dois — contracts/api.md) */
+/**
+ * Envia só o campo de valor preenchido (`amount` ou `amountBrl`, nunca os dois — contracts/api.md) e,
+ * na feature 007, os campos de tipo presentes (`kind`, `debtCurrency`, `settleAll`). Com `settleAll`
+ * não vai valor nenhum.
+ */
 const toTransferBody = (data: TransferInfo): TransferInfo => {
   const body: TransferInfo = {
     sourceWalletId: data.sourceWalletId,
     destinationWalletId: data.destinationWalletId,
     description: data.description,
   };
-  if (data.amountBrl !== undefined) body.amountBrl = data.amountBrl;
+  if (data.kind !== undefined) body.kind = data.kind;
+  if (data.debtCurrency !== undefined) body.debtCurrency = data.debtCurrency;
+  if (data.settleAll) body.settleAll = true;
+  else if (data.amountBrl !== undefined) body.amountBrl = data.amountBrl;
   else if (data.amount !== undefined) body.amount = data.amount;
   return body;
 };

@@ -405,7 +405,7 @@ public class LedgerServiceTransferTests
             AmountBrl = amountBrl == null ? null : decimal.Parse(amountBrl, CultureInfo.InvariantCulture)
         });
 
-        await act.Should().ThrowAsync<ValidationException>().WithMessage("Informe o valor em bitcoin ou em reais.");
+        await act.Should().ThrowAsync<ValidationException>().WithMessage("Informe o valor em bitcoin ou em reais, ou quite tudo.");
         _ctx.Inserted.Should().BeEmpty();
     }
 

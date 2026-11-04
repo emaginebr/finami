@@ -411,7 +411,9 @@ public class FinamiContext : DbContext
     {
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.ToTable("transactions");
+            // Feature 007 (data-model.md): moeda e valor do efeito na dívida andam juntos, e o valor é positivo.
+            entity.ToTable("transactions", t => t.HasCheckConstraint("ck_transactions_debt_effect",
+                "(debt_currency IS NULL) = (debt_amount IS NULL) AND (debt_amount IS NULL OR debt_amount > 0)"));
             entity.HasKey(e => e.TransactionId).HasName("transactions_pkey");
             entity.Property(e => e.TransactionId).HasColumnName("transaction_id").UseIdentityByDefaultColumn();
             entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>();
@@ -425,7 +427,13 @@ public class FinamiContext : DbContext
             entity.Property(e => e.OccurredAt).HasColumnName("occurred_at");
             entity.Property(e => e.CreatedByUserId).HasColumnName("created_by_user_id");
             entity.Property(e => e.ReversedTransactionId).HasColumnName("reversed_transaction_id");
+            entity.Property(e => e.TransferKind).HasColumnName("transfer_kind").HasColumnType("smallint")
+                .HasConversion<short?>();
+            entity.Property(e => e.DebtCurrency).HasColumnName("debt_currency").HasColumnType("smallint")
+                .HasConversion<short?>();
+            entity.Property(e => e.DebtAmount).HasColumnName("debt_amount").HasColumnType("numeric(20,8)");
             entity.Ignore(e => e.IsConversion);
+            entity.Ignore(e => e.HasDebtEffect);
 
             entity.HasOne<Account>().WithMany().HasForeignKey(e => e.SourceAccountId)
                 .HasConstraintName("fk_account_transaction_source").OnDelete(DeleteBehavior.ClientSetNull);

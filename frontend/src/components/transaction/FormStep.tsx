@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef } from "react";
+import type { ReactNode, Ref } from "react";
 import { ChevronsUpDown, CircleAlert, Users, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Currency, isOfflineError } from "../../types/api";
@@ -146,6 +147,14 @@ export interface FormStepProps {
   serverError: string | null;
   /** Enviando: campos desabilitados */
   disabled: boolean;
+  /** Bloco "Tipo" (+ painel de quitação) entre Para e Valor — só entre pessoas diferentes (feature 007) */
+  kindSlot?: ReactNode;
+  /** Valor somente leitura com uma frase ("Valor calculado na confirmação", quitar tudo em outra moeda) */
+  amountReadOnlyText?: string;
+  /** Alternador Bitcoin | Satoshis | Reais desabilitado (quitar tudo em outra moeda) */
+  amountUnitDisabled?: boolean;
+  /** Campo Valor (a página devolve o foco a ele ao sair do "quitar tudo") */
+  amountInputRef?: Ref<HTMLInputElement>;
 }
 
 /** Formulário da página de lançamento: carteira(s), valor e descrição (data-model §6) */
@@ -172,6 +181,10 @@ export const FormStep = ({
   onDescriptionChange,
   serverError,
   disabled,
+  kindSlot = null,
+  amountReadOnlyText,
+  amountUnitDisabled = false,
+  amountInputRef,
 }: FormStepProps) => {
   const { t } = useTranslation();
   // Um único alvo de `data-autofocus` por vez (o efeito da página foca o primeiro que achar)
@@ -253,8 +266,12 @@ export const FormStep = ({
         </div>
       ) : null}
 
+      {isTransfer ? kindSlot : null}
+
       <div className="mt-4">
         <MoneyInput
+          ref={amountInputRef}
+          readOnlyText={amountReadOnlyText}
           label={t("transaction.amount")}
           currency={amountCurrency}
           sats={inSats}
@@ -267,7 +284,11 @@ export const FormStep = ({
           }
           labelAccessory={
             showAmountUnit ? (
-              <AmountUnitToggle value={amountUnit} onChange={onAmountUnitChange} disabled={disabled} />
+              <AmountUnitToggle
+                value={amountUnit}
+                onChange={onAmountUnitChange}
+                disabled={disabled || amountUnitDisabled}
+              />
             ) : undefined
           }
           hint={

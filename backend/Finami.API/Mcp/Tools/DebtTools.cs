@@ -22,8 +22,9 @@ public class DebtTools : McpToolBase
     [McpServerTool(Name = "dividas_da_pessoa", Title = "Dívidas da pessoa", ReadOnly = true, Destructive = false,
         Idempotent = true, OpenWorld = false)]
     [Description("Mostra quanto a pessoa deve a cada pessoa da família e quanto cada uma deve a ela, separado por " +
-                 "moeda. Toda transferência entre pessoas diferentes vira dívida de quem recebeu com quem enviou; " +
-                 "transferências no sentido contrário compensam. direction = owes (a pessoa deve) ou owed (devem a ela).")]
+                 "moeda. A dívida vem de empréstimos menos quitações: o empréstimo faz quem recebeu dever a quem " +
+                 "enviou, a quitação abate a dívida de quem pagou e empréstimos no sentido contrário compensam; " +
+                 "pagamentos não entram. direction = owes (a pessoa deve) ou owed (devem a ela).")]
     public Task<CallToolResult> DividasDaPessoa(ClaimsPrincipal user,
         [Description("Opcional: id da pessoa (ex.: 12); padrão = a pessoa conectada. Ids de membros vêm de obter_familia.")]
         long? pessoa_id = null) =>

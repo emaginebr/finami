@@ -862,6 +862,14 @@ namespace Finami.Infra.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("created_by_user_id");
 
+                    b.Property<decimal?>("DebtAmount")
+                        .HasColumnType("numeric(20,8)")
+                        .HasColumnName("debt_amount");
+
+                    b.Property<short?>("DebtCurrency")
+                        .HasColumnType("smallint")
+                        .HasColumnName("debt_currency");
+
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -895,6 +903,10 @@ namespace Finami.Infra.Migrations
                         .HasColumnType("numeric(20,8)")
                         .HasColumnName("source_amount");
 
+                    b.Property<short?>("TransferKind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("transfer_kind");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer")
                         .HasColumnName("type");
@@ -920,7 +932,10 @@ namespace Finami.Infra.Migrations
                     b.HasIndex("SourceAccountId")
                         .HasDatabaseName("ix_transactions_source_account_id");
 
-                    b.ToTable("transactions", (string)null);
+                    b.ToTable("transactions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_transactions_debt_effect", "(debt_currency IS NULL) = (debt_amount IS NULL) AND (debt_amount IS NULL OR debt_amount > 0)");
+                        });
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.User", b =>

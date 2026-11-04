@@ -175,6 +175,112 @@ public class McpTransactionToolsTests
         Text(preview).Should().Be("Informe o valor em bitcoin ou em reais.");
     }
 
+    // ---------------- Feature 007 (T035): tipo, moeda_da_divida e quitar_tudo ----------------
+
+    [Theory]
+    [InlineData("emprestimo", "loan")]
+    [InlineData("quitacao", "settlement")]
+    [InlineData("Quitação", "settlement")]
+    [InlineData("pagamento", "payment")]
+    public async Task Tipo_is_mapped_to_the_transfer_kind(string tipo, string kind)
+    {
+        _ledger.Setup(l => l.TransferAsync(USER, It.IsAny<TransferInfo>())).ReturnsAsync(Transaction(50, "Transfer", 10m));
+
+        await _tools.RegistrarTransferencia(Principal(), 5, 8, 10m, tipo: tipo);
+
+        _ledger.Verify(l => l.TransferAsync(USER, It.Is<TransferInfo>(t => t.Kind == kind && t.DebtCurrency == null && !t.SettleAll)));
+    }
+
+    [Fact]
+    public async Task Moeda_da_divida_and_quitar_tudo_go_to_the_transfer_info()
+    {
+        _ledger.Setup(l => l.PreviewTransferAsync(USER, It.IsAny<TransferInfo>())).ReturnsAsync(new TransferPreviewResult());
+        _ledger.Setup(l => l.TransferAsync(USER, It.IsAny<TransferInfo>())).ReturnsAsync(Transaction(51, "Transfer", 10m));
+
+        await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 8, tipo: "quitacao", moeda_da_divida: "brl", quitar_tudo: true);
+        await _tools.RegistrarTransferencia(Principal(), 5, 8, tipo: "quitacao", moeda_da_divida: "BTC", quitar_tudo: true);
+
+        _ledger.Verify(l => l.PreviewTransferAsync(USER, It.Is<TransferInfo>(t =>
+            t.Kind == "settlement" && t.DebtCurrency == "BRL" && t.SettleAll && t.Amount == null && t.AmountBrl == null)));
+        _ledger.Verify(l => l.TransferAsync(USER, It.Is<TransferInfo>(t =>
+            t.Kind == "settlement" && t.DebtCurrency == "BTC" && t.SettleAll)));
+    }
+
+    [Fact]
+    public async Task Invalid_tipo_is_a_validation_error_and_the_service_is_not_called()
+    {
+        var preview = await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 8, 10m, tipo: "doacao");
+        var transfer = await _tools.RegistrarTransferencia(Principal(), 5, 8, 10m, tipo: "doacao");
+
+        Code(preview).Should().Be("validacao");
+        Text(preview).Should().Be("Tipo inválido em 'tipo': use emprestimo, quitacao ou pagamento.");
+        Code(transfer).Should().Be("validacao");
+        _ledger.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Preview_text_shows_the_settlement_effect_and_quote()
+    {
+        _ledger.Setup(l => l.PreviewTransferAsync(USER, It.IsAny<TransferInfo>())).ReturnsAsync(new TransferPreviewResult
+        {
+            Type = "Transfer", SourceAmount = 0.0002m, DestinationAmount = 0.0002m,
+            Quote = new QuoteRefInfo { PriceBrl = 500000m },
+            Kind = "settlement",
+            Debt = new TransferDebtEffect
+            {
+                Currency = "BRL", Amount = 100m, Before = 100m, After = 0m, DebtorUserId = 9, CreditorUserId = 7,
+                DebtorFirstName = "Bruno", CreditorFirstName = "Ana"
+            }
+        });
+
+        var result = await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 9, tipo: "quitacao", moeda_da_divida: "BRL",
+            quitar_tudo: true);
+
+        Text(result).Should().EndWith(
+            "Quitação: abate R$ 100,00 da dívida de Bruno com Ana (de R$ 100,00 para R$ 0,00), pela cotação ₿ 1 = R$ 500.000,00.");
+        var debt = Structured(result).GetProperty("debt");
+        debt.GetProperty("after").GetDecimal().Should().Be(0m);
+        Structured(result).GetProperty("kind").GetString().Should().Be("settlement");
+    }
+
+    [Fact]
+    public async Task Preview_text_shows_loan_and_payment()
+    {
+        _ledger.SetupSequence(l => l.PreviewTransferAsync(USER, It.IsAny<TransferInfo>()))
+            .ReturnsAsync(new TransferPreviewResult
+            {
+                Type = "Transfer", SourceAmount = 100m, DestinationAmount = 100m, Kind = "loan",
+                Debt = new TransferDebtEffect
+                {
+                    Currency = "BRL", Amount = 100m, Before = 0m, After = 100m,
+                    DebtorFirstName = "Bruno", CreditorFirstName = "Ana"
+                }
+            })
+            .ReturnsAsync(new TransferPreviewResult { Type = "Transfer", SourceAmount = 50m, DestinationAmount = 50m, Kind = "payment" });
+
+        var loan = await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 9, 100m, tipo: "emprestimo");
+        var payment = await _tools.PreviaTransferencia(Principal(READ_ONLY), 5, 9, 50m, tipo: "pagamento");
+
+        Text(loan).Should().EndWith("Empréstimo: Bruno passa a dever R$ 100,00 a Ana (dívida de R$ 0,00 para R$ 100,00).");
+        Text(payment).Should().EndWith("Pagamento: não gera dívida.");
+    }
+
+    [Fact]
+    public async Task Transfer_summary_mentions_the_kind_and_effect()
+    {
+        var settlement = Transaction(60, "Transfer", 30m);
+        settlement.TransferKind = "settlement";
+        settlement.DebtCurrency = "BRL";
+        settlement.DebtAmount = 30m;
+        _ledger.Setup(l => l.TransferAsync(USER, It.IsAny<TransferInfo>())).ReturnsAsync(settlement);
+
+        var result = await _tools.RegistrarTransferencia(Principal(), 5, 9, 30m, tipo: "quitacao");
+
+        Text(result).Should().Contain("registrada. Quitação: abate R$ 30,00 da dívida.");
+        Structured(result).GetProperty("transferKind").GetString().Should().Be("settlement");
+        Structured(result).GetProperty("debtAmount").GetDecimal().Should().Be(30m);
+    }
+
     [Fact]
     public async Task Same_repeat_key_100_times_registers_one_expense()
     {

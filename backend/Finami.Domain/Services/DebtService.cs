@@ -9,8 +9,9 @@ using Finami.Infra.Interfaces.Repository;
 namespace Finami.Domain.Services;
 
 /// <summary>
-/// Dívidas entre pessoas (feature 006, data-model.md §PersonDebt): calculadas na leitura a partir das transações
-/// entre carteiras de titulares diferentes e mesma moeda. Saldo &gt; 0 = a pessoa deve à contraparte.
+/// Dívidas entre pessoas (feature 006, data-model.md §PersonDebt; regra da feature 007): calculadas na leitura a
+/// partir dos efeitos na dívida (empréstimos, quitações e estornos deles), por moeda da dívida. Pagamentos não
+/// entram. Saldo &gt; 0 = a pessoa deve à contraparte.
 /// </summary>
 public class DebtService : IDebtService
 {

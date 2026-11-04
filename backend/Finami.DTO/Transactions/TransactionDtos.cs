@@ -93,4 +93,16 @@ public class TransactionInfo
 
     [JsonPropertyName("reversedByTransactionId")]
     public long? ReversedByTransactionId { get; set; }
+
+    /// <summary>Feature 007: <c>loan</c>/<c>settlement</c>/<c>payment</c>; null fora de transferência entre pessoas.</summary>
+    [JsonPropertyName("transferKind")]
+    public string? TransferKind { get; set; }
+
+    /// <summary>Feature 007: moeda do efeito na dívida (<c>BRL</c>/<c>BTC</c>); null sem efeito.</summary>
+    [JsonPropertyName("debtCurrency")]
+    public string? DebtCurrency { get; set; }
+
+    /// <summary>Feature 007: valor emprestado ou abatido da dívida, na moeda da dívida; null sem efeito.</summary>
+    [JsonPropertyName("debtAmount")]
+    public decimal? DebtAmount { get; set; }
 }

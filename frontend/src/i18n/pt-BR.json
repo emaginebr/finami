@@ -392,7 +392,18 @@
     "reverseTitle": "Estornar lançamento?",
     "reverseBody": "Será registrado um estorno de {{amount}} que desfaz o lançamento ({{type}}) de {{date}}. O lançamento original fica marcado como estornado.",
     "reverseConfirm": "Estornar",
-    "reverseSuccess": "Estorno registrado."
+    "reverseSuccess": "Estorno registrado.",
+    "kind": {
+      "loanTo": "Empréstimo para {{name}}",
+      "loanFrom": "Empréstimo de {{name}}",
+      "settlementTo": "Quitação para {{name}}",
+      "settlementFrom": "Quitação de {{name}}",
+      "paymentTo": "Pagamento para {{name}}",
+      "paymentFrom": "Pagamento de {{name}}",
+      "reversalLoan": "Estorno de empréstimo",
+      "reversalSettlement": "Estorno de quitação",
+      "reversalPayment": "Estorno de pagamento"
+    }
   },
   "account": {
     "personal": "Dados pessoais",
@@ -532,7 +543,27 @@
     "kind": {
       "income": "Depósito",
       "expense": "Saque",
-      "transfer": "Transferência"
+      "transfer": "Transferência",
+      "label": "Tipo",
+      "loan": "Empréstimo",
+      "settlement": "Quitação",
+      "payment": "Pagamento",
+      "help": {
+        "loan": "{{debtor}} vai ficar devendo esse valor a {{creditor}}.",
+        "settlement": "Abate uma dívida de {{debtor}} com {{creditor}}.",
+        "payment": "Não gera dívida."
+      }
+    },
+    "settlement": {
+      "youOwe": "Você deve <b>{{amount}}</b> a {{name}}",
+      "owes": "{{debtor}} deve <b>{{amount}}</b> a {{name}}",
+      "noDebt": "Você não tem dívida com {{name}}.",
+      "noDebtOther": "{{debtor}} não tem dívida com {{name}}.",
+      "noDebtIn": "{{currency}}, sem dívida",
+      "debtCurrency": "Quitar dívida em",
+      "settleAll": "Quitar tudo",
+      "computedOnPreview": "Valor calculado na confirmação",
+      "convertedNote": "Convertido pela cotação atual na confirmação."
     },
     "kindDescription": {
       "income": "Dinheiro que chegou de fora",
@@ -584,6 +615,9 @@
       "income": "Registrar depósito",
       "expense": "Registrar saque",
       "transfer": "Registrar transferência",
+      "loan": "Registrar empréstimo",
+      "settlement": "Registrar quitação",
+      "payment": "Registrar pagamento",
       "continue": "Continuar",
       "sending": "Registrando…"
     },
@@ -605,9 +639,17 @@
       "note": "Se a cotação mudar até a confirmação, vale o valor registrado — ele aparece na confirmação.",
       "loading": "Calculando a conversão…",
       "blockedTitle": "Cotação indisponível",
-      "blockedBody": "A conversão entre real e bitcoin não pode ser feita agora. Tente novamente em alguns minutos."
+      "blockedBody": "A conversão entre real e bitcoin não pode ser feita agora. Tente novamente em alguns minutos.",
+      "kind": "Tipo",
+      "debtEffect": "Efeito na dívida",
+      "loanEffect": "{{debtor}} vai dever <b>{{amount}}</b> a {{creditor}}",
+      "settlementEffect": "Dívida de {{debtor}} com {{creditor}}: <before>{{before}}</before> → <after>{{after}}</after>",
+      "debtAbated": "Abatido da dívida",
+      "debtRestored": "Devolvido à dívida",
+      "settled": "quitada"
     },
     "validation": {
+      "kindRequired": "Escolha o tipo da transferência.",
       "walletRequired": "Escolha a carteira.",
       "destinationRequired": "Escolha a carteira de destino.",
       "sameWallet": "A carteira de destino deve ser diferente da origem.",
@@ -618,6 +660,9 @@
       "income": "Depósito de {{amount}} registrado em {{wallet}}.",
       "expense": "Saque de {{amount}} registrado em {{wallet}}.",
       "transfer": "Transferência de {{amount}} para {{wallet}} registrada.",
+      "loan": "Empréstimo de {{amount}} para {{name}} registrado.",
+      "settlement": "Quitação de {{amount}} para {{name}} registrada.",
+      "payment": "Pagamento de {{amount}} para {{name}} registrado.",
       "purchase": "Compra de {{amount}} registrada em {{wallet}}.",
       "sale": "Venda registrada: {{amount}} em {{wallet}}."
     }

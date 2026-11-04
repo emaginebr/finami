@@ -1,7 +1,7 @@
 /** Extratos (data-model §8) */
 import type { Currency } from "./api";
 import type { DetailLevel } from "./balance";
-import type { TransactionType } from "./transaction";
+import type { TransactionType, TransferKind } from "./transaction";
 import type { PeriodPreset } from "../utils/dates";
 
 export enum StatementScope {
@@ -33,6 +33,18 @@ export interface StatementEntryInfo {
   description: string | null;
   /** Transferência na mesma moeda com origem e destino no escopo */
   internal: boolean;
+  /** Tipo da transferência entre pessoas (feature 007); `null` fora dela. O estorno herda o do original. */
+  transferKind?: TransferKind | null;
+  /** Moeda do efeito na dívida; `null` sem efeito */
+  debtCurrency?: Currency | null;
+  /** Valor emprestado ou abatido da dívida, na moeda da dívida; `null` sem efeito */
+  debtAmount?: number | null;
+  /**
+   * Primeiro nome do titular da origem/destino (enviado pelo backend da 007 além do `contracts/api.md`):
+   * o rótulo "Empréstimo para Bruno" usa o nome da pessoa; sem ele, o nome da carteira.
+   */
+  sourceOwnerFirstName?: string | null;
+  destinationOwnerFirstName?: string | null;
 }
 
 /** Resposta de `GET /api/statements/{scope}/{id}?start&end` */

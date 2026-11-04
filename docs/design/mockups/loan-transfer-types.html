@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Tipos de transferência — Finami</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Tipos de transferência <span class="muted" style="font-weight:400">· feature 007 · T001</span></h1>
+    <p>Seletor <b>Tipo</b> (Empréstimo | Quitação | Pagamento) em <code>/transferir</code>, painel de <b>quitação</b> (dívida, moeda da dívida, "Quitar tudo"), confirmação com <b>Efeito na dívida</b> e rótulos por tipo no <b>extrato</b> e no detalhe. Especificação em <code>docs/design/components.md §11</code>; comportamento em <code>specs/007-loan-transfer-types/contracts/ui.md</code>. Nenhum token novo, nenhum ícone novo.</p>
+    <p>Cenário: família Silva — Ana (responsável), Bruno e o dependente Caio. Bruno deve R$ 100,00 a Ana (e, em uma das telas, também ₿ 0,00040). Cotação ₿ 1 = R$ 500.000,00.</p>
+    <nav data-pages></nav>
+  </header>
+
+  <h2 class="group">1 · Seletor "Tipo" (Ana transfere para Bruno)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="k-none" data-tab="home" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Tipo não escolhido.</b> Aparece entre Para e Valor só porque o Para é de outra pessoa. Nenhum segmento vem marcado (todos <code>aria-checked="false"</code>); a parada de Tab cai no primeiro, sem marcá-lo. Sem ajuda até a escolha.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="k-error" data-tab="home" data-user="AS|Ana Silva"></div>
+      <figcaption><b>"Continuar" sem tipo.</b> Trilho com borda rosa + ícone + "Escolha o tipo da transferência." (<code>role="alert"</code>, no <code>aria-describedby</code>, <code>aria-invalid</code> no grupo). O foco vai para o primeiro segmento.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="k-loan" data-tab="home" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Empréstimo escolhido.</b> Segmento com fundo roxo; a ajuda curta nomeia o efeito ("Bruno vai ficar devendo esse valor a Ana.") e é lida ao trocar (<code>aria-live="polite"</code>).</figcaption></figure>
+  </div>
+
+  <h2 class="group">2 · Quitação na mesma moeda (Bruno paga Ana)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="s-loading" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Carregando a dívida.</b> Cartão com uma linha-esqueleto (frase + forma do botão); <code>aria-busy</code> e "Carregando…" só para leitor de tela.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-debt" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Com dívida + "Quitar tudo" ligado.</b> "Você deve R$ 100,00 a Ana". O botão é de alternância (<code>aria-pressed</code>): ligado = fundo roxo + ✓. Na mesma moeda ele preenche o Valor, que continua editável; digitar desliga o modo.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-nodebt" data-tab="home" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Sem dívida (Ana lança pelo dependente Caio).</b> Aviso informativo "Caio não tem dívida com Bruno." no lugar do cartão; "Continuar" com <code>aria-disabled</code> e o aviso no <code>aria-describedby</code>.</figcaption></figure>
+  </div>
+
+  <h2 class="group">3 · Moeda da dívida</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="s-both" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Dívida nas duas moedas, carteiras em real.</b> Grupo "Quitar dívida em" Real | Bitcoin, sugerido Real (a moeda das carteiras). Trocar a moeda atualiza a frase e desliga "Quitar tudo". Sem nota de conversão: a moeda é a mesma.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="s-all-other" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Quitar tudo em outra moeda.</b> Carteiras em bitcoin, dívida só em real: "Bitcoin" fica visível mas desabilitado; nota "Convertido pela cotação atual na confirmação.". O Valor vira somente leitura com "Valor calculado na confirmação" e o alternador de unidade fica desabilitado. Tocar "Quitar tudo" de novo desliga o modo.</figcaption></figure>
+    <figure class="shot"><div class="device phone w320" data-screen="s-both-320" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>320 px.</b> Segmentos em <code>text-footnote</code> cabem em uma linha; a frase da dívida e "Quitar tudo" quebram como bloco (o botão desce, alinhado à direita). Nada é cortado.</figcaption></figure>
+  </div>
+
+  <h2 class="group">4 · Confirmação</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="p-loan" data-tab="home" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Empréstimo.</b> A linha "Tipo" (a que já existe) mostra "Empréstimo". Bloco "Efeito na dívida": "Bruno vai dever R$ 100,00 a Ana". Botão "Registrar empréstimo".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-settle" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Quitação parcial, mesma moeda.</b> "Dívida de Bruno com Ana: R$ 100,00 → R$ 70,00" (antes em cinza, depois em negrito). Botão "Registrar quitação".</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="p-settle-other" data-tab="home" data-user="BS|Bruno Silva"></div>
+      <figcaption><b>Quitação total em outra moeda.</b> Sai ₿ 0,00020000 (8 casas, o valor registrado). Na lista: "Abatido da dívida R$ 100,00", cotação e horário. A dívida zera: "→ R$ 0,00" + selo "quitada" (texto, não só cor).</figcaption></figure>
+  </div>
+
+  <h2 class="group">5 · Extrato e detalhe</h2>
+  <div class="stage">
+    <figure class="shot"><div class="device phone" data-screen="st-list" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Extrato do Nubank (Ana).</b> Rótulo por tipo e lado: "Empréstimo para Bruno", "Quitação de Bruno", "Pagamento para Caio" (na linha 2 quando há descrição). Estorno: "Estorno de empréstimo". Sem "→ nome" quando o rótulo já tem o nome. Transferência entre carteiras da própria Ana continua "Transferência". Lançamentos anteriores à feature aparecem como Empréstimo.</figcaption></figure>
+    <figure class="shot"><div class="device phone" data-screen="st-detail" data-tab="wallets" data-user="AS|Ana Silva"></div>
+      <figcaption><b>Detalhe de uma quitação em outra moeda (Ledger da Ana).</b> Abaixo do valor, "Quitação de Bruno". No <code>&lt;dl&gt;</code>: "Tipo: Quitação" depois de "Para" e "Abatido da dívida: R$ 100,00" antes da cotação.</figcaption></figure>
+  </div>
+
+  <h2 class="group">Desktop · 1440 px (escala 62 %)</h2>
+  <div class="stage">
+    <figure class="shot"><div class="desk-wrap"><div class="device desktop" data-screen="s-all-other" data-tab="home" data-user="BS|Bruno Silva"></div></div>
+      <figcaption><b>Formulário ≥ 768 px.</b> Mesma ordem na coluna de 720 px; o painel acompanha a largura dos campos.</figcaption></figure>
+  </div>
+</div>
+
+<!-- =====================================================================
+     1 · Seletor "Tipo"
+     ===================================================================== -->
+<template id="k-none">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="kn-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="kn-from kn-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="kn-from-v">Nubank, de Ana, real, saldo R$ 1.234,56</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="kn-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="kn-to kn-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="kn-to-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="kn-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="kn-k" aria-required="true"><button type="button" role="radio" aria-checked="false" tabindex="0">Empréstimo</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div></div>
+    <div class="field"><label for="kn-amt">Valor</label>
+      <div class="money"><span class="cur" aria-hidden="true">R$</span><span class="amt num">100,00</span></div>
+      <span class="hint">Disponível: <span class="num">R$ 1.234,56</span></span></div>
+    <div class="field"><label for="kn-d">Descrição <span class="subtle">(opcional)</span></label><input id="kn-d" class="input" placeholder=""><span class="counter">0/500</span></div>
+    <div style="margin-top:24px"><button class="btn primary block">Continuar</button></div>
+  </div>
+</template>
+
+<template id="k-error">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="ke-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="ke-from ke-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="ke-from-v">Nubank, de Ana, real, saldo R$ 1.234,56</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="ke-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="ke-to ke-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="ke-to-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="ke-k">Tipo</span>
+      <div class="seg invalid" role="radiogroup" aria-labelledby="ke-k" aria-required="true" aria-invalid="true" aria-describedby="ke-err"><button type="button" role="radio" aria-checked="false" tabindex="0" class="is-focus">Empréstimo</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <span class="err" id="ke-err" role="alert"><i data-i="circle-alert" data-s="16"></i>Escolha o tipo da transferência.</span></div>
+    <div class="field"><label for="ke-amt">Valor</label>
+      <div class="money"><span class="cur" aria-hidden="true">R$</span><span class="amt num">100,00</span></div>
+      <span class="hint">Disponível: <span class="num">R$ 1.234,56</span></span></div>
+    <div style="margin-top:24px"><button class="btn primary block">Continuar</button></div>
+  </div>
+</template>
+
+<template id="k-loan">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="kl-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="kl-from kl-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="kl-from-v">Nubank, de Ana, real, saldo R$ 1.234,56</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount num">R$ 1.234,56</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="kl-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="kl-to kl-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="kl-to-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="kl-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="kl-k" aria-required="true" aria-describedby="kl-help"><button type="button" role="radio" aria-checked="true" tabindex="0" class="is-focus">Empréstimo</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <p class="kind-help" id="kl-help" aria-live="polite">Bruno vai ficar devendo esse valor a Ana.</p></div>
+    <div class="field"><label for="kl-amt">Valor</label>
+      <div class="money"><span class="cur" aria-hidden="true">R$</span><span class="amt num">100,00</span></div>
+      <span class="hint">Disponível: <span class="num">R$ 1.234,56</span></span></div>
+    <div class="field"><label for="kl-d">Descrição <span class="subtle">(opcional)</span></label><input id="kl-d" class="input" value="Conserto do carro"><span class="counter">17/500</span></div>
+    <div style="margin-top:24px"><button class="btn primary block">Continuar</button></div>
+  </div>
+</template>
+
+<!-- =====================================================================
+     2 · Quitação na mesma moeda
+     ===================================================================== -->
+<template id="s-loading">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="sl-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sl-from sl-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sl-from-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sl-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sl-to sl-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sl-to-v">Nubank, de Ana, real, saldo oculto</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount subtle num">—</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sl-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="sl-k" aria-required="true" aria-describedby="sl-help"><button type="button" role="radio" aria-checked="false" tabindex="-1">Empréstimo</button><button type="button" role="radio" aria-checked="true" tabindex="0">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <p class="kind-help" id="sl-help" aria-live="polite">Abate uma dívida de Bruno com Ana.</p>
+      <section class="list settle" aria-labelledby="sl-k" aria-busy="true">
+        <span class="sr-only" role="status">Carregando…</span>
+        <div class="settle-skel" aria-hidden="true"><span class="skel" style="width:192px;height:14px"></span><span class="skel" style="width:112px;height:44px;border-radius:10px"></span></div>
+      </section></div>
+  </div>
+</template>
+
+<template id="s-debt">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="sd-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sd-from sd-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sd-from-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sd-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sd-to sd-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sd-to-v">Nubank, de Ana, real, saldo oculto</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount subtle num">—</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sd-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="sd-k" aria-required="true" aria-describedby="sd-help"><button type="button" role="radio" aria-checked="false" tabindex="-1">Empréstimo</button><button type="button" role="radio" aria-checked="true" tabindex="0">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <p class="kind-help" id="sd-help" aria-live="polite">Abate uma dívida de Bruno com Ana.</p>
+      <section class="list settle" aria-labelledby="sd-k">
+        <div class="settle-line"><p id="sd-debt" aria-live="polite">Você deve <b>R$ 100,00</b> a Ana</p><button type="button" class="btn secondary sm is-focus" aria-pressed="true" aria-describedby="sd-debt"><i data-i="check" data-s="16" data-w="2.5"></i>Quitar tudo</button></div>
+      </section></div>
+    <div class="field"><label for="sd-amt">Valor</label>
+      <div class="money"><span class="cur" aria-hidden="true">R$</span><span class="amt num">100,00</span></div>
+      <span class="hint">Disponível: <span class="num">R$ 310,00</span></span></div>
+    <div style="margin-top:24px"><button class="btn primary block">Continuar</button></div>
+  </div>
+</template>
+
+<template id="s-nodebt">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="sn-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sn-from sn-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sn-from-v">Mesada do Caio, de Caio, real, saldo R$ 85,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Mesada do Caio</span><span class="row-sub">Caio</span></span><span class="row-end"><span class="amount num">R$ 85,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sn-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sn-to sn-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sn-to-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sn-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="sn-k" aria-required="true" aria-describedby="sn-help"><button type="button" role="radio" aria-checked="false" tabindex="-1">Empréstimo</button><button type="button" role="radio" aria-checked="true" tabindex="0">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <p class="kind-help" id="sn-help" aria-live="polite">Abate uma dívida de Caio com Bruno.</p>
+      <div id="sn-none" class="settle"><div class="banner info" role="status"><i data-i="info" data-s="18"></i><span style="color:var(--color-text)">Caio não tem dívida com Bruno.</span></div></div></div>
+    <div style="margin-top:24px"><button class="btn primary block" aria-disabled="true" aria-describedby="sn-none">Continuar</button></div>
+  </div>
+</template>
+
+<!-- =====================================================================
+     3 · Moeda da dívida
+     ===================================================================== -->
+<template id="s-both">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="sb-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sb-from sb-from-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sb-from-v">Conta do Bruno, de Bruno, real, saldo R$ 310,00</span><span class="row-main" aria-hidden="true"><span class="row-title">Conta do Bruno</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">R$ 310,00</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sb-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="sb-to sb-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="sb-to-v">Nubank, de Ana, real, saldo oculto</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount subtle num">—</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="sb-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="sb-k" aria-required="true" aria-describedby="sb-help"><button type="button" role="radio" aria-checked="false" tabindex="-1">Empréstimo</button><button type="button" role="radio" aria-checked="true" tabindex="0">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <p class="kind-help" id="sb-help" aria-live="polite">Abate uma dívida de Bruno com Ana.</p>
+      <section class="list settle" aria-labelledby="sb-k">
+        <div class="settle-cur"><span class="cap-head" id="sb-cur">Quitar dívida em</span>
+          <div class="seg" role="radiogroup" aria-labelledby="sb-cur"><button type="button" role="radio" aria-checked="true" tabindex="0">Real</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Bitcoin</button></div></div>
+        <div class="settle-line"><p id="sb-debt" aria-live="polite">Você deve <b>R$ 100,00</b> a Ana</p><button type="button" class="btn secondary sm" aria-pressed="false" aria-describedby="sb-debt">Quitar tudo</button></div>
+      </section></div>
+    <div class="field"><label for="sb-amt">Valor</label>
+      <div class="money focus"><span class="cur" aria-hidden="true">R$</span><span class="amt num">30,00<span class="caret"></span></span></div>
+      <span class="hint">Disponível: <span class="num">R$ 310,00</span></span></div>
+    <div style="margin-top:24px"><button class="btn primary block">Continuar</button></div>
+  </div>
+</template>
+
+<template id="s-both-320">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="s3-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="s3-to s3-to-v"><span class="wicon"><i data-i="wallet"></i></span><span class="sr-only" id="s3-to-v">Nubank, de Ana, real, saldo oculto</span><span class="row-main" aria-hidden="true"><span class="row-title">Nubank</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount subtle num">—</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="s3-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="s3-k" aria-required="true" aria-describedby="s3-help" style="font-size:var(--text-footnote)"><button type="button" role="radio" aria-checked="false" tabindex="-1" style="font-size:inherit">Empréstimo</button><button type="button" role="radio" aria-checked="true" tabindex="0" style="font-size:inherit">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1" style="font-size:inherit">Pagamento</button></div>
+      <p class="kind-help" id="s3-help" aria-live="polite">Abate uma dívida de Bruno com Ana.</p>
+      <section class="list settle" aria-labelledby="s3-k">
+        <div class="settle-cur"><span class="cap-head" id="s3-cur">Quitar dívida em</span>
+          <div class="seg" role="radiogroup" aria-labelledby="s3-cur"><button type="button" role="radio" aria-checked="false" tabindex="-1">Real</button><button type="button" role="radio" aria-checked="true" tabindex="0">Bitcoin</button></div>
+          <p class="note" id="s3-note"><i data-i="info" data-s="16"></i>Convertido pela cotação atual na confirmação.</p></div>
+        <div class="settle-line"><p id="s3-debt" aria-live="polite">Você deve <b>₿ 0,00040</b> a Ana</p><button type="button" class="btn secondary sm" aria-pressed="false" aria-describedby="s3-debt">Quitar tudo</button></div>
+      </section></div>
+    <div class="field"><label for="s3-amt">Valor</label>
+      <div class="money"><span class="cur" aria-hidden="true">R$</span><span class="amt num placeholder">0,00</span></div>
+      <span class="hint">Disponível: <span class="num">R$ 310,00</span></span></div>
+  </div>
+</template>
+
+<template id="s-all-other">
+  <div class="navbar"><a class="back" href="home.html"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div style="margin-top:12px">
+    <div class="field"><span class="lbl" id="so-from">De</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="so-from so-from-v"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="sr-only" id="so-from-v">Cofre, de Bruno, bitcoin, saldo ₿ 0,00230</span><span class="row-main" aria-hidden="true"><span class="row-title">Cofre</span><span class="row-sub">Bruno</span></span><span class="row-end"><span class="amount num">₿ 0,00230</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="so-to">Para</span>
+      <div class="list"><button class="row r2 has-icon" aria-haspopup="listbox" aria-labelledby="so-to so-to-v"><span class="wicon btc"><i data-i="bitcoin"></i></span><span class="sr-only" id="so-to-v">Ledger, de Ana, bitcoin, saldo oculto</span><span class="row-main" aria-hidden="true"><span class="row-title">Ledger</span><span class="row-sub">Ana</span></span><span class="row-end"><span class="amount subtle num">—</span></span><span class="opt-slot chev"><i data-i="chevrons-up-down" data-s="18"></i></span></button></div></div>
+    <div class="field"><span class="lbl" id="so-k">Tipo</span>
+      <div class="seg" role="radiogroup" aria-labelledby="so-k" aria-required="true" aria-describedby="so-help"><button type="button" role="radio" aria-checked="false" tabindex="-1">Empréstimo</button><button type="button" role="radio" aria-checked="true" tabindex="0">Quitação</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Pagamento</button></div>
+      <p class="kind-help" id="so-help" aria-live="polite">Abate uma dívida de Bruno com Ana.</p>
+      <section class="list settle" aria-labelledby="so-k">
+        <div class="settle-cur"><span class="cap-head" id="so-cur">Quitar dívida em</span>
+          <div class="seg" role="radiogroup" aria-labelledby="so-cur" aria-describedby="so-note"><button type="button" role="radio" aria-checked="true" tabindex="0">Real</button><button type="button" role="radio" aria-checked="false" tabindex="-1" disabled>Bitcoin</button></div>
+          <p class="note" id="so-note"><i data-i="info" data-s="16"></i>Convertido pela cotação atual na confirmação.</p></div>
+        <div class="settle-line"><p id="so-debt" aria-live="polite">Você deve <b>R$ 100,00</b> a Ana</p><button type="button" class="btn secondary sm" aria-pressed="true" aria-describedby="so-debt"><i data-i="check" data-s="16" data-w="2.5"></i>Quitar tudo</button></div>
+      </section></div>
+    <div class="field">
+      <div class="label-row"><label for="so-amt">Valor</label>
+        <div class="unit-toggle three" role="group" aria-label="Informar valor em"><button type="button" aria-pressed="true" disabled>Bitcoin</button><button type="button" aria-pressed="false" disabled>Satoshis</button><button type="button" aria-pressed="false" disabled>Reais</button></div></div>
+      <div class="money readonly"><span class="cur" aria-hidden="true">₿</span><span class="amt ro" id="so-amt" aria-readonly="true">Valor calculado na confirmação</span><span class="sr-only">em bitcoin</span></div>
+      <span class="hint">Disponível: <span class="num">₿ 0,00230</span></span></div>
+    <div style="margin-top:24px"><button class="btn primary block">Continuar</button></div>
+  </div>
+</template>
+
+<!-- =====================================================================
+     4 · Confirmação
+     ===================================================================== -->
+<template id="p-loan">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div class="step-row"><button class="back"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 tabindex="-1">Confirmar transferência</h2></div>
+  <div class="card flow" aria-live="polite">
+    <span class="foot muted">Sai de Nubank</span>
+    <span class="big neg"><span class="sr-only">saída de </span>−R$ 100,00</span>
+    <span class="arrow"><i data-i="arrow-down" data-s="20"></i></span>
+    <span class="big pos"><span class="sr-only">entrada de </span>+R$ 100,00</span>
+    <span class="foot muted">Entra em Conta do Bruno</span>
+  </div>
+  <dl class="card" style="margin-top:12px;padding:8px 16px">
+    <div class="kv"><dt>Tipo</dt><dd>Empréstimo</dd></div>
+    <div class="kv"><dt>Titular do destino</dt><dd>Bruno</dd></div>
+  </dl>
+  <section class="effect" aria-labelledby="pl-eff"><h3 id="pl-eff">Efeito na dívida</h3>
+    <p>Bruno vai dever <span class="v">R$ 100,00</span> a Ana</p></section>
+  <div style="margin-top:24px"><button class="btn primary block">Registrar empréstimo</button></div>
+</template>
+
+<template id="p-settle">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div class="step-row"><button class="back"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 tabindex="-1">Confirmar transferência</h2></div>
+  <div class="card flow" aria-live="polite">
+    <span class="foot muted">Sai de Conta do Bruno</span>
+    <span class="big neg"><span class="sr-only">saída de </span>−R$ 30,00</span>
+    <span class="arrow"><i data-i="arrow-down" data-s="20"></i></span>
+    <span class="big pos"><span class="sr-only">entrada de </span>+R$ 30,00</span>
+    <span class="foot muted">Entra em Nubank</span>
+  </div>
+  <dl class="card" style="margin-top:12px;padding:8px 16px">
+    <div class="kv"><dt>Tipo</dt><dd>Quitação</dd></div>
+    <div class="kv"><dt>Titular do destino</dt><dd>Ana</dd></div>
+  </dl>
+  <section class="effect" aria-labelledby="ps-eff"><h3 id="ps-eff">Efeito na dívida</h3>
+    <p>Dívida de Bruno com Ana: <span class="v before">R$ 100,00</span> → <span class="v">R$ 70,00</span></p></section>
+  <div style="margin-top:24px"><button class="btn primary block">Registrar quitação</button></div>
+</template>
+
+<template id="p-settle-other">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Home</a></div>
+  <h1 class="large-title">Transferir</h1>
+  <div class="step-row"><button class="back"><i data-i="chevron-left" data-s="24"></i>Voltar</button><h2 tabindex="-1">Confirmar transferência</h2></div>
+  <div class="card flow" aria-live="polite">
+    <span class="foot muted">Sai de Cofre</span>
+    <span class="big neg"><span class="sr-only">saída de </span>−₿ 0,00020000</span>
+    <span class="arrow"><i data-i="arrow-down" data-s="20"></i></span>
+    <span class="big pos"><span class="sr-only">entrada de </span>+₿ 0,00020000</span>
+    <span class="foot muted">Entra em Ledger</span>
+  </div>
+  <dl class="card" style="margin-top:12px;padding:8px 16px">
+    <div class="kv"><dt>Tipo</dt><dd>Quitação</dd></div>
+    <div class="kv"><dt>Abatido da dívida</dt><dd class="num">R$ 100,00</dd></div>
+    <div class="kv"><dt>Cotação</dt><dd class="num">₿ 1 = R$ 500.000,00</dd></div>
+    <div class="kv"><dt>Obtida às</dt><dd class="num">14:32</dd></div>
+    <div class="kv"><dt>Titular do destino</dt><dd>Ana</dd></div>
+  </dl>
+  <section class="effect" aria-labelledby="po-eff"><h3 id="po-eff">Efeito na dívida</h3>
+    <p>Dívida de Bruno com Ana: <span class="v before">R$ 100,00</span> → <span class="v">R$ 0,00</span> <span class="badge ok"><i data-i="check" data-s="12" data-w="2.5"></i>quitada</span></p></section>
+  <div class="banner info" style="margin-top:12px"><i data-i="info" data-s="18"></i><span>Se a cotação mudar até a confirmação, vale o valor registrado — ele aparece na confirmação.</span></div>
+  <div style="margin-top:24px"><button class="btn primary block">Registrar quitação</button></div>
+</template>
+
+<!-- =====================================================================
+     5 · Extrato e detalhe
+     ===================================================================== -->
+<template id="st-list">
+  <div class="navbar"><a class="back" href="#" aria-label="Voltar para Carteiras"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Nubank</h1>
+  <p class="subtitle" style="margin-bottom:12px"><span class="dot fam-1" style="display:inline-block;margin-right:6px"></span>Silva · Real · Ana</p>
+
+  <h2 class="day-head">Hoje</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm rev"><i data-i="undo-2" data-s="18"></i></span><span class="row-main"><span class="row-title">Estorno de empréstimo</span><span class="row-sub num">16:10</span></span><span class="row-end"><span class="amount num pos"><span class="sr-only">entrada de </span>+R$ 100,00</span></span></button>
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Empréstimo para Bruno</span><span class="row-sub"><span class="num">15:02</span> <span class="badge neutral"><i data-i="undo-2" data-s="12"></i>estornado</span></span></span><span class="row-end"><span class="amount num neg" style="text-decoration:line-through;text-decoration-thickness:1px"><span class="sr-only">saída de </span>−R$ 100,00</span></span></button>
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Quitação de Bruno</span><span class="row-sub num">14:40</span></span><span class="row-end"><span class="amount num pos"><span class="sr-only">entrada de </span>+R$ 30,00</span></span></button>
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Mesada de novembro</span><span class="row-sub">09:00 · Pagamento para Caio</span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 50,00</span></span></button>
+  </div>
+
+  <h2 class="day-head">2 de novembro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Conserto do carro</span><span class="row-sub">18:20 · Empréstimo para Bruno</span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 100,00</span></span></button>
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Pagamento de Bruno</span><span class="row-sub num">12:15</span></span><span class="row-end"><span class="amount num pos"><span class="sr-only">entrada de </span>+R$ 42,00</span></span></button>
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Transferência</span><span class="row-sub">10:00 · → Poupança</span></span><span class="row-end"><span class="amount num neg"><span class="sr-only">saída de </span>−R$ 200,00</span></span></button>
+  </div>
+
+  <h2 class="day-head">28 de outubro</h2>
+  <div class="list">
+    <button class="row r2 has-icon"><span class="wicon sm xfer"><i data-i="arrow-left-right" data-s="18"></i></span><span class="row-main"><span class="row-title">Empréstimo de Carla</span><span class="row-sub num">20:05</span></span><span class="row-end"><span class="amount num pos"><span class="sr-only">entrada de </span>+R$ 25,50</span></span></button>
+  </div>
+</template>
+
+<template id="st-detail">
+  <div class="navbar"><a class="back" href="#"><i data-i="chevron-left" data-s="24"></i>Carteiras</a></div>
+  <h1 class="large-title">Ledger</h1>
+  <div class="layer"><div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sd1">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head"><span></span><h2 class="title" id="sd1">Lançamento</h2><button class="back r" style="padding:0 8px">OK</button></div>
+      <div class="sheet-body">
+        <div class="flow" style="padding-top:4px"><span class="wicon xfer" style="width:48px;height:48px;border-radius:14px"><i data-i="arrow-left-right" data-s="26"></i></span><span class="big pos" style="margin-top:8px"><span class="sr-only">entrada de </span>+₿ 0,00020</span><span class="foot muted">Quitação de Bruno</span></div>
+        <dl class="card" style="padding:8px 16px">
+          <div class="kv"><dt>Data</dt><dd class="num">03/11/2026 14:32</dd></div>
+          <div class="kv"><dt>De</dt><dd>Cofre</dd></div>
+          <div class="kv"><dt>Para</dt><dd>Ledger</dd></div>
+          <div class="kv"><dt>Tipo</dt><dd>Quitação</dd></div>
+          <div class="kv"><dt>Abatido da dívida</dt><dd class="num">R$ 100,00</dd></div>
+          <div class="kv"><dt>Cotação</dt><dd class="num">₿ 1 = R$ 500.000,00</dd></div>
+          <div class="kv"><dt>Código</dt><dd class="num">#61204</dd></div>
+        </dl>
+        <div class="list" style="margin-top:16px"><button class="row destructive" style="justify-content:center;font-weight:600"><i data-i="undo-2"></i>Estornar lançamento</button></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="mockup.js"></script>
+</body>
+</html>

@@ -13,7 +13,7 @@ using Moq;
 namespace Finami.Tests.Domain;
 
 /// <summary>
-/// Feature 006 (T009): dívidas entre pessoas derivadas do razão. Usa o <see cref="TransactionRepository"/> real
+/// Feature 006 (T009) e 007 (T034): dívidas entre pessoas derivadas dos efeitos na dívida (empréstimo − quitação). Usa o <see cref="TransactionRepository"/> real
 /// sobre EF InMemory, então os cenários cobrem também a consulta agrupada.
 /// </summary>
 public class DebtServiceTests : IDisposable
@@ -73,7 +73,8 @@ public class DebtServiceTests : IDisposable
     }
 
     private Transaction Post(TransactionType type, Account source, Account destination, decimal amount,
-        decimal? destinationAmount = null, long? createdBy = null, long? reverses = null)
+        decimal? destinationAmount = null, long? createdBy = null, long? reverses = null,
+        TransferKind? kind = null, Currency? debtCurrency = null, decimal? debtAmount = null)
     {
         var transaction = new Transaction
         {
@@ -83,20 +84,34 @@ public class DebtServiceTests : IDisposable
             SourceAmount = amount,
             DestinationAmount = destinationAmount ?? amount,
             CreatedByUserId = createdBy ?? source.UserId ?? ANA,
-            ReversedTransactionId = reverses
+            ReversedTransactionId = reverses,
+            TransferKind = kind,
+            DebtCurrency = debtCurrency,
+            DebtAmount = debtAmount
         };
         _context.Transactions.Add(transaction);
         _context.SaveChanges();
         return transaction;
     }
 
+    /// <summary>Empréstimo como o LedgerService grava (e como a migration marca as transferências antigas).</summary>
     private Transaction Transfer(Account source, Account destination, decimal amount, long? createdBy = null) =>
-        Post(TransactionType.Transfer, source, destination, amount, createdBy: createdBy);
+        Post(TransactionType.Transfer, source, destination, amount, createdBy: createdBy,
+            kind: TransferKind.Loan, debtCurrency: source.Currency, debtAmount: amount);
 
-    /// <summary>Estorno como o LedgerService grava: sai do destino original e volta para a origem original.</summary>
+    private Transaction Payment(Account source, Account destination, decimal amount) =>
+        Post(TransactionType.Transfer, source, destination, amount, kind: TransferKind.Payment);
+
+    /// <summary>Quitação: abate <paramref name="abated"/> (moeda da dívida) da dívida da origem com o destino.</summary>
+    private Transaction Settlement(Account source, Account destination, decimal sent, Currency debtCurrency, decimal abated) =>
+        Post(TransactionType.Transfer, source, destination, sent,
+            kind: TransferKind.Settlement, debtCurrency: debtCurrency, debtAmount: abated);
+
+    /// <summary>Estorno como o LedgerService grava: sai do destino original, volta para a origem e copia o efeito.</summary>
     private void Reverse(Transaction original, Account originalSource, Account originalDestination) =>
         Post(TransactionType.Reversal, originalDestination, originalSource, original.DestinationAmount,
-            original.SourceAmount, reverses: original.TransactionId);
+            original.SourceAmount, reverses: original.TransactionId, kind: original.TransferKind,
+            debtCurrency: original.DebtCurrency, debtAmount: original.DebtAmount);
 
     private static PersonDebtInfo Single(PersonDebtsResult result) => result.Debts.Should().ContainSingle().Subject;
 
@@ -226,5 +241,63 @@ public class DebtServiceTests : IDisposable
 
         await hidden.Should().ThrowAsync<NotFoundException>();
         await missing.Should().ThrowAsync<NotFoundException>();
+    }
+
+    // ---------------- Feature 007 (T034): empréstimo − quitação; pagamento ignorado ----------------
+
+    [Fact]
+    public async Task Payments_do_not_count_and_settlements_reduce_the_debt()
+    {
+        var ana = Wallet(ANA);
+        var bruno = Wallet(BRUNO);
+        Transfer(ana, bruno, 100m);
+        Payment(ana, bruno, 50m);
+        Settlement(bruno, ana, 30m, Currency.Brl, 30m);
+
+        var debt = Single(await Service().GetPersonDebtsAsync(BRUNO, BRUNO));
+        debt.Amount.Should().Be(70m);
+        debt.Direction.Should().Be(DebtDirections.OWES);
+        debt.CounterpartUserId.Should().Be(ANA);
+    }
+
+    [Fact]
+    public async Task Only_payments_leave_no_debt()
+    {
+        var ana = Wallet(ANA);
+        var bruno = Wallet(BRUNO);
+        Payment(ana, bruno, 50m);
+        Payment(bruno, ana, 10m);
+
+        (await Service().GetPersonDebtsAsync(ANA, ANA)).Debts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Settlement_in_the_other_currency_counts_on_the_debt_currency()
+    {
+        var anaBrl = Wallet(ANA);
+        var anaBtc = Wallet(ANA, Currency.Btc);
+        var brunoBrl = Wallet(BRUNO);
+        var brunoBtc = Wallet(BRUNO, Currency.Btc);
+        Transfer(anaBrl, brunoBrl, 100m);
+        // Bruno paga ₿ 0,0001 (R$ 50,00 pela cotação) para quitar a dívida em real.
+        Settlement(brunoBtc, anaBtc, 0.0001m, Currency.Brl, 50m);
+
+        var debt = Single(await Service().GetPersonDebtsAsync(BRUNO, BRUNO));
+        debt.Currency.Should().Be("BRL");
+        debt.Amount.Should().Be(50m);
+    }
+
+    [Fact]
+    public async Task Reversal_of_a_settlement_restores_the_debt()
+    {
+        var ana = Wallet(ANA);
+        var bruno = Wallet(BRUNO);
+        Transfer(ana, bruno, 100m);
+        var settlement = Settlement(bruno, ana, 100m, Currency.Brl, 100m);
+        (await Service().GetPersonDebtsAsync(BRUNO, BRUNO)).Debts.Should().BeEmpty();
+
+        Reverse(settlement, bruno, ana);
+
+        Single(await Service().GetPersonDebtsAsync(BRUNO, BRUNO)).Amount.Should().Be(100m);
     }
 }

@@ -5,7 +5,7 @@ import { formatTime } from "../../utils/dates";
 import { formatBrl, formatSigned } from "../../utils/money";
 import { Badge } from "../ui/Badge";
 import { listRowClasses } from "../ui/listRow";
-import { isBetweenWallets, transactionVisual } from "./transactionVisuals";
+import { isBetweenWallets, transactionVisual, transferKindLabel } from "./transactionVisuals";
 
 export interface StatementEntryRowProps {
   entry: StatementEntryInfo;
@@ -18,12 +18,16 @@ export const StatementEntryRow = ({ entry, onOpen }: StatementEntryRowProps) => 
   const visual = transactionVisual(entry.type);
   const Icon = visual.icon;
   const negative = entry.amount < 0;
-  const typeLabel = t(`transactionType.${entry.type}`);
-  const counterpart = isBetweenWallets(entry.type)
-    ? negative
-      ? `→ ${entry.destinationName}`
-      : `← ${entry.sourceName}`
-    : null;
+  // Transferência entre pessoas: "Empréstimo para Bruno" no lugar de "Transferência" (feature 007)
+  const kindLabel = transferKindLabel(t, entry);
+  const typeLabel = kindLabel ?? t(`transactionType.${entry.type}`);
+  // Com rótulo de tipo o nome já está nele: sem "→ Mesada" repetido (components.md §11)
+  const counterpart =
+    isBetweenWallets(entry.type) && !kindLabel
+      ? negative
+        ? `→ ${entry.destinationName}`
+        : `← ${entry.sourceName}`
+      : null;
 
   const details = [
     formatTime(entry.occurredAt),
@@ -46,7 +50,15 @@ export const StatementEntryRow = ({ entry, onOpen }: StatementEntryRowProps) => 
         {/* Título em até 2 linhas; o detalhe é que trunca (REVIEW E-3) */}
         <span className="line-clamp-2 text-headline break-words hyphens-auto">{entry.description || typeLabel}</span>
         <span className="mt-0.5 flex min-w-0 items-center gap-1 text-footnote text-text-muted">
-          <span className="min-w-0 truncate tabular-nums">{details.join(" · ")}</span>
+          {/* Com descrição, o rótulo do tipo (com o nome) vai aqui: quebra em 2 linhas em vez de cortar o nome (REVIEW-007 M-6) */}
+          <span
+            className={cn(
+              "min-w-0 tabular-nums",
+              kindLabel && entry.description ? "line-clamp-2 break-words" : "truncate",
+            )}
+          >
+            {details.join(" · ")}
+          </span>
           {entry.internal ? (
             <Badge variant="internal" className="shrink-0">
               {t("badges.internal")}

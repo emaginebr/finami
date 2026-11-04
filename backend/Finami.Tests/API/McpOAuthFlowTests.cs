@@ -118,6 +118,7 @@ public class FinamiApiFactory : WebApplicationFactory<Program>
         public Task CommitAsync() => Task.CompletedTask;
         public Task RollbackAsync() => Task.CompletedTask;
         public Task LockAccountsAsync(IEnumerable<long> accountIds) => Task.CompletedTask;
+        public Task LockDebtPairAsync(long userA, long userB) => Task.CompletedTask;
     }
 }
 

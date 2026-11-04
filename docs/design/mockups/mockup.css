@@ -572,3 +572,38 @@ a.notif:hover { background: var(--color-surface-3); }
 .unit-toggle button:hover { color: var(--color-text); }
 .unit-toggle button[aria-pressed="true"] { background: var(--color-brand-tint); color: var(--color-text); }
 .flow .entered { font-size: var(--text-subhead); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+/* =============================================================================
+   Feature 007 — tipos de transferência (Empréstimo, Quitação, Pagamento)
+   ============================================================================= */
+/* ---------- TransferKindPicker (SegmentedControl com valor nulo e erro) ---------- */
+.seg button:not([aria-checked="true"]):not([disabled]):hover { color: var(--color-text); }
+.seg.invalid { border-color: var(--color-negative); }
+.seg button[disabled] { color: var(--color-text-disabled); cursor: not-allowed; }
+.seg .is-focus { outline-offset: 2px; }
+.kind-help { margin: 0; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+/* ---------- SettlementPanel ---------- */
+.settle { margin-top: 6px; }
+.settle-cur { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-bottom: .5px solid var(--color-separator); }
+.settle-cur .cap-head { font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); font-weight: 600; }
+.settle-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 16px; }
+.settle-line p { margin: 0; flex: 1; min-width: 10rem; font-size: var(--text-body); line-height: var(--text-body--line-height); overflow-wrap: anywhere; }
+.settle-line p b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.settle-line .btn { margin-left: auto; flex-shrink: 0; }
+.btn.secondary[aria-pressed="true"] { background: var(--color-brand-tint); border-color: transparent; color: var(--color-text); }
+.note { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); color: var(--color-text-muted); }
+.note svg { color: var(--color-info); flex-shrink: 0; margin-top: 1px; }
+.settle-skel { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 8px 16px; }
+/* ---------- MoneyInput somente leitura ---------- */
+.money.readonly { background: var(--color-surface); border-color: transparent; align-items: center; }
+.money .amt.ro { font-size: var(--text-headline); line-height: var(--text-headline--line-height); font-weight: 600; color: var(--color-text-muted); overflow: visible; white-space: normal; }
+.unit-toggle button[disabled] { opacity: .6; cursor: not-allowed; }
+.unit-toggle button[disabled]:hover { color: var(--color-text-muted); }
+.unit-toggle.three button { min-width: 72px; }
+/* ---------- PreviewStep: efeito na dívida ---------- */
+.effect { background: var(--color-surface); border-radius: var(--radius-lg); padding: 12px 16px; margin-top: 12px; }
+.effect h3 { margin: 0 0 4px; font-size: var(--text-footnote); line-height: var(--text-footnote--line-height); text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); font-weight: 600; }
+.effect p { margin: 0; font-size: var(--text-body); line-height: var(--text-body--line-height); }
+.effect .v { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.effect .v.before { font-weight: 400; color: var(--color-text-muted); }
+.effect .badge { margin-left: 4px; }

@@ -91,4 +91,24 @@ public class StatementEntryInfo
     /// <summary>Transferência na mesma moeda entre contas do próprio escopo (não soma nos totais).</summary>
     [JsonPropertyName("internal")]
     public bool Internal { get; set; }
+
+    /// <summary>Feature 007: <c>loan</c>/<c>settlement</c>/<c>payment</c>; null fora de transferência entre pessoas.</summary>
+    [JsonPropertyName("transferKind")]
+    public string? TransferKind { get; set; }
+
+    /// <summary>Feature 007: moeda do efeito na dívida (<c>BRL</c>/<c>BTC</c>); null sem efeito.</summary>
+    [JsonPropertyName("debtCurrency")]
+    public string? DebtCurrency { get; set; }
+
+    /// <summary>Feature 007: valor emprestado ou abatido da dívida, na moeda da dívida; null sem efeito.</summary>
+    [JsonPropertyName("debtAmount")]
+    public decimal? DebtAmount { get; set; }
+
+    /// <summary>Feature 007: primeiro nome do titular da conta de saída (null fora de carteira de pessoa).</summary>
+    [JsonPropertyName("sourceOwnerFirstName")]
+    public string? SourceOwnerFirstName { get; set; }
+
+    /// <summary>Feature 007: primeiro nome do titular da conta de entrada (null fora de carteira de pessoa).</summary>
+    [JsonPropertyName("destinationOwnerFirstName")]
+    public string? DestinationOwnerFirstName { get; set; }
 }

@@ -8,8 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Finami.Tests.Integration;
 
 /// <summary>
-/// Feature 006 (T011): a consulta agrupada de dívidas traduzida pelo Npgsql — transferências nos dois sentidos,
-/// estorno e conversão ignorada (requer PostgreSQL).
+/// Feature 006 (T011) e 007 (T009): a consulta agrupada de dívidas traduzida pelo Npgsql — empréstimos nos dois
+/// sentidos, quitação (inclusive em outra moeda), pagamento ignorado, estorno e conversão ignorada (requer PostgreSQL).
 /// </summary>
 [Trait("Category", "Integration")]
 public class PersonDebtsQueryTests
@@ -19,7 +19,7 @@ public class PersonDebtsQueryTests
         .Options);
 
     [IntegrationFact]
-    public async Task Debts_are_net_per_counterpart_and_currency_with_reversals_and_without_conversions()
+    public async Task Debts_are_loans_minus_settlements_per_counterpart_and_debt_currency()
     {
         await using var context = NewContext();
         await context.Database.MigrateAsync();
@@ -40,39 +40,53 @@ public class PersonDebtsQueryTests
         await context.SaveChangesAsync();
 
         Transaction Tx(TransactionType type, Account source, Account destination, decimal amount,
+            TransferKind? kind = null, Currency? debtCurrency = null, decimal? debtAmount = null,
             decimal? destinationAmount = null, long? reverses = null) => new()
         {
             Type = type, SourceAccountId = source.AccountId, DestinationAccountId = destination.AccountId,
             SourceAmount = amount, DestinationAmount = destinationAmount ?? amount, CreatedByUserId = ana.UserId,
-            OccurredAt = DateTime.UtcNow, ReversedTransactionId = reverses
+            OccurredAt = DateTime.UtcNow, ReversedTransactionId = reverses,
+            TransferKind = kind, DebtCurrency = debtCurrency, DebtAmount = debtAmount
         };
+        Transaction Loan(Account source, Account destination, decimal amount) =>
+            Tx(TransactionType.Transfer, source, destination, amount, TransferKind.Loan, source.Currency, amount);
 
-        var first = Tx(TransactionType.Transfer, anaBrl, brunoBrl, 100m);
+        var first = Loan(anaBrl, brunoBrl, 100m);
         context.Transactions.Add(first);
-        context.Transactions.Add(Tx(TransactionType.Transfer, brunoBrl, anaBrl, 30m));
-        context.Transactions.Add(Tx(TransactionType.Transfer, anaBrl, brunoBrl, 50m));
-        context.Transactions.Add(Tx(TransactionType.Transfer, brunoBtc, anaBtc, 0.0004m));
-        // Conversão antiga entre pessoas: moedas diferentes, fica de fora.
-        context.Transactions.Add(Tx(TransactionType.BtcPurchase, anaBrl, brunoBtc, 500m, 0.001m));
+        context.Transactions.Add(Loan(brunoBrl, anaBrl, 30m));
+        context.Transactions.Add(Loan(anaBrl, brunoBrl, 50m));
+        // Pagamento: não conta.
+        context.Transactions.Add(Tx(TransactionType.Transfer, anaBrl, brunoBrl, 500m, TransferKind.Payment));
+        context.Transactions.Add(Loan(brunoBtc, anaBtc, 0.0004m));
+        // Bruno quita R$ 10,00 da dívida em real com bitcoin.
+        context.Transactions.Add(Tx(TransactionType.Transfer, brunoBtc, anaBtc, 0.00002m, TransferKind.Settlement,
+            Currency.Brl, 10m));
+        // Conversão antiga entre pessoas: sem efeito na dívida, fica de fora.
+        context.Transactions.Add(Tx(TransactionType.BtcPurchase, anaBrl, brunoBtc, 500m, destinationAmount: 0.001m));
         await context.SaveChangesAsync();
-        // Estorno da primeira (Bruno → Ana, mesmo valor).
-        context.Transactions.Add(Tx(TransactionType.Reversal, brunoBrl, anaBrl, 100m, reverses: first.TransactionId));
+        // Estorno do primeiro empréstimo (Bruno → Ana, mesmo efeito).
+        context.Transactions.Add(Tx(TransactionType.Reversal, brunoBrl, anaBrl, 100m, TransferKind.Loan, Currency.Brl,
+            100m, reverses: first.TransactionId));
         await context.SaveChangesAsync();
 
         var repository = new TransactionRepository(context);
         var forAna = await repository.GetPersonDebtsAsync(ana.UserId);
         var forBruno = await repository.GetPersonDebtsAsync(bruno.UserId);
 
-        // Ana: enviou 100 + 50, recebeu 30 + 100 (estorno) → saldo = 130 − 150 = −20 (Bruno deve 20).
+        // BRL, do ponto de vista de Ana: −100 −50 +30 +100 (estorno) +10 (quitação de Bruno) = −10 (Bruno deve 10).
         forAna.Should().BeEquivalentTo(new[]
         {
-            (bruno.UserId, (int)Currency.Brl, -20m),
+            (bruno.UserId, (int)Currency.Brl, -10m),
             (bruno.UserId, (int)Currency.Btc, 0.0004m)
         });
         forBruno.Should().BeEquivalentTo(new[]
         {
-            (ana.UserId, (int)Currency.Brl, 20m),
+            (ana.UserId, (int)Currency.Brl, 10m),
             (ana.UserId, (int)Currency.Btc, -0.0004m)
         });
+
+        (await repository.GetPairDebtAsync(bruno.UserId, ana.UserId, (int)Currency.Brl)).Should().Be(10m);
+        (await repository.GetPairDebtAsync(ana.UserId, bruno.UserId, (int)Currency.Brl)).Should().Be(-10m);
+        (await repository.GetPairDebtAsync(ana.UserId, bruno.UserId, (int)Currency.Btc)).Should().Be(0.0004m);
     }
 }

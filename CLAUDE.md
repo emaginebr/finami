@@ -13,6 +13,7 @@ Auto-generated from all feature plans. Last updated: 2026-11-03
 - IndexedDB `finami-cache` (dados de consulta por sessão) e Cache Storage do Workbox (precache dos arquivos do build); `localStorage` só para a sessão (inalterada) e a data de dispensa do convite (005-pwa-webapp)
 - C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas. (006-family-debts-transfers)
 - PostgreSQL — sem tabelas novas; migration `AddTransactionAccountIndexes` (índices em `transactions.source_account_id`/`destination_account_id`) (006-family-debts-transfers)
+- PostgreSQL. Sem tabelas novas; a migration `AddTransferKindAndDebt` traz 3 colunas (007-loan-transfer-types)
 
 - C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado) + ASP.NET Core 8 Web API, EF Core 9.x + Npgsql.EntityFrameworkCore.PostgreSQL 9.x, Swashbuckle 8.x, Microsoft.AspNetCore.Authentication.JwtBearer 8.x, Google.Apis.Auth, Microsoft.Extensions.Identity.Core (PasswordHasher), FluentValidation (001-finami-backend-core)
 
@@ -33,9 +34,9 @@ tests/
 C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado): Follow standard conventions
 
 ## Recent Changes
+- 007-loan-transfer-types: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
 - 006-family-debts-transfers: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
 - 005-pwa-webapp: Added TypeScript 5.8 / React 18.3 (frontend); backend sem mudanças + existentes + **`vite-plugin-pwa`** (dev, compatível com Vite 6) e **`workbox-window`** 7.x (runtime, usado pelo registro do plugin); dev: **`fake-indexeddb`** (testes)
-- 004-mcp-oauth-server: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + existentes + **`ModelContextProtocol.AspNetCore`** (SDK oficial do MCP para C#, versão estável mais recente compatível com `net8.0`); `Microsoft.AspNetCore.RateLimiting` (nativo do .NET 8). Frontend sem dependências novas.
 
 
 <!-- MANUAL ADDITIONS START -->

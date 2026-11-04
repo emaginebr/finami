@@ -112,6 +112,13 @@ export const hidesInDisplay = (value: number | string, currency: Currency): bool
   return !/[1-9]/.test(NUMBER_FORMATS[currency].format(Math.abs(n)));
 };
 
+/**
+ * Exibição padrão (BTC com 5 casas), mas com a precisão total quando 5 casas zerariam o valor
+ * (₿ 0,000004 → "₿ 0,00000400", não "₿ 0,00000"). Painel de quitação e toasts (REVIEW-007 M-5).
+ */
+export const formatMoneyReadable = (value: number | string, currency: Currency): string =>
+  hidesInDisplay(value, currency) ? formatMoneyFull(value, currency) : formatMoney(value, currency);
+
 /** Partes de um valor formatado, para exibir sinal e símbolo em estilos diferentes */
 export interface MoneyParts {
   /** "−" (U+2212), "+" (só com `signed`) ou "" */

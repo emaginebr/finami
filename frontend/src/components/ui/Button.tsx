@@ -17,7 +17,17 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loadingLabel?: string;
   /** Ícone à esquerda (20 px) */
   icon?: ReactNode;
+  /**
+   * Botão de alternância: repassa `aria-pressed` e, ligado, **substitui** as cores da variante pelas do
+   * estado ligado (`bg-brand-tint`) — somar classes não basta, a ordem do CSS faria a variante vencer
+   * (REVIEW-007 I-3).
+   */
+  pressed?: boolean;
 }
+
+/** Cores do estado ligado de um botão de alternância (`text-text` sobre `bg-brand-tint`, 12,26:1) */
+const PRESSED_CLASSES =
+  "bg-brand-tint text-text border border-transparent hover:bg-brand-tint active:bg-brand-tint";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   [ButtonVariant.Primary]:
@@ -74,6 +84,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       disabled,
       type = "button",
+      pressed,
       ...props
     },
     ref,
@@ -87,10 +98,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
+        aria-pressed={pressed}
         className={cn(
           "inline-flex items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap",
           "motion-safe:transition-colors motion-safe:duration-150",
-          VARIANT_CLASSES[variant as ButtonVariant],
+          pressed ? PRESSED_CLASSES : VARIANT_CLASSES[variant as ButtonVariant],
           SIZE_CLASSES[size as ButtonSize],
           block && "flex w-full",
           busyClasses ?? DISABLED_CLASSES,
