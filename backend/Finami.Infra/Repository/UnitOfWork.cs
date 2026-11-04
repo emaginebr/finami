@@ -47,4 +47,22 @@ public class UnitOfWork : IUnitOfWork
         await _context.Database.ExecuteSqlInterpolatedAsync(
             $"SELECT account_id FROM accounts WHERE account_id = ANY({ids}) ORDER BY account_id FOR UPDATE");
     }
+
+    /// <summary>
+    /// Feature 007 (R-03): <c>pg_advisory_xact_lock</c> com a chave <c>(min &lt;&lt; 32) | max</c> dos dois ids,
+    /// solto no commit/rollback. Supõe ids de pessoa em 32 bits (escala da app); ids maiores precisariam de
+    /// <c>hashtextextended</c> para montar a chave.
+    /// </summary>
+    public async Task LockDebtPairAsync(long userA, long userB)
+    {
+        var key = DebtPairLockKey(userA, userB);
+        await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({key})");
+    }
+
+    public static long DebtPairLockKey(long userA, long userB)
+    {
+        var low = Math.Min(userA, userB);
+        var high = Math.Max(userA, userB);
+        return (low << 32) | (high & 0xFFFFFFFFL);
+    }
 }

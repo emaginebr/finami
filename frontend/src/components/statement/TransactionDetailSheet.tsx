@@ -9,7 +9,7 @@ import type { TransactionInfo } from "../../types/transaction";
 import type { StatementEntryInfo } from "../../types/statement";
 import { cn } from "../../utils/cn";
 import { formatDate, formatDateTime } from "../../utils/dates";
-import { formatBrl, formatMoney, formatSigned } from "../../utils/money";
+import { formatBrl, formatMoney, formatMoneyFull, formatSigned } from "../../utils/money";
 import { errorMessage, notifyError, notifyErrorMessage, notifySuccess } from "../../utils/notify";
 import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
@@ -17,7 +17,7 @@ import { Button } from "../ui/Button";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { Sheet, SheetHeaderButton } from "../ui/Sheet";
 import { Skeleton } from "../ui/Skeleton";
-import { transactionVisual } from "./transactionVisuals";
+import { reversalKindLabel, transactionVisual, transferKindLabel } from "./transactionVisuals";
 
 export interface TransactionDetailSheetProps {
   /** Lançamento aberto; `null` = folha fechada */
@@ -67,7 +67,29 @@ export const TransactionDetailSheet = ({ entry, onClose, canControl }: Transacti
   const reversed = transaction?.reversedByTransactionId != null;
   const canReverse =
     canControl && transaction !== null && !reversed && transaction.type !== TransactionType.Reversal;
-  const typeLabel = t(`transactionType.${entry.type}`);
+  const genericLabel = t(`transactionType.${entry.type}`);
+  // Cabeçalho com o rótulo do extrato ("Quitação de Bruno") quando há tipo (feature 007)
+  const typeLabel = transferKindLabel(t, entry) ?? genericLabel;
+  const transferKind = transaction?.transferKind ?? entry.transferKind ?? null;
+  // O estorno herda tipo e efeito do original, mas faz o contrário: a linha "Tipo" mostra o estorno
+  // ("Estorno de quitação") e o valor é "Devolvido à dívida" (REVIEW-007 I-4)
+  const isReversal = (transaction?.type ?? entry.type) === TransactionType.Reversal;
+  const kindValue = transferKind
+    ? isReversal
+      ? reversalKindLabel(t, transferKind)
+      : t(`transaction.kind.${transferKind}`)
+    : null;
+  const debtRowLabel = isReversal ? t("transaction.preview.debtRestored") : t("transaction.preview.debtAbated");
+  // "Abatido da dívida": só quando a dívida é em outra moeda (quitação convertida)
+  const debtCurrency = transaction?.debtCurrency ?? entry.debtCurrency ?? null;
+  const debtAmount = transaction?.debtAmount ?? entry.debtAmount ?? null;
+  const showDebtAbated =
+    transaction !== null &&
+    debtCurrency !== null &&
+    debtAmount !== null &&
+    debtCurrency !== transaction.source.currency;
+  // ConfirmModal: só o nome do tipo, em minúsculas ("empréstimo"), nunca o rótulo com o nome da pessoa
+  const reverseTypeName = (transferKind ? t(`transaction.kind.${transferKind}`) : genericLabel).toLowerCase();
   const accountName = (name: string, kind: string) => (kind === "Wallet" ? name : t("statement.outside"));
 
   const doReverse = async () => {
@@ -153,6 +175,10 @@ export const TransactionDetailSheet = ({ entry, onClose, canControl }: Transacti
             {row(t("statement.date"), formatDateTime(transaction.occurredAt))}
             {row(t("transaction.from"), accountName(transaction.source.name, transaction.source.kind))}
             {row(t("transaction.to"), accountName(transaction.destination.name, transaction.destination.kind))}
+            {kindValue ? row(t("transaction.kind.label"), kindValue) : null}
+            {showDebtAbated && debtCurrency !== null && debtAmount !== null
+              ? row(debtRowLabel, formatMoneyFull(debtAmount, debtCurrency))
+              : null}
             {transaction.source.currency !== transaction.destination.currency
               ? row(
                   t("statement.received"),
@@ -195,7 +221,7 @@ export const TransactionDetailSheet = ({ entry, onClose, canControl }: Transacti
         title={t("statement.reverseTitle")}
         description={t("statement.reverseBody", {
           amount: formatMoney(Math.abs(entry.amount), entry.currency),
-          type: typeLabel.toLowerCase(),
+          type: reverseTypeName,
           date: formatDate(entry.occurredAt),
         })}
         confirmLabel={t("statement.reverseConfirm")}

@@ -6,17 +6,22 @@ import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
 import { readNavState } from "../components/layout/navigation";
 import { DestinationPickerStep, FormStep, WalletPickerStep } from "../components/transaction/FormStep";
 import { PreviewStep } from "../components/transaction/PreviewStep";
+import { SettlementPanel } from "../components/transaction/SettlementPanel";
+import { TransferKindPicker } from "../components/transaction/TransferKindPicker";
 import { AmountUnit, DESCRIPTION_MAX, FocusReturn, SheetStep } from "../components/transaction/sheetModel";
 import type { ResolvedDestination } from "../components/transaction/sheetModel";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
+import { useBalance } from "../hooks/useBalance";
 import { useGroup } from "../hooks/useGroup";
 import { OfflineActionKind, useOnlineAction } from "../hooks/useOnlineAction";
 import { useQuote } from "../hooks/useQuote";
 import { useTransaction } from "../hooks/useTransaction";
 import { useWallet } from "../hooks/useWallet";
 import { Currency, isApiError, isUnconfirmedWriteError } from "../types/api";
-import { TransactionKind, TransactionType } from "../types/transaction";
+import { DebtDirection } from "../types/debt";
+import type { PersonDebtsResult } from "../types/debt";
+import { TransactionKind, TransactionType, TransferKind } from "../types/transaction";
 import type { TransactionInfo, TransferInfo, TransferPreviewResult } from "../types/transaction";
 import type { TransferDestinationsResult, WalletInfo } from "../types/wallet";
 import {
@@ -26,6 +31,7 @@ import {
   formatBrl,
   formatMoney,
   formatMoneyFull,
+  formatMoneyReadable,
   parseAmountInput,
   parseSatsInput,
 } from "../utils/money";
@@ -45,10 +51,23 @@ interface LoadedDestinations {
   result: TransferDestinationsResult;
 }
 
+/** Dívidas já carregadas para um titular (feature 007, painel de quitação) */
+interface LoadedDebts {
+  userId: number;
+  result: PersonDebtsResult;
+}
+
 /** Valor da confirmação a ser registrado: o BTC calculado no preview, exatamente (SC-005) */
 const toAmountString = (value: number): string => {
   const fixed = value.toFixed(CURRENCY_DECIMALS[Currency.BTC]);
   return fixed.replace(/\.?0+$/, "");
+};
+
+/** Total da dívida no formato do campo Valor ("100,00", "0,0001") — "Quitar tudo" na mesma moeda */
+const toInputText = (value: number, currency: Currency): string => {
+  const fixed = value.toFixed(CURRENCY_DECIMALS[currency]);
+  const trimmed = currency === Currency.BTC ? fixed.replace(/\.?0+$/, "") : fixed;
+  return trimmed.replace(".", ",");
 };
 
 /**
@@ -69,11 +88,17 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const { session } = useAuth();
   const { wallets, loaded, loading: walletsLoading, loadWallets, getTransferDestinations } = useWallet();
   const { groups, loadGroups } = useGroup();
-  const { createIncome, createExpense, createTransfer, previewTransfer } = useTransaction();
+  const { createIncome, createExpense, createTransfer, previewTransfer, ledgerVersion } = useTransaction();
+  const { getUserDebts } = useBalance();
   const { quote, status: quoteStatus, loading: quoteLoading, loadQuote } = useQuote();
   const pickerLabelId = useId();
   const noDestinationsId = useId();
+  const kindLabelId = useId();
+  const noDebtId = useId();
+  const debtsLoadingId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
+  const kindGroupRef = useRef<HTMLDivElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
   const onlineAction = useOnlineAction(OfflineActionKind.Transaction);
 
@@ -101,6 +126,14 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const [preview, setPreview] = useState<TransferPreviewResult | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewBlocked, setPreviewBlocked] = useState(false);
+  // Feature 007: tipo da transferência entre pessoas e quitação
+  const [transferKind, setTransferKind] = useState<TransferKind | null>(null);
+  const [kindErrorShown, setKindErrorShown] = useState(false);
+  const [settleAll, setSettleAll] = useState(false);
+  const [chosenDebtCurrency, setChosenDebtCurrency] = useState<Currency | null>(null);
+  const [debts, setDebts] = useState<LoadedDebts | null>(null);
+  const [debtsError, setDebtsError] = useState<unknown>(null);
+  const [debtsRetrying, setDebtsRetrying] = useState(false);
 
   // Carteiras ativas que a pessoa controla, na ordem da Home (famílias A→Z, depois avulsas)
   const controllable = useMemo<WalletInfo[]>(
@@ -218,7 +251,146 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     // Evita que "200" em reais (ou 200 sats) vire ₿ 200 (components.md §10)
     setAmountUnit(unit);
     setAmountText("");
+    setSettleAll(false);
     setServerError(null);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Tipo da transferência entre pessoas e quitação (feature 007)
+  // ---------------------------------------------------------------------------
+
+  /** Seletor "Tipo": só quando o Para é de outro titular (contracts/ui.md) */
+  const showKind =
+    isTransfer &&
+    sourceWallet !== null &&
+    destination !== null &&
+    !destination.isOwn &&
+    destination.walletId !== sourceWallet.walletId;
+  const activeKind = showKind ? transferKind : null;
+  const isSettlement = activeKind === TransferKind.Settlement;
+
+  // Para do mesmo titular, ou de outro titular diferente do anterior (ou outro De): tipo e erro limpos
+  const counterpartKey =
+    showKind && sourceWallet && destination ? `${sourceWallet.ownerUserId}:${destination.ownerUserId}` : null;
+  useEffect(() => {
+    setTransferKind(null);
+    setKindErrorShown(false);
+    setSettleAll(false);
+    setChosenDebtCurrency(null);
+  }, [counterpartKey]);
+
+  // Dívidas do titular da origem (R-07); recarregam a cada lançamento gravado
+  const debtorUserId = sourceWallet?.ownerUserId ?? null;
+  const requestedDebts = useRef<number | null>(null);
+  const loadDebts = useCallback(
+    async (ownerUserId: number) => {
+      requestedDebts.current = ownerUserId;
+      setDebtsRetrying(true);
+      try {
+        const result = await getUserDebts(ownerUserId);
+        if (requestedDebts.current !== ownerUserId) return;
+        setDebts({ userId: ownerUserId, result });
+        setDebtsError(null);
+      } catch (err) {
+        if (requestedDebts.current !== ownerUserId) return;
+        setDebtsError(err);
+      } finally {
+        if (requestedDebts.current === ownerUserId) setDebtsRetrying(false);
+      }
+    },
+    [getUserDebts],
+  );
+
+  useEffect(() => {
+    if (!isSettlement || debtorUserId === null) return;
+    setDebtsError(null);
+    void loadDebts(debtorUserId);
+  }, [isSettlement, debtorUserId, loadDebts, ledgerVersion]);
+
+  const currentDebts = isSettlement && debts !== null && debts.userId === debtorUserId ? debts.result : null;
+  const debtsLoading = isSettlement && currentDebts === null && !debtsError;
+  const walletCurrency = sourceWallet?.currency ?? Currency.BRL;
+  const otherCurrency = walletCurrency === Currency.BRL ? Currency.BTC : Currency.BRL;
+  // Dívida "titular do De deve ao do Para", por moeda
+  const debtIn = (currency: Currency): number | null => {
+    if (!currentDebts || !destination) return null;
+    const found = currentDebts.debts.find(
+      (debt) =>
+        debt.counterpartUserId === destination.ownerUserId &&
+        debt.direction === DebtDirection.Owes &&
+        debt.currency === currency &&
+        debt.amount > 0,
+    );
+    return found ? found.amount : null;
+  };
+  const debtByCurrency: Record<Currency, number | null> = {
+    [Currency.BRL]: debtIn(Currency.BRL),
+    [Currency.BTC]: debtIn(Currency.BTC),
+  };
+  // Sugestão inicial: a moeda das carteiras, se houver dívida nela; senão, a outra
+  const suggestedDebtCurrency =
+    debtByCurrency[walletCurrency] !== null
+      ? walletCurrency
+      : debtByCurrency[otherCurrency] !== null
+        ? otherCurrency
+        : null;
+  const debtCurrency =
+    chosenDebtCurrency !== null && debtByCurrency[chosenDebtCurrency] !== null
+      ? chosenDebtCurrency
+      : suggestedDebtCurrency;
+  const noDebt = isSettlement && currentDebts !== null && suggestedDebtCurrency === null;
+  const settleAllActive = isSettlement && settleAll && debtCurrency !== null;
+  // Quitar tudo em outra moeda: o Valor vira "Valor calculado na confirmação"
+  const settleCrossCurrency = settleAllActive && debtCurrency !== walletCurrency;
+
+  const changeKind = (next: TransferKind) => {
+    setTransferKind(next);
+    setKindErrorShown(false);
+    if (next !== TransferKind.Settlement) setSettleAll(false);
+  };
+
+  /** Digitar no Valor desliga o "quitar tudo" */
+  const changeAmount = (text: string) => {
+    setSettleAll(false);
+    setAmountText(text);
+  };
+
+  /** Trocar a moeda da dívida desliga o "quitar tudo" e limpa o valor preenchido por ele */
+  const changeDebtCurrency = (currency: Currency) => {
+    setChosenDebtCurrency(currency);
+    if (settleAll) {
+      setSettleAll(false);
+      setAmountText("");
+    }
+  };
+
+  /** "Quitar tudo" é um botão de alternância (components.md §11, divergência 3) */
+  const toggleSettleAll = () => {
+    setServerError(null);
+    if (settleAll) {
+      setSettleAll(false);
+      setAmountText("");
+      // Em outra moeda o Valor era somente leitura: a edição volta para ele
+      if (settleCrossCurrency) amountInputRef.current?.focus();
+      return;
+    }
+    if (debtCurrency === null) return;
+    const total = debtByCurrency[debtCurrency];
+    setSettleAll(true);
+    if (debtCurrency !== walletCurrency || total === null) {
+      // Outra moeda: o Valor vira "Valor calculado na confirmação" (alternador desabilitado em Bitcoin)
+      setAmountUnit(AmountUnit.Btc);
+      setAmountText("");
+      return;
+    }
+    // Em satoshis o total vai em sats inteiros e a unidade fica; só "Reais" volta para Bitcoin, porque o
+    // total não é um valor em reais (REVIEW-007 M-4)
+    if (amountUnit === AmountUnit.Sat && walletCurrency === Currency.BTC) {
+      setAmountText(Math.round(total * 1e8).toString());
+      return;
+    }
+    setAmountUnit(AmountUnit.Btc);
+    setAmountText(toInputText(total, walletCurrency));
   };
 
   // ---------------------------------------------------------------------------
@@ -268,10 +440,14 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
           price: formatBrl(quote.priceBrl),
         })
       : null;
-  const amountError =
-    sourceWallet && parsedAmount?.error && (amountTyped || attempted)
+  // "Quitar tudo" dispensa o valor digitado (o servidor calcula; contracts/api.md)
+  const amountError = settleAllActive
+    ? null
+    : sourceWallet && parsedAmount?.error && (amountTyped || attempted)
       ? translateAmountError(parsedAmount.error, amountCurrency)
       : conversionError;
+  const kindMissing = showKind && transferKind === null;
+  const kindError = kindErrorShown && kindMissing ? t("transaction.validation.kindRequired") : null;
   const sourceError = !sourceWallet && attempted ? t("transaction.validation.walletRequired") : null;
 
   let destinationError: string | null = null;
@@ -290,11 +466,14 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const descriptionValid = description.length <= DESCRIPTION_MAX;
   const formValid =
     Boolean(sourceWallet) &&
-    Boolean(parsedAmount?.value) &&
+    (settleAllActive || Boolean(parsedAmount?.value)) &&
     (!convertsLocally || localBtc !== null) &&
     descriptionValid &&
     // O destino precisa estar na lista da origem atual (trocar o De recarrega o Para)
-    (!isTransfer || (destination !== null && currentDestinations !== null && !destinationBlocking));
+    (!isTransfer || (destination !== null && currentDestinations !== null && !destinationBlocking)) &&
+    // Entre pessoas o tipo é obrigatório; quitação sem dívida não segue (feature 007)
+    !kindMissing &&
+    !noDebt;
 
   const needsPreview =
     isTransfer &&
@@ -303,35 +482,46 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     (destination.currency !== sourceWallet.currency || !destination.isOwn || inReais);
 
   const hasBlockingError =
-    Boolean(amountTyped && parsedAmount?.error) || Boolean(conversionError) || destinationBlocking;
+    Boolean(!settleAllActive && amountTyped && parsedAmount?.error) ||
+    Boolean(conversionError) ||
+    destinationBlocking;
 
   // ---------------------------------------------------------------------------
   // Ações
   // ---------------------------------------------------------------------------
 
-  /** Corpo da prévia: em reais manda `amountBrl`; senão `amount` na moeda da origem */
+  /**
+   * Corpo da prévia: em reais manda `amountBrl`; senão `amount` na moeda da origem. Entre pessoas vai o
+   * `kind`; na quitação, `debtCurrency` e, com "quitar tudo", `settleAll` sem valor (feature 007).
+   */
   const previewBody = (): TransferInfo | null => {
-    if (!sourceWallet || !destination || !parsedAmount?.value) return null;
-    const base = {
+    if (!sourceWallet || !destination) return null;
+    const base: TransferInfo = {
       sourceWalletId: sourceWallet.walletId,
       destinationWalletId: destination.walletId,
       description: description.trim() || null,
     };
+    if (activeKind) {
+      base.kind = activeKind;
+      if (activeKind === TransferKind.Settlement) base.debtCurrency = debtCurrency ?? sourceWallet.currency;
+    }
+    if (settleAllActive) return { ...base, settleAll: true };
+    if (!parsedAmount?.value) return null;
     return inReais ? { ...base, amountBrl: parsedAmount.value } : { ...base, amount: parsedAmount.value };
   };
 
-  /** Corpo do registro: em reais, o `amount` é o BTC confirmado na prévia (R-07) */
+  /**
+   * Corpo do registro: em reais, o `amount` é o BTC confirmado na prévia (R-07); "quitar tudo" reenvia
+   * o mesmo corpo da prévia (o servidor recalcula a dívida dentro do lock).
+   */
   const transferBody = (): TransferInfo | null => {
     const body = previewBody();
     if (!body) return null;
-    if (!inReais) return body;
+    if (!inReais || body.settleAll) return body;
     if (!preview) return null;
-    return {
-      sourceWalletId: body.sourceWalletId,
-      destinationWalletId: body.destinationWalletId,
-      amount: toAmountString(preview.sourceAmount),
-      description: body.description,
-    };
+    const registered: TransferInfo = { ...body, amount: toAmountString(preview.sourceAmount) };
+    delete registered.amountBrl;
+    return registered;
   };
 
   const successMessage = (result: TransactionInfo): string => {
@@ -356,11 +546,21 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
           amount: formatMoney(result.destinationAmount, result.destination.currency),
           wallet: result.destination.name,
         });
-      default:
+      default: {
+        // Entre pessoas: "Empréstimo de R$ 100,00 para Bruno registrado." (feature 007)
+        const sentKind = result.transferKind ?? activeKind;
+        if (result.type === TransactionType.Transfer && sentKind && destination) {
+          return t(`transaction.success.${sentKind}`, {
+            // BTC pequeno: 8 casas quando 5 zerariam ("₿ 0,00000500", REVIEW-007 M-5)
+            amount: formatMoneyReadable(result.sourceAmount, result.source.currency),
+            name: destination.ownerFirstName,
+          });
+        }
         return t("transaction.success.transfer", {
           amount: formatMoney(result.sourceAmount, result.source.currency),
           wallet: result.destination.name,
         });
+      }
     }
   };
 
@@ -383,7 +583,9 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   };
 
   const send = async () => {
-    if (submittingRef.current || !sourceWallet || !parsedAmount?.value) return;
+    if (submittingRef.current || !sourceWallet) return;
+    // "Quitar tudo" não tem valor digitado (feature 007)
+    if (!settleAllActive && !parsedAmount?.value) return;
     submittingRef.current = true;
     setSubmitting(true);
     setServerError(null);
@@ -391,7 +593,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
       let result: TransactionInfo;
       const descriptionValue = description.trim() || null;
       // Em reais (depósito/saque em bitcoin) vai o BTC convertido e exibido junto ao campo
-      const amountValue = convertsLocally ? localBtc : parsedAmount.value;
+      const amountValue = convertsLocally ? localBtc : (parsedAmount?.value ?? null);
       if (kind === TransactionKind.Income) {
         if (!amountValue) return;
         result = await createIncome({
@@ -434,7 +636,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const onPrimary = () => {
     if (submittingRef.current) return;
     // Sem destinos: o botão fica `aria-disabled` (focável, com a explicação) e não faz nada (M-1)
-    if (step === SheetStep.Form && noDestinations) return;
+    // Quitação sem dívida (ou com as dívidas ainda carregando): idem, com o aviso / "Carregando…" (feature 007)
+    if (step === SheetStep.Form && (noDestinations || noDebt || debtsLoading)) return;
     // Sem internet: avisa e não envia (feature 005, R-05)
     if (onlineAction.blockIfOffline()) return;
     if (step === SheetStep.Preview) {
@@ -442,6 +645,11 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
       return;
     }
     setAttempted(true);
+    if (kindMissing) {
+      // Erro junto ao grupo e foco na parada de Tab dele (o Tipo vem antes do Valor na tela)
+      setKindErrorShown(true);
+      kindGroupRef.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus();
+    }
     if (!formValid) return;
     if (needsPreview) {
       const body = previewBody();
@@ -497,7 +705,10 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const primaryLabel = (() => {
     // Confirmação de transferência: "Registrar transferência"; compra/venda: "Confirmar compra/venda"
     if (step === SheetStep.Preview) {
-      return previewType === TransactionType.Transfer ? t("transaction.submit.transfer") : previewTitle;
+      if (previewType !== TransactionType.Transfer) return previewTitle;
+      // Entre pessoas: "Registrar empréstimo/quitação/pagamento" (feature 007)
+      const shownKind = preview?.kind ?? activeKind;
+      return shownKind ? t(`transaction.submit.${shownKind}`) : t("transaction.submit.transfer");
     }
     if (kind === TransactionKind.Income) return t("transaction.submit.income");
     if (kind === TransactionKind.Expense) return t("transaction.submit.expense");
@@ -508,17 +719,66 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   // Sem destinos: `aria-disabled` em vez de `disabled` — o botão continua na ordem de Tab e a explicação
   // (`aria-describedby` → aviso) é lida ao chegar nele pelo teclado (REVIEW-006 M-1)
   const noDestinationsBlocked = step === SheetStep.Form && noDestinations;
+  // Quitação sem dívida: mesmo padrão, com o aviso do painel (components.md §11)
+  const noDebtBlocked = step === SheetStep.Form && noDebt;
+  // Dívidas carregando: não segue como Quitação antes de o painel resolver a moeda (REVIEW-007 M-3)
+  const debtsLoadingBlocked = step === SheetStep.Form && debtsLoading;
+  const formAriaBlocked = noDestinationsBlocked || noDebtBlocked || debtsLoadingBlocked;
   const primaryDisabled =
     step === SheetStep.Preview
       ? previewLoading || previewBlocked || !preview
-      : hasBlockingError && !noDestinationsBlocked;
-  const primaryDescribedBy = noDestinationsBlocked ? noDestinationsId : undefined;
+      : hasBlockingError && !formAriaBlocked;
+  const primaryDescribedBy = noDestinationsBlocked
+    ? noDestinationsId
+    : noDebtBlocked
+      ? noDebtId
+      : debtsLoadingBlocked
+        ? debtsLoadingId
+        : undefined;
   // Foco ao voltar para o formulário: "Continuar" vindo da prévia; sem destinos, o Para não existe e o
   // foco que iria para ele fica no botão (que explica o porquê). "Informar em bitcoin" tem prioridade.
   const primaryAutofocus =
     step === SheetStep.Form &&
     !focusAmount &&
     (returnFocus === FocusReturn.Primary || (returnFocus === FocusReturn.Destination && noDestinations));
+
+  // Bloco "Tipo" entre Para e Valor, com o painel de quitação dentro dele (components.md §11)
+  const kindSlot =
+    showKind && sourceWallet && destination ? (
+      <TransferKindPicker
+        labelId={kindLabelId}
+        value={transferKind}
+        onChange={changeKind}
+        sourceOwnerName={sourceWallet.ownerFirstName}
+        destinationOwnerName={destination.ownerFirstName}
+        error={kindError}
+        disabled={submitting}
+        groupRef={kindGroupRef}
+      >
+        {isSettlement ? (
+          <SettlementPanel
+            loading={debtsLoading}
+            loadingId={debtsLoadingId}
+            error={currentDebts === null ? debtsError : null}
+            retrying={debtsRetrying}
+            onRetry={() => {
+              if (debtorUserId !== null) void loadDebts(debtorUserId);
+            }}
+            debtorName={sourceWallet.ownerFirstName}
+            debtorIsMe={sourceWallet.ownerUserId === userId}
+            creditorName={destination.ownerFirstName}
+            walletCurrency={walletCurrency}
+            debtByCurrency={debtByCurrency}
+            debtCurrency={debtCurrency}
+            onDebtCurrencyChange={changeDebtCurrency}
+            settleAll={settleAllActive}
+            onToggleSettleAll={toggleSettleAll}
+            noDebtId={noDebtId}
+            disabled={submitting}
+          />
+        ) : null}
+      </TransferKindPicker>
+    ) : null;
 
   return (
     <>
@@ -572,7 +832,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
             noDestinations={noDestinations}
             noDestinationsId={noDestinationsId}
             amountText={amountText}
-            onAmountChange={setAmountText}
+            onAmountChange={changeAmount}
             amountError={amountError}
             showAmountUnit={showAmountUnit}
             amountConversion={amountConversion}
@@ -584,6 +844,10 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
             onDescriptionChange={setDescription}
             serverError={serverError}
             disabled={submitting}
+            kindSlot={kindSlot}
+            amountReadOnlyText={settleCrossCurrency ? t("transaction.settlement.computedOnPreview") : undefined}
+            amountUnitDisabled={settleCrossCurrency}
+            amountInputRef={amountInputRef}
           />
         ) : null}
 
@@ -621,16 +885,18 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
           />
         ) : null}
 
-        {step === SheetStep.Preview && sourceWallet && destination && parsedAmount?.value ? (
+        {step === SheetStep.Preview && sourceWallet && destination && (settleAllActive || parsedAmount?.value) ? (
           <PreviewStep
             sourceWallet={sourceWallet}
             destination={destination}
-            amount={inReais ? null : parsedAmount.value}
-            amountBrl={inReais ? parsedAmount.value : null}
+            // "Quitar tudo": o valor vem da prévia (calculado no servidor)
+            amount={settleAllActive || inReais ? null : (parsedAmount?.value ?? null)}
+            amountBrl={!settleAllActive && inReais ? (parsedAmount?.value ?? null) : null}
             preview={preview}
             loading={previewLoading}
             blocked={previewBlocked}
             onEnterInBtc={enterInBtc}
+            kind={activeKind}
           />
         ) : null}
 
@@ -641,7 +907,7 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
               loading={submitting}
               loadingLabel={t("transaction.submit.sending")}
               disabled={primaryDisabled}
-              aria-disabled={noDestinationsBlocked || undefined}
+              aria-disabled={formAriaBlocked || undefined}
               aria-describedby={primaryDescribedBy}
               data-autofocus={primaryAutofocus ? "" : undefined}
               {...onlineAction.offlineProps}

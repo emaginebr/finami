@@ -120,6 +120,13 @@ public class StatementService : IStatementService
             .SelectMany(e => new[] { e.Transaction!.SourceAccountId, e.Transaction.DestinationAccountId })
             .Distinct();
         var accounts = (await _accountRepository.GetByIdsAsync(referencedIds)).ToDictionary(a => a.AccountId);
+        // Feature 007: primeiro nome dos titulares, para "Empréstimo para Bruno"
+        var ownerIds = accounts.Values.Where(a => a.UserId.HasValue).Select(a => a.UserId!.Value).Distinct().ToList();
+        var ownerFirstNames = ownerIds.Count == 0
+            ? new Dictionary<long, string>()
+            : (await _userRepository.GetByIdsAsync(ownerIds)).ToDictionary(u => u.UserId, u => u.FirstName);
+        string? OwnerFirstName(Account? account) =>
+            account?.UserId is long ownerId && ownerFirstNames.TryGetValue(ownerId, out var name) ? name : null;
 
         var items = entries.Select(entry =>
         {
@@ -139,6 +146,12 @@ public class StatementService : IStatementService
                 Amount = entry.Amount,
                 QuotePriceBrl = tx.QuotePriceBrl,
                 Description = tx.Description,
+                // Feature 007: tipo e efeito na dívida, para o rótulo "Empréstimo para Bruno" sem chamada extra.
+                TransferKind = tx.TransferKind?.ToCode(),
+                DebtCurrency = tx.DebtCurrency?.ToCode(),
+                DebtAmount = tx.DebtAmount,
+                SourceOwnerFirstName = OwnerFirstName(source),
+                DestinationOwnerFirstName = OwnerFirstName(destination),
                 // FR-034: mesma moeda, origem e destino no escopo → os dois lançamentos se anulam.
                 Internal = sameCurrency && scopeIds.Contains(tx.SourceAccountId) && scopeIds.Contains(tx.DestinationAccountId)
             };

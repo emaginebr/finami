@@ -13,6 +13,7 @@
 @guestToken = cole-o-token-do-convidado
 @outsiderWallet = 999
 @pedroLedger = 103
+@pedroToken = cole-o-token-do-pedro
 
 ### 1. Cadastro (US1)
 POST {{baseUrl}}/api/auth/register
@@ -125,7 +126,7 @@ Content-Type: application/json
 GET {{baseUrl}}/api/wallets/{{mesada}}/public
 Authorization: Bearer {{token}}
 
-### 9. Transferência para carteira de alguém da família (Pedro está no grupo) — vira dívida de Pedro com você
+### 9. Transferência para carteira de alguém da família (Pedro está no grupo) — sem "kind" vale empréstimo: Pedro passa a dever a você
 POST {{baseUrl}}/api/transactions/transfer
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -277,9 +278,58 @@ Content-Type: application/json
 
 { "sourceWalletId": {{ledger}}, "destinationWalletId": {{pedroLedger}}, "amountBrl": 200.00 }
 
-### 18. amountBrl fora de BTC → BTC → 400; sem amount e sem amountBrl (ou os dois) → 400 "Informe o valor em bitcoin ou em reais."
+### 18. amountBrl fora de BTC → BTC → 400; sem amount e sem amountBrl (ou os dois) → 400 "Informe o valor em bitcoin ou em reais, ou quite tudo."
 POST {{baseUrl}}/api/transactions/transfer/preview
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amountBrl": 50.00 }
+
+### 19. Empréstimo (feature 007): Pedro passa a dever R$ 100,00 a você; a prévia traz "kind" e "debt" (before/after)
+POST {{baseUrl}}/api/transactions/transfer/preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amount": 100.00, "kind": "loan" }
+
+### 19. Registrar o empréstimo (resposta com transferKind, debtCurrency e debtAmount)
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amount": 100.00, "kind": "loan", "description": "Empréstimo" }
+
+### 19. Pagamento (mesada, presente): o dinheiro passa e ninguém fica devendo
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{mesada}}, "amount": 50.00, "kind": "payment", "description": "Mesada" }
+
+### 19. Quitação parcial (feita por Pedro, com o token dele): sem dívida → 422 "Você não tem dívida com {nome} nesta moeda."; acima → 422 "O valor é maior que a dívida (R$ 70,00)."
+POST {{baseUrl}}/api/transactions/transfer
+Authorization: Bearer {{pedroToken}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{mesada}}, "destinationWalletId": {{nubank}}, "amount": 30.00, "kind": "settlement" }
+
+### 19. Quitar tudo na mesma moeda: sem amount; o servidor envia exatamente a dívida
+POST {{baseUrl}}/api/transactions/transfer/preview
+Authorization: Bearer {{pedroToken}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{mesada}}, "destinationWalletId": {{nubank}}, "kind": "settlement", "settleAll": true }
+
+### 19. Quitar com bitcoin a dívida em real (carteiras BTC dos dois): enviado em BTC arredondado para cima, abatido = dívida, cotação em "quote"
+POST {{baseUrl}}/api/transactions/transfer/preview
+Authorization: Bearer {{pedroToken}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{pedroLedger}}, "destinationWalletId": {{ledger}}, "kind": "settlement", "debtCurrency": "BRL", "settleAll": true }
+
+### 19. Tipo entre carteiras do mesmo titular → 400 "O tipo só vale para transferência entre pessoas diferentes."
+POST {{baseUrl}}/api/transactions/transfer/preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sourceWalletId": {{nubank}}, "destinationWalletId": {{ledger}}, "amount": 10.00, "kind": "payment" }

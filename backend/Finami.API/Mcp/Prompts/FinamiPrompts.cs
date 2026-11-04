@@ -9,15 +9,15 @@ namespace Finami.API.Mcp.Prompts;
 public class FinamiPrompts
 {
     /// <summary>
-    /// Regras de transferência e dívidas (feature 006), repetidas nas instruções do servidor
+    /// Regras de transferência e dívidas (features 006 e 007), repetidas nas instruções do servidor
     /// (<see cref="McpServerSetup.INSTRUCTIONS"/>).
     /// </summary>
     public const string TRANSFER_GUIDANCE =
         "Transferências só vão para carteiras da própria pessoa ou de alguém da família (destinos_de_transferencia " +
-        "lista as opções). Conversão entre real e bitcoin só entre carteiras da mesma pessoa. Toda transferência " +
-        "entre pessoas diferentes vira dívida de quem recebeu com quem enviou; transferências no sentido contrário " +
-        "compensam (dividas_da_pessoa). Entre carteiras de bitcoin, o valor pode ser informado em reais " +
-        "(valor_em_reais), convertido pela cotação atual.";
+        "lista as opções). Conversão entre real e bitcoin só entre carteiras da mesma pessoa. Entre pessoas " +
+        "diferentes, a transferência tem um tipo (confirme com a pessoa): empréstimo entre pessoas vira dívida; " +
+        "quitação abate; pagamento não gera dívida (dividas_da_pessoa). Entre carteiras de bitcoin, o valor pode ser " +
+        "informado em reais (valor_em_reais), convertido pela cotação atual.";
 
     private readonly TimeProvider _time;
 

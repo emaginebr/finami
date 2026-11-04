@@ -66,8 +66,8 @@ public class UsersController : FinamiControllerBase
         Execute(async () => Ok(await _balanceService.GetUserGroupBalancesAsync(CurrentUserId, userId)));
 
     /// <summary>
-    /// Dívidas da pessoa com cada contraparte, por moeda (feature 006): toda transferência entre titulares
-    /// diferentes vira dívida de quem recebeu com quem enviou; pares quites não aparecem. Mesma regra de
+    /// Dívidas da pessoa com cada contraparte, por moeda (features 006 e 007): empréstimos menos quitações entre
+    /// titulares diferentes (pagamentos não entram); pares quites não aparecem. Mesma regra de
     /// visibilidade de <c>GET /api/users/{id}</c>, mas quem não pode ver a pessoa recebe 404. Contrato em
     /// specs/006-family-debts-transfers/contracts/api.md.
     /// </summary>

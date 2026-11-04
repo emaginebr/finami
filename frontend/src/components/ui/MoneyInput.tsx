@@ -24,6 +24,11 @@ export interface MoneyInputProps {
   labelAccessory?: ReactNode;
   /** Valor em satoshis inteiros (só com `currency` BTC): símbolo "sat" e teclado numérico */
   sats?: boolean;
+  /**
+   * Campo somente leitura com uma frase no lugar do valor (feature 007: "Valor calculado na
+   * confirmação"). Continua focável (`readOnly`, não `disabled`) e com o mesmo nome acessível.
+   */
+  readOnlyText?: string;
 }
 
 /** Mantém só dígitos, vírgula e ponto (o teclado decimal do iOS já limita) */
@@ -34,7 +39,25 @@ const sanitize = (text: string): string => text.replace(/[^\d.,]/g, "");
  * fonte grande com números tabulares, erro ligado por `aria-describedby`.
  */
 export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
-  ({ label, currency, value, onChange, error, hint, disabled, id, autoFocus, dataAutofocus, labelAccessory, sats = false }, ref) => {
+  (
+    {
+      label,
+      currency,
+      value,
+      onChange,
+      error,
+      hint,
+      disabled,
+      id,
+      autoFocus,
+      dataAutofocus,
+      labelAccessory,
+      sats = false,
+      readOnlyText,
+    },
+    ref,
+  ) => {
+    const readOnly = readOnlyText !== undefined;
     const { t } = useTranslation();
     const generatedId = useId();
     const inputId = id ?? generatedId;
@@ -62,11 +85,17 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
         )}
         <div
           className={cn(
-            "flex min-h-16 items-baseline gap-2 rounded-md border bg-surface-2 px-4 py-2",
+            "flex min-h-16 items-baseline gap-2 rounded-md border px-4 py-2",
             "focus-within:border-focus focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
-            error ? "border-negative" : "border-border",
+            // Somente leitura: deixa de parecer editável (regra do TextField, components.md §11)
+            readOnly ? "bg-surface" : "bg-surface-2",
+            error ? "border-negative" : readOnly ? "border-transparent" : "border-border",
             disabled && "opacity-60",
           )}
+          // Somente leitura: tocar na frase visível foca o campo, como num campo normal
+          onClick={
+            readOnly ? (event) => event.currentTarget.querySelector<HTMLInputElement>("input")?.focus() : undefined
+          }
         >
           <span aria-hidden="true" className="text-title-2 font-medium text-text-muted">
             {sats ? "sat" : currencySymbol(currency)}
@@ -81,19 +110,34 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
             inputMode={sats ? "numeric" : "decimal"}
             autoComplete="off"
             enterKeyHint="done"
-            value={value}
+            value={readOnly ? readOnlyText : value}
+            readOnly={readOnly}
             disabled={disabled}
             autoFocus={autoFocus}
             data-autofocus={dataAutofocus ? "" : undefined}
-            placeholder={sats ? "0" : currency === Currency.BTC ? "0,00000000" : "0,00"}
+            placeholder={readOnly ? undefined : sats ? "0" : currency === Currency.BTC ? "0,00000000" : "0,00"}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
-            onChange={(event) => onChange(sanitize(event.target.value))}
+            onChange={(event) => {
+              if (!readOnly) onChange(sanitize(event.target.value));
+            }}
             className={cn(
-              "w-full min-w-0 bg-transparent text-[2rem] leading-tight font-bold text-text tabular-nums",
+              // Somente leitura: o <input> continua focável e com o nome acessível, mas a frase visível é o
+              // <span> abaixo — um <input> não quebra linha (REVIEW-007 I-2, 1.4.10)
+              readOnly
+                ? "sr-only"
+                : "w-full min-w-0 bg-transparent text-[2rem] leading-tight font-bold text-text tabular-nums",
               "placeholder:text-text-subtle focus:outline-none disabled:cursor-not-allowed",
             )}
           />
+          {readOnly ? (
+            <span
+              aria-hidden="true"
+              className="min-w-0 flex-1 self-center text-headline leading-tight font-semibold break-words text-text-muted"
+            >
+              {readOnlyText}
+            </span>
+          ) : null}
         </div>
         {hint ? (
           <span id={hintId} className="text-footnote text-text-muted tabular-nums">

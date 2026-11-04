@@ -87,22 +87,50 @@ backend/
   - **Conversão só na mesma pessoa**: real ↔ bitcoin entre titulares diferentes → 422 "Conversão entre
     real e bitcoin só entre carteiras da mesma pessoa." (verificado antes de buscar a cotação).
   - **Bitcoin em reais**: `amount` passou a ser opcional e há o novo `amountBrl`; exatamente um dos dois
-    (senão 400 "Informe o valor em bitcoin ou em reais."). `amountBrl` (até 2 casas) só vale com origem e
+    (senão 400 "Informe o valor em bitcoin ou em reais, ou quite tudo."; ver feature 007). `amountBrl` (até 2 casas) só vale com origem e
     destino em BTC (senão 400); o valor em BTC é `amountBrl / cotação` truncado em 8 casas (0 → 422
     "Valor pequeno demais para conversão."; sem cotação → 503) e a cotação fica gravada na transação. A
     prévia devolve `sourceAmount`/`destinationAmount` em BTC e `quote`. O app registra com o `amount` em
     BTC confirmado na prévia.
-  - **Dívidas**: `GET /api/users/{userId}/debts` — calculadas na leitura a partir do razão (sem tabela
-    nova): entram as transações entre carteiras de titulares diferentes e mesma moeda;
-    `saldo = Σ recebido − Σ enviado` por contraparte e moeda (`direction`: `owes` = a pessoa deve,
-    `owed` = devem a ela). Estornos compensam sozinhos, conversões ficam de fora, pares quites não
-    aparecem. Mesma visibilidade de `GET /api/users/{id}`, mas sem permissão → 404.
+  - **Dívidas**: `GET /api/users/{userId}/debts` — calculadas na leitura (sem tabela de saldos), por
+    contraparte e moeda (`direction`: `owes` = a pessoa deve, `owed` = devem a ela). Desde a feature 007,
+    a soma considera só os lançamentos com efeito na dívida (empréstimos, quitações e estornos deles; veja
+    abaixo). Pares quites não aparecem. Mesma visibilidade de `GET /api/users/{id}`, mas sem permissão → 404.
   - **Campo Para**: `GET /api/wallets/{id}/transfer-destinations` — exige controle da origem (403) e
     origem ativa (422); `sameCurrency` (carteiras ativas da mesma moeda do titular e das pessoas da
     família, sem a origem; as do titular primeiro) e `conversion` (carteiras do titular na outra moeda).
     `balance` é `null` quando quem consulta não pode ver o extrato da carteira.
   - `WalletInfo` ganhou `ownerFirstName`. `GET /api/wallets/{id}/public` continua existindo, mas o app
     não o usa mais.
+- **Tipos de transferência: empréstimo, quitação e pagamento** (feature 007, contrato em
+  `specs/007-loan-transfer-types/contracts/api.md`). Também em `LedgerService.PlanTransferAsync`, para o
+  registro, a prévia e o MCP:
+  - **`kind`** (`loan` | `settlement` | `payment`) em `TransferInfo`, só entre titulares diferentes; sem
+    `kind`, vale `loan` (compatibilidade com clientes antigos). Entre carteiras do mesmo titular, `kind`,
+    `debtCurrency` ou `settleAll` → 400 "O tipo só vale para transferência entre pessoas diferentes.";
+    `kind` fora da lista → 400 "Tipo de transferência inválido."; `debtCurrency`/`settleAll` sem
+    `settlement` → 400 "Moeda da dívida e quitar tudo só valem para quitação.".
+  - **Efeito na dívida**: colunas `transfer_kind`, `debt_currency` e `debt_amount` em `transactions`
+    (migration `AddTransferKindAndDebt`, check `ck_transactions_debt_effect`). O efeito é sempre "o titular
+    do destino deve ao da origem": o empréstimo aumenta a dívida de quem recebe; a quitação (do devedor ao
+    credor) reduz a de quem paga; o pagamento não tem efeito. O estorno copia tipo e efeito e, como inverte
+    origem e destino, desfaz. A migration marcou como empréstimo as transferências antigas entre titulares
+    diferentes (mesmo filtro do cálculo da feature 006), então as dívidas exibidas não mudaram.
+  - **Quitação** (`kind: "settlement"`): abate o saldo total da dívida do titular da origem com o do
+    destino na moeda `debtCurrency` (padrão = moeda das carteiras). Sem dívida → 422 "Você não tem dívida
+    com {primeiro nome} nesta moeda."; abatido acima da dívida → 422 "O valor é maior que a dívida
+    (R$ 70,00)." (ou `₿ 0,00050000`). `settleAll: true` (sem `amount`/`amountBrl`) quita tudo.
+  - **Quitação em outra moeda**: o dinheiro anda entre carteiras da mesma moeda; só o abatido é convertido
+    pela cotação atual (gravada em `btc_quote_id`/`quote_price_brl`; o tipo contábil continua `Transfer`).
+    Parcial: abatido truncado (2 casas em real, 8 em bitcoin; 0 → 422 "Valor pequeno demais para
+    conversão."). `settleAll`: valor enviado arredondado para cima até o centavo/satoshi e abatido = dívida.
+    Sem cotação → 503.
+  - **Concorrência**: com efeito na dívida, `PostAsync` toma `IUnitOfWork.LockDebtPairAsync`
+    (`pg_advisory_xact_lock((min << 32) | max)`) depois do lock das carteiras e revalida a quitação dentro
+    dele, então duas quitações paralelas nunca passam da dívida.
+  - **Respostas**: a prévia ganhou `kind` e `debt` (`currency`, `amount`, `before`, `after`,
+    `debtorUserId`, `creditorUserId`, `debtorFirstName`, `creditorFirstName`); `TransactionInfo` e as
+    entradas do extrato ganharam `transferKind`, `debtCurrency` e `debtAmount`.
   - Índices `ix_transactions_source_account_id` e `ix_transactions_destination_account_id` (migration
     `AddTransactionAccountIndexes`, que renomeia os índices de FK criados pelo EF em `AddWalletsAndLedger`).
 
@@ -155,11 +183,15 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
   `conflito`, `regra_de_negocio`, `cotacao_indisponivel`, `permissao_insuficiente`, `erro_interno`.
 - Recursos: `finami://perfil`, `finami://carteiras`, `finami://familias`,
   `finami://notificacoes/nao-lidas`. Prompts: `resumo_do_mes`, `registrar_gasto`, `revisar_convites`.
-- Transferências (feature 006): `previa_transferencia` e `registrar_transferencia` aceitam `valor` (moeda
-  da origem) ou `valor_em_reais` (só bitcoin → bitcoin), nunca os dois; o destino deve ser da própria
-  pessoa ou de alguém da família (`destinos_de_transferencia`) e conversão real ↔ bitcoin só entre
-  carteiras da mesma pessoa. `dividas_da_pessoa` (sem `pessoa_id` = a pessoa conectada) mostra quem deve
-  a quem, por moeda. As instruções do servidor e o prompt `resumo_do_mes` explicam essas regras.
+- Transferências (features 006 e 007): `previa_transferencia` e `registrar_transferencia` aceitam `valor`
+  (moeda da origem) ou `valor_em_reais` (só bitcoin → bitcoin), nunca os dois; o destino deve ser da
+  própria pessoa ou de alguém da família (`destinos_de_transferencia`) e conversão real ↔ bitcoin só entre
+  carteiras da mesma pessoa. Entre pessoas diferentes, `tipo` (`emprestimo` | `quitacao` | `pagamento`;
+  sem ele, empréstimo) e, na quitação, `moeda_da_divida` (`BRL` | `BTC`) e `quitar_tudo`. A prévia
+  descreve o efeito na dívida (ex.: "Quitação: abate R$ 100,00 da dívida de Bruno com Ana (de R$ 100,00
+  para R$ 0,00), pela cotação ₿ 1 = R$ 500.000,00."). `dividas_da_pessoa` (sem `pessoa_id` = a pessoa
+  conectada) mostra quem deve a quem, por moeda: empréstimos menos quitações, sem pagamentos. As
+  instruções do servidor e o prompt `resumo_do_mes` explicam essas regras.
 - Fora do MCP (FR-020): senha, cadastro, login, exclusão de conta e gestão de conexões.
 
 ### Proteções
