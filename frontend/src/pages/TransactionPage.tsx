@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Eye } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LargeTitleHeader } from "../components/layout/LargeTitleHeader";
@@ -11,6 +11,7 @@ import { TransferKindPicker } from "../components/transaction/TransferKindPicker
 import { AmountUnit, DESCRIPTION_MAX, FocusReturn, SheetStep } from "../components/transaction/sheetModel";
 import type { ResolvedDestination } from "../components/transaction/sheetModel";
 import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
 import { useAuth } from "../hooks/useAuth";
 import { useBalance } from "../hooks/useBalance";
 import { useGroup } from "../hooks/useGroup";
@@ -37,7 +38,7 @@ import {
 } from "../utils/money";
 import { QuoteStatus } from "../types/quote";
 import { isQuoteUsable } from "../utils/quote";
-import { errorMessage, notifySuccess } from "../utils/notify";
+import { errorMessage, notifyError, notifySuccess } from "../utils/notify";
 import { WALLET_PARAM } from "../utils/transactionRoutes";
 import { groupWallets } from "../utils/walletGrouping";
 
@@ -86,7 +87,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const defaultWalletId = Number.isInteger(paramWalletId) && paramWalletId > 0 ? paramWalletId : null;
 
   const { session } = useAuth();
-  const { wallets, loaded, loading: walletsLoading, loadWallets, getTransferDestinations } = useWallet();
+  const { wallets, loaded, loading: walletsLoading, loadWallets, refreshWallets, getTransferDestinations } =
+    useWallet();
   const { groups, loadGroups } = useGroup();
   const { createIncome, createExpense, createTransfer, previewTransfer, ledgerVersion } = useTransaction();
   const { getUserDebts } = useBalance();
@@ -135,20 +137,50 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const [debtsError, setDebtsError] = useState<unknown>(null);
   const [debtsRetrying, setDebtsRetrying] = useState(false);
 
-  // Carteiras ativas que a pessoa controla, na ordem da Home (famílias A→Z, depois avulsas)
+  // Carteiras ativas em que a pessoa pode lançar, na ordem da Home (famílias A→Z, depois avulsas).
+  // Feature 008: vale `canCreateTransactions` (permissão "Pode lançar" na família), não só `canControl`.
   const controllable = useMemo<WalletInfo[]>(
     () =>
       groupWallets(
-        wallets.filter((w) => w.isActive && w.canControl),
+        wallets.filter((w) => w.isActive && w.canCreateTransactions),
         groups,
       ).flatMap((section) => section.wallets),
     [wallets, groups],
   );
 
+  // Sem carteira permitida por causa da permissão: a pessoa controla carteiras ativas, mas nenhuma
+  // permite lançar (components.md §12). Sem carteira nenhuma, vale o comportamento de antes.
+  const blockedWallets = useMemo(
+    () => wallets.filter((w) => w.isActive && w.canControl && !w.canCreateTransactions),
+    [wallets],
+  );
+  const readOnly = loaded && controllable.length === 0 && blockedWallets.length > 0;
+  /** As famílias já chegaram (ou falharam): o nome da família do estado vazio não vai mais aparecer depois */
+  const [groupsSettled, setGroupsSettled] = useState(groups.length > 0);
+  const readOnlyMessage = (() => {
+    if (!readOnly) return null;
+    const groupIds = new Set(blockedWallets.map((w) => w.groupId));
+    const [onlyGroupId] = [...groupIds];
+    if (groupIds.size === 1 && onlyGroupId != null) {
+      const name = groups.find((g) => g.groupId === onlyGroupId)?.name;
+      if (name) return t("transaction.readOnlyFamily", { name });
+      // Famílias ainda carregando: espera o nome em vez de trocar o título logo depois (REVIEW-008 M-6)
+      if (!groupsSettled) return null;
+    }
+    return t("transaction.noWritableWallet");
+  })();
+  const readOnlyId = useId();
+  /** Depois de um 403 de permissão a origem que sumiu fica vazia (não troca sozinha por outra) */
+  const [keepSourceEmpty, setKeepSourceEmpty] = useState(false);
+
   // Garante carteiras e famílias (a página pode abrir direto pela URL)
   useEffect(() => {
     if (!loaded && !walletsLoading) loadWallets().catch(() => undefined);
-    if (groups.length === 0) loadGroups().catch(() => undefined);
+    if (groups.length === 0) {
+      loadGroups()
+        .catch(() => undefined)
+        .finally(() => setGroupsSettled(true));
+    }
     // Só na montagem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -157,12 +189,16 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const userId = session?.user.userId ?? null;
   useEffect(() => {
     if (sourceWalletId !== null && controllable.some((w) => w.walletId === sourceWalletId)) return;
+    if (keepSourceEmpty) {
+      if (sourceWalletId !== null) setSourceWalletId(null);
+      return;
+    }
     const preferred =
       controllable.find((w) => w.walletId === defaultWalletId) ??
       controllable.find((w) => w.ownerUserId === userId) ??
       controllable[0];
     if (preferred) setSourceWalletId(preferred.walletId);
-  }, [controllable, defaultWalletId, sourceWalletId, userId]);
+  }, [controllable, defaultWalletId, sourceWalletId, userId, keepSourceEmpty]);
 
   // Ao trocar de passo (não na abertura), o foco vai para o elemento com data-autofocus
   const firstStep = useRef(true);
@@ -564,6 +600,20 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     }
   };
 
+  /**
+   * 403 ao enviar: a permissão "Pode lançar" mudou durante o preenchimento (feature 008). Toast com a
+   * mensagem da API e recarrega as carteiras; se a origem sumir, o De fica vazio; se nenhuma sobrar,
+   * a página cai no estado vazio "Você só pode consultar…".
+   */
+  const isPermissionError = (err: unknown): boolean => isApiError(err) && err.status === 403;
+  const handlePermissionError = (err: unknown) => {
+    notifyError(err);
+    setKeepSourceEmpty(true);
+    setPreview(null);
+    setStep(SheetStep.Form);
+    void refreshWallets().catch(() => undefined);
+  };
+
   const loadPreview = async (body: TransferInfo) => {
     setPreview(null);
     setPreviewBlocked(false);
@@ -573,6 +623,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     } catch (err) {
       if (isApiError(err) && err.status === 503) {
         setPreviewBlocked(true);
+      } else if (isPermissionError(err)) {
+        handlePermissionError(err);
       } else {
         setServerError(errorMessage(err));
         setStep(SheetStep.Form);
@@ -623,6 +675,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
         setStep(SheetStep.Form);
       } else if (step === SheetStep.Preview && isApiError(err) && err.status === 503) {
         setPreviewBlocked(true);
+      } else if (isPermissionError(err)) {
+        handlePermissionError(err);
       } else {
         setServerError(errorMessage(err));
         setStep(SheetStep.Form);
@@ -637,7 +691,8 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
     if (submittingRef.current) return;
     // Sem destinos: o botão fica `aria-disabled` (focável, com a explicação) e não faz nada (M-1)
     // Quitação sem dívida (ou com as dívidas ainda carregando): idem, com o aviso / "Carregando…" (feature 007)
-    if (step === SheetStep.Form && (noDestinations || noDebt || debtsLoading)) return;
+    // Sem carteira em que possa lançar (feature 008): idem, com o estado vazio
+    if (step === SheetStep.Form && (readOnly || noDestinations || noDebt || debtsLoading)) return;
     // Sem internet: avisa e não envia (feature 005, R-05)
     if (onlineAction.blockIfOffline()) return;
     if (step === SheetStep.Preview) {
@@ -723,18 +778,25 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
   const noDebtBlocked = step === SheetStep.Form && noDebt;
   // Dívidas carregando: não segue como Quitação antes de o painel resolver a moeda (REVIEW-007 M-3)
   const debtsLoadingBlocked = step === SheetStep.Form && debtsLoading;
-  const formAriaBlocked = noDestinationsBlocked || noDebtBlocked || debtsLoadingBlocked;
+  // Só consulta (feature 008): o botão fica no lugar, `aria-disabled`, explicado pelo estado vazio
+  const readOnlyBlocked = step === SheetStep.Form && readOnly;
+  const formAriaBlocked = readOnlyBlocked || noDestinationsBlocked || noDebtBlocked || debtsLoadingBlocked;
   const primaryDisabled =
     step === SheetStep.Preview
       ? previewLoading || previewBlocked || !preview
       : hasBlockingError && !formAriaBlocked;
-  const primaryDescribedBy = noDestinationsBlocked
-    ? noDestinationsId
-    : noDebtBlocked
-      ? noDebtId
-      : debtsLoadingBlocked
-        ? debtsLoadingId
-        : undefined;
+  // Enquanto a mensagem espera o nome da família, o id ainda não existe: sem `aria-describedby`
+  const primaryDescribedBy = readOnlyBlocked
+    ? readOnlyMessage
+      ? readOnlyId
+      : undefined
+    : noDestinationsBlocked
+      ? noDestinationsId
+      : noDebtBlocked
+        ? noDebtId
+        : debtsLoadingBlocked
+          ? debtsLoadingId
+          : undefined;
   // Foco ao voltar para o formulário: "Continuar" vindo da prévia; sem destinos, o Para não existe e o
   // foco que iria para ele fica no botão (que explica o porquê). "Informar em bitcoin" tem prioridade.
   const primaryAutofocus =
@@ -812,7 +874,18 @@ const TransactionPage = ({ kind }: TransactionPageProps) => {
           </div>
         ) : null}
 
-        {step === SheetStep.Form ? (
+        {readOnlyBlocked && readOnlyMessage ? (
+          <div id={readOnlyId}>
+            <EmptyState
+              icon={Eye}
+              className="pt-8 pb-6"
+              title={readOnlyMessage}
+              description={t("transaction.readOnlyHint")}
+            />
+          </div>
+        ) : null}
+
+        {step === SheetStep.Form && !readOnly ? (
           <FormStep
             kind={kind}
             sourceWallet={sourceWallet}

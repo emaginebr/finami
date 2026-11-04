@@ -63,7 +63,8 @@ public class NotificationServiceTests
                 return targets.Count;
             });
 
-        _service = new NotificationService(_repository.Object, new MarkReadInfoValidator());
+        _service = new NotificationService(_repository.Object, new MarkReadInfoValidator(),
+            new Mock<IAccountRepository<Account>>().Object);
     }
 
     [Fact]

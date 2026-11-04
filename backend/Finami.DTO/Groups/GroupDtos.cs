@@ -23,6 +23,10 @@ public class GroupInfo
     [JsonPropertyName("members")]
     public List<GroupMemberInfo> Members { get; set; } = new();
 
+    /// <summary>Feature 008: permissões de quem consulta nesta família (responsável: tudo true).</summary>
+    [JsonPropertyName("myPermissions")]
+    public MemberPermissionsResult MyPermissions { get; set; } = new();
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 }
@@ -43,6 +47,34 @@ public class GroupMemberInfo
 
     [JsonPropertyName("joinedAt")]
     public DateTime JoinedAt { get; set; }
+
+    /// <summary>Feature 008: "Pode lançar" (responsável: sempre true).</summary>
+    [JsonPropertyName("canCreateTransactions")]
+    public bool CanCreateTransactions { get; set; }
+
+    /// <summary>Feature 008: "Pode estornar" (responsável: sempre true).</summary>
+    [JsonPropertyName("canReverse")]
+    public bool CanReverse { get; set; }
+}
+
+/// <summary>Feature 008: permissões efetivas de um membro numa família.</summary>
+public class MemberPermissionsResult
+{
+    [JsonPropertyName("canCreateTransactions")]
+    public bool CanCreateTransactions { get; set; }
+
+    [JsonPropertyName("canReverse")]
+    public bool CanReverse { get; set; }
+}
+
+/// <summary>Feature 008: corpo do PUT /api/groups/{groupId}/members/{userId}/permissions (os dois obrigatórios).</summary>
+public class MemberPermissionsInfo
+{
+    [JsonPropertyName("canCreateTransactions")]
+    public bool? CanCreateTransactions { get; set; }
+
+    [JsonPropertyName("canReverse")]
+    public bool? CanReverse { get; set; }
 }
 
 public class GroupInsertInfo

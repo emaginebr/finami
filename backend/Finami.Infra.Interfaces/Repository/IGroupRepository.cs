@@ -16,4 +16,10 @@ public interface IGroupRepository<TModel> where TModel : class
     Task<TModel> UpdateAsync(TModel group);
     Task AddMemberAsync(long groupId, long userId);
     Task RemoveMemberAsync(long groupId, long userId);
+
+    /// <summary>
+    /// Feature 008 (R-02): grava um registro do histórico de permissões (só inserção). O id gerado fica no próprio
+    /// objeto, para a notificação apontar para ele.
+    /// </summary>
+    Task InsertPermissionChangeAsync<TChange>(TChange change) where TChange : class;
 }

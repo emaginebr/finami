@@ -89,6 +89,8 @@ export interface TransactionInfo {
   debtCurrency?: Currency | null;
   /** Valor emprestado ou abatido da dívida, na moeda da dívida; `null` sem efeito */
   debtAmount?: number | null;
+  /** Quem consulta pode estornar este lançamento (feature 008, calculado no servidor) */
+  canReverse: boolean;
 }
 
 /** Corpo de `POST /api/transactions/income` e `/expense` */

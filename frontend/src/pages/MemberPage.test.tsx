@@ -69,8 +69,8 @@ const RESULT = {
 const SELF_RESULT = { ...RESULT, userId: USER_ID, firstName: "Ana", lastName: "Silva" } as UserGroupBalancesResult;
 
 const members = [
-  { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
-  { userId: 8, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z" },
+  { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
+  { userId: 8, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
 ];
 
 /** Silva: Ana é responsável; Praia: o responsável é outra pessoa */

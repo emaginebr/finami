@@ -73,6 +73,31 @@ public class GroupWriteTools : McpToolBase
             g => $"Membro {pessoa_id} retirado da família {g.Name}.",
             _ => pessoa_id);
 
+    [McpServerTool(Name = "alterar_permissoes_membro", Title = "Alterar permissões de um membro", ReadOnly = false,
+        Destructive = false, Idempotent = true, OpenWorld = false)]
+    [Description("Liga ou desliga as permissões de um membro da família: lançar (receitas, despesas e " +
+                 "transferências nas carteiras da família) e estornar (qualquer lançamento das carteiras da " +
+                 "família). Só o responsável pela família pode usar. Sem 'lançar', o membro fica só consultando " +
+                 "aquela família. Confirme com a pessoa antes de mudar.")]
+    public Task<CallToolResult> AlterarPermissoesMembro(ClaimsPrincipal user,
+        [Description("Id da família (ex.: 3). Use listar_familias.")] long familia_id,
+        [Description("Id do membro (ex.: 12). Use obter_familia.")] long pessoa_id,
+        [Description("Pode criar lançamentos (receitas, despesas e transferências) na família.")] bool pode_lancar,
+        [Description("Pode estornar lançamentos das carteiras da família.")] bool pode_estornar) =>
+        ExecuteWriteAsync(user, "alterar_permissoes_membro", null,
+            async userId => McpGroupResult.From(await _groupService.SetMemberPermissionsAsync(userId, familia_id,
+                pessoa_id, new MemberPermissionsInfo { CanCreateTransactions = pode_lancar, CanReverse = pode_estornar })),
+            g =>
+            {
+                var member = g.Members.FirstOrDefault(m => m.UserId == pessoa_id);
+                var name = member == null ? $"Membro {pessoa_id}" : member.FirstName;
+                var state = member == null
+                    ? GroupReadTools.PermissionsText(pode_lancar, pode_estornar)
+                    : GroupReadTools.PermissionsText(member.CanCreateTransactions, member.CanReverse);
+                return $"{name} agora: {state}. Família {g.Name}.";
+            },
+            _ => pessoa_id);
+
     [McpServerTool(Name = "verificar_email_para_familia", Title = "Verificar email para a família", ReadOnly = true,
         Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("Verifica um email antes de incluir alguém na família (apenas o responsável). status: " +

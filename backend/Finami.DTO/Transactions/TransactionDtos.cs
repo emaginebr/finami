@@ -105,4 +105,11 @@ public class TransactionInfo
     /// <summary>Feature 007: valor emprestado ou abatido da dívida, na moeda da dívida; null sem efeito.</summary>
     [JsonPropertyName("debtAmount")]
     public decimal? DebtAmount { get; set; }
+
+    /// <summary>
+    /// Feature 008 (R-07): quem consulta pode estornar este lançamento agora. False se já foi estornado ou se é um
+    /// estorno.
+    /// </summary>
+    [JsonPropertyName("canReverse")]
+    public bool CanReverse { get; set; }
 }

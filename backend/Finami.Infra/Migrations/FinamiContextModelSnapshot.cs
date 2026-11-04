@@ -304,6 +304,18 @@ namespace Finami.Infra.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("GroupMemberId"));
 
+                    b.Property<bool>("CanCreateTransactions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("can_create_transactions");
+
+                    b.Property<bool>("CanReverse")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("can_reverse");
+
                     b.Property<long>("GroupId")
                         .HasColumnType("bigint")
                         .HasColumnName("group_id");
@@ -329,6 +341,62 @@ namespace Finami.Infra.Migrations
                         .HasDatabaseName("ix_group_members_group_user");
 
                     b.ToTable("group_members", (string)null);
+                });
+
+            modelBuilder.Entity("Finami.Domain.Models.GroupMemberPermissionChange", b =>
+                {
+                    b.Property<long>("GroupMemberPermissionChangeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_member_permission_change_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("GroupMemberPermissionChangeId"));
+
+                    b.Property<bool>("AfterCanCreateTransactions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("after_can_create_transactions");
+
+                    b.Property<bool>("AfterCanReverse")
+                        .HasColumnType("boolean")
+                        .HasColumnName("after_can_reverse");
+
+                    b.Property<bool>("BeforeCanCreateTransactions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("before_can_create_transactions");
+
+                    b.Property<bool>("BeforeCanReverse")
+                        .HasColumnType("boolean")
+                        .HasColumnName("before_can_reverse");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<long>("ChangedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("changed_by_user_id");
+
+                    b.Property<long>("GroupId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_id");
+
+                    b.Property<long>("MemberUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("member_user_id");
+
+                    b.HasKey("GroupMemberPermissionChangeId")
+                        .HasName("group_member_permission_changes_pkey");
+
+                    b.HasIndex("ChangedByUserId")
+                        .HasDatabaseName("ix_group_member_permission_changes_changed_by_user_id");
+
+                    b.HasIndex("MemberUserId")
+                        .HasDatabaseName("ix_group_member_permission_changes_member_user_id");
+
+                    b.HasIndex("GroupId", "MemberUserId", "ChangedAt")
+                        .HasDatabaseName("ix_group_member_permission_changes_group_member");
+
+                    b.ToTable("group_member_permission_changes", (string)null);
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.LedgerEntry", b =>
@@ -504,9 +572,17 @@ namespace Finami.Infra.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("group_invitation_id");
 
+                    b.Property<long?>("PermissionChangeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("permission_change_id");
+
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("read_at");
+
+                    b.Property<long?>("TransactionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("transaction_id");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer")
@@ -527,6 +603,12 @@ namespace Finami.Infra.Migrations
 
                     b.HasIndex("GroupInvitationId")
                         .HasDatabaseName("ix_notifications_group_invitation_id");
+
+                    b.HasIndex("PermissionChangeId")
+                        .HasDatabaseName("ix_notifications_permission_change_id");
+
+                    b.HasIndex("TransactionId")
+                        .HasDatabaseName("ix_notifications_transaction_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_notifications_unread")
@@ -1069,6 +1151,30 @@ namespace Finami.Infra.Migrations
                         .HasConstraintName("fk_user_group_member");
                 });
 
+            modelBuilder.Entity("Finami.Domain.Models.GroupMemberPermissionChange", b =>
+                {
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_member_permission_changes_changed_by");
+
+                    b.HasOne("Finami.Domain.Models.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_member_permission_changes_group");
+
+                    b.HasOne("Finami.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("MemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_member_permission_changes_member");
+                });
+
             modelBuilder.Entity("Finami.Domain.Models.LedgerEntry", b =>
                 {
                     b.HasOne("Finami.Domain.Models.Account", null)
@@ -1127,6 +1233,18 @@ namespace Finami.Infra.Migrations
                         .HasForeignKey("GroupInvitationId")
                         .HasConstraintName("fk_group_invitation_notification");
 
+                    b.HasOne("Finami.Domain.Models.GroupMemberPermissionChange", "PermissionChange")
+                        .WithMany()
+                        .HasForeignKey("PermissionChangeId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_group_member_permission_change_notification");
+
+                    b.HasOne("Finami.Domain.Models.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_transaction_notification");
+
                     b.HasOne("Finami.Domain.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -1138,6 +1256,10 @@ namespace Finami.Infra.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Invitation");
+
+                    b.Navigation("PermissionChange");
+
+                    b.Navigation("Transaction");
                 });
 
             modelBuilder.Entity("Finami.Domain.Models.OAuthAuthorizationRequest", b =>

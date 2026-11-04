@@ -17,8 +17,8 @@ const GROUP = makeGroup({
   responsibleUserId: 8,
   statementVisibility: StatementVisibility.AllMembers,
   members: [
-    { userId: 8, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z" },
-    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
+    { userId: 8, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
+    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: true },
   ],
 });
 
@@ -121,6 +121,29 @@ describe("GroupPage", () => {
 
     expect(screen.queryByRole("button", { name: "Gerenciar família" })).not.toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("resumo das permissões junto ao nome de quem não é responsável (feature 008)", async () => {
+    renderGroup(DetailLevel.Full);
+
+    const members = await screen.findByRole("region", { name: "Membros" });
+    // Nome acessível com vírgulas: o leitor não fala o " · " (REVIEW-008 M-1)
+    const ana = await within(members).findByRole("link", {
+      name: /^Ana Silva, pode lançar, pode estornar, você, total/,
+    });
+    expect(ana).toHaveTextContent("Pode lançar · Pode estornar");
+    // Quebra entre as partes, nunca no meio nem cortado (REVIEW-008 I-1)
+    const create = within(ana).getByText("Pode lançar");
+    expect(create).toHaveClass("whitespace-nowrap");
+    expect(within(ana).getByText("Pode estornar")).toHaveClass("whitespace-nowrap");
+    expect(create.parentElement).toHaveClass("break-words");
+    expect(create.parentElement).not.toHaveClass("truncate");
+    expect(within(members).getByRole("link", { name: /^Carlos Souza, responsável/ })).not.toHaveTextContent(
+      "Pode lançar",
+    );
+    expect(
+      screen.getByText(/Só o responsável pode incluir ou retirar pessoas, mudar permissões/),
+    ).toBeInTheDocument();
   });
 
   it("Summary: valores por membro, sem lista de carteiras", async () => {

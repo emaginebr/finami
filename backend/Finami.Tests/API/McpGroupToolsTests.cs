@@ -182,4 +182,81 @@ public class McpGroupToolsTests
         Text(await Groups().CriarFamilia(Principal(), "Família Silva")).Should().Contain("você é o responsável");
         Text(await Groups().CriarPessoaNaFamilia(Principal(), 3, "Pedro", "Silva")).Should().Contain("Pedro Silva");
     }
+
+    // ---------------- Feature 008 (T040): permissões dos membros ----------------
+
+    private GroupReadTools ReadGroups() =>
+        new(_groups.Object, new Mock<IUserService>().Object, NullLogger<GroupReadTools>.Instance);
+
+    private static GroupInfo Family(bool caioCreates, bool caioReverses, bool responsible = true) => new()
+    {
+        GroupId = 3, Name = "Família Silva", ResponsibleUserId = USER, IsResponsible = responsible,
+        MyPermissions = new MemberPermissionsResult { CanCreateTransactions = true, CanReverse = responsible },
+        Members = new List<GroupMemberInfo>
+        {
+            new() { UserId = USER, FirstName = "Ana", LastName = "Silva", CanCreateTransactions = true, CanReverse = true },
+            new() { UserId = 12, FirstName = "Caio", LastName = "Silva", CanCreateTransactions = caioCreates, CanReverse = caioReverses }
+        }
+    };
+
+    [Fact]
+    public async Task Responsible_changes_member_permissions()
+    {
+        _groups.Setup(g => g.SetMemberPermissionsAsync(USER, 3, 12,
+                It.Is<MemberPermissionsInfo>(i => i.CanCreateTransactions == false && i.CanReverse == true)))
+            .ReturnsAsync(Family(caioCreates: false, caioReverses: true));
+
+        var result = await Groups().AlterarPermissoesMembro(Principal(), 3, 12, pode_lancar: false, pode_estornar: true);
+
+        result.IsError.Should().NotBe(true);
+        Text(result).Should().Be("Caio agora: só consulta · pode estornar. Família Família Silva.");
+        var caio = Structured(result).GetProperty("permissoes_membros").EnumerateArray()
+            .Single(m => m.GetProperty("pessoa_id").GetInt64() == 12);
+        caio.GetProperty("pode_lancar").GetBoolean().Should().BeFalse();
+        caio.GetProperty("pode_estornar").GetBoolean().Should().BeTrue();
+        _kit.AuditLog.Should().ContainSingle(a => a.Tool == "alterar_permissoes_membro" && a.Outcome == "sucesso"
+                                                  && a.TargetId == 12);
+    }
+
+    [Fact]
+    public async Task Member_changing_permissions_gets_sem_permissao()
+    {
+        const string message = "Apenas o responsável pelo grupo pode realizar esta operação.";
+        _groups.Setup(g => g.SetMemberPermissionsAsync(USER, 3, 12, It.IsAny<MemberPermissionsInfo>()))
+            .ThrowsAsync(new ForbiddenException(message));
+
+        var result = await Groups().AlterarPermissoesMembro(Principal(), 3, 12, true, true);
+
+        Code(result).Should().Be("sem_permissao");
+        Text(result).Should().Be(message);
+        _kit.AuditLog.Should().ContainSingle(a => a.Tool == "alterar_permissoes_membro" && a.Outcome == "sem_permissao");
+    }
+
+    [Fact]
+    public async Task Changing_permissions_requires_write_scope()
+    {
+        var result = await Groups().AlterarPermissoesMembro(Principal(READ_ONLY), 3, 12, true, true);
+
+        Code(result).Should().Be("permissao_insuficiente");
+        _groups.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Get_family_returns_member_permissions_and_mine()
+    {
+        _groups.Setup(g => g.GetAsync(USER, 3)).ReturnsAsync(Family(caioCreates: false, caioReverses: false, responsible: false));
+
+        var result = await ReadGroups().ObterFamilia(Principal(READ_ONLY), 3);
+
+        var data = Structured(result);
+        data.GetProperty("minhas_permissoes").GetProperty("pode_lancar").GetBoolean().Should().BeTrue();
+        data.GetProperty("minhas_permissoes").GetProperty("pode_estornar").GetBoolean().Should().BeFalse();
+        var members = data.GetProperty("permissoes_membros").EnumerateArray().ToList();
+        members.Should().HaveCount(2);
+        members.Single(m => m.GetProperty("pessoa_id").GetInt64() == 12).GetProperty("pode_lancar").GetBoolean()
+            .Should().BeFalse();
+        data.GetProperty("myPermissions").GetProperty("canCreateTransactions").GetBoolean().Should().BeTrue();
+        Text(result).Should().Contain("Caio Silva (id 12, só consulta · não pode estornar)")
+            .And.Contain("Suas permissões: pode lançar · não pode estornar.");
+    }
 }

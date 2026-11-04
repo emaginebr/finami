@@ -34,7 +34,8 @@ public class TransactionTools : McpToolBase
         Idempotent = false, OpenWorld = false)]
     [Description("Registra uma entrada de dinheiro vinda de fora do app (salário, venda, presente) numa carteira. " +
                  "O valor é na moeda da carteira: reais com até 2 casas (ex.: 3500.00) ou bitcoin com até 8 " +
-                 "(ex.: 0.0015). Confirme carteira e valor com a pessoa antes. " + KEY_HINT)]
+                 "(ex.: 0.0015). " + CREATE_PERMISSION_HINT + " Confirme carteira e valor com a pessoa antes. " +
+                 KEY_HINT)]
     public Task<CallToolResult> RegistrarReceita(ClaimsPrincipal user,
         [Description("Id da carteira que recebe (ex.: 5). Use listar_carteiras.")] long carteira_id,
         [Description("Valor positivo na moeda da carteira (ex.: 3500.00).")] decimal valor,
@@ -52,7 +53,8 @@ public class TransactionTools : McpToolBase
         Idempotent = false, OpenWorld = false)]
     [Description("Registra uma saída de dinheiro para fora do app (compra, conta, pagamento) de uma carteira. " +
                  "O valor é na moeda da carteira: reais com até 2 casas (ex.: 80.00) ou bitcoin com até 8. O " +
-                 "saldo não pode ficar negativo. Confirme carteira e valor com a pessoa antes. " + KEY_HINT)]
+                 "saldo não pode ficar negativo. " + CREATE_PERMISSION_HINT + " Confirme carteira e valor com a " +
+                 "pessoa antes. " + KEY_HINT)]
     public Task<CallToolResult> RegistrarDespesa(ClaimsPrincipal user,
         [Description("Id da carteira que paga (ex.: 5). Use listar_carteiras.")] long carteira_id,
         [Description("Valor positivo na moeda da carteira (ex.: 80.00).")] decimal valor,
@@ -65,6 +67,12 @@ public class TransactionTools : McpToolBase
             t => $"Despesa de {McpFormat.Money(t.SourceAmount, t.Source.Currency)} registrada em " +
                  $"{t.Source.Name}.{BalanceText(t)}",
             t => t.TransactionId);
+
+    /// <summary>Feature 008 (contracts/mcp.md): permissão de lançar na família da carteira (de origem).</summary>
+    internal const string CREATE_PERMISSION_HINT =
+        "Se a carteira (de origem) é de uma família, é preciso ter permissão de lançar nela (o responsável sempre " +
+        "tem); sem ela, a resposta é sem_permissao com a mensagem do app. Receber numa carteira nunca depende de " +
+        "permissão.";
 
     /// <summary>Feature 007 (contracts/mcp.md): texto de regras das duas ferramentas de transferência.</summary>
     internal const string TRANSFER_RULES =
@@ -100,7 +108,8 @@ public class TransactionTools : McpToolBase
     [Description("Simula uma transferência sem gravar nada: mostra o tipo (Transfer, BtcPurchase ou BtcSale), o " +
                  "valor que sai da origem, o valor que chega no destino, a cotação usada quando há conversão " +
                  "entre BRL e BTC ou quando o valor foi convertido, e, entre pessoas, o tipo e o efeito na dívida " +
-                 "(antes e depois). Use antes de registrar_transferencia para confirmar com a pessoa. " + TRANSFER_RULES)]
+                 "(antes e depois). Use antes de registrar_transferencia para confirmar com a pessoa. " +
+                 TRANSFER_RULES + " " + CREATE_PERMISSION_HINT)]
     public Task<CallToolResult> PreviaTransferencia(ClaimsPrincipal user,
         [Description("Id da carteira de origem (ex.: 5).")] long carteira_origem_id,
         [Description(DESTINATION_HINT)] long carteira_destino_id,
@@ -121,7 +130,8 @@ public class TransactionTools : McpToolBase
     [Description("Transfere entre carteiras da própria pessoa ou para a carteira de alguém da família. O valor é na " +
                  "moeda da carteira de origem; BRL→BTC vira compra e BTC→BRL vira venda na cotação atual. Entre " +
                  "carteiras de bitcoin, dá para informar valor_em_reais. O saldo pode ficar negativo. Use " +
-                 "previa_transferencia e confirme com a pessoa antes. " + TRANSFER_RULES + " " + KEY_HINT)]
+                 "previa_transferencia e confirme com a pessoa antes. " + TRANSFER_RULES + " " +
+                 CREATE_PERMISSION_HINT + " " + KEY_HINT)]
     public Task<CallToolResult> RegistrarTransferencia(ClaimsPrincipal user,
         [Description("Id da carteira de origem (ex.: 5).")] long carteira_origem_id,
         [Description(DESTINATION_HINT)] long carteira_destino_id,
@@ -150,9 +160,10 @@ public class TransactionTools : McpToolBase
 
     [McpServerTool(Name = "estornar_lancamento", Title = "Estornar lançamento", ReadOnly = false,
         Destructive = true, Idempotent = true, OpenWorld = false)]
-    [Description("Estorna um lançamento: cria um lançamento inverso que desfaz o efeito no saldo (o original nunca " +
-                 "é apagado). Um lançamento só pode ser estornado uma vez e um estorno não pode ser estornado. " +
-                 "Confirme com a pessoa antes.")]
+    [Description("Estorna qualquer tipo de lançamento: cria um lançamento inverso que desfaz o efeito no saldo e " +
+                 "na dívida (o original nunca é apagado). Precisa ser o responsável pela família, ter permissão de " +
+                 "estornar nela ou ser o titular de uma carteira pessoal do lançamento. Um lançamento só pode ser " +
+                 "estornado uma vez e um estorno não pode ser estornado. Confirme com a pessoa antes.")]
     public Task<CallToolResult> EstornarLancamento(ClaimsPrincipal user,
         [Description("Id do lançamento a estornar (transactionId, ex.: 120).")] long lancamento_id,
         [Description("Opcional: motivo do estorno (ex.: \"Lançado em duplicidade\").")] string? motivo = null) =>

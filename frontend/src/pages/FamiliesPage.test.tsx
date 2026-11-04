@@ -9,7 +9,7 @@ import type { GroupInfo } from "../types/group";
 import { USER_ID, makeGroup, storeSession } from "../test/fixtures";
 import { axe, mockFetch, renderWithProviders } from "../test/utils";
 
-const ANA = { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" };
+const ANA = { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false };
 
 const SILVA = makeGroup({ groupId: 3, name: "Silva", members: [ANA] });
 const PRAIA = makeGroup({
@@ -18,7 +18,7 @@ const PRAIA = makeGroup({
   isResponsible: false,
   responsibleUserId: 8,
   statementVisibility: StatementVisibility.ResponsibleOnly,
-  members: [{ userId: 8, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z" }, ANA],
+  members: [{ userId: 8, firstName: "Carlos", lastName: "Souza", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false }, ANA],
 });
 
 const balancesOf = (group: GroupInfo, totalBrl: number | null): GroupBalancesResult => ({

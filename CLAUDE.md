@@ -14,6 +14,7 @@ Auto-generated from all feature plans. Last updated: 2026-11-03
 - C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas. (006-family-debts-transfers)
 - PostgreSQL — sem tabelas novas; migration `AddTransactionAccountIndexes` (índices em `transactions.source_account_id`/`destination_account_id`) (006-family-debts-transfers)
 - PostgreSQL. Sem tabelas novas; a migration `AddTransferKindAndDebt` traz 3 colunas (007-loan-transfer-types)
+- PostgreSQL. Migration `AddMemberPermissions`: colunas `can_create_transactions`/`can_reverse` em `group_members`, tabela `group_member_permission_changes` e colunas `permission_change_id`/`transaction_id` em `notifications` (008-reversal-family-permissions)
 
 - C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado) + ASP.NET Core 8 Web API, EF Core 9.x + Npgsql.EntityFrameworkCore.PostgreSQL 9.x, Swashbuckle 8.x, Microsoft.AspNetCore.Authentication.JwtBearer 8.x, Google.Apis.Auth, Microsoft.Extensions.Identity.Core (PasswordHasher), FluentValidation (001-finami-backend-core)
 
@@ -34,9 +35,9 @@ tests/
 C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado): Follow standard conventions
 
 ## Recent Changes
+- 008-reversal-family-permissions: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
 - 007-loan-transfer-types: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
 - 006-family-debts-transfers: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
-- 005-pwa-webapp: Added TypeScript 5.8 / React 18.3 (frontend); backend sem mudanças + existentes + **`vite-plugin-pwa`** (dev, compatível com Vite 6) e **`workbox-window`** 7.x (runtime, usado pelo registro do plugin); dev: **`fake-indexeddb`** (testes)
 
 
 <!-- MANUAL ADDITIONS START -->

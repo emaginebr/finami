@@ -46,6 +46,12 @@ public class WalletInfo
     [JsonPropertyName("canControl")]
     public bool CanControl { get; set; }
 
+    /// <summary>
+    /// Feature 008 (R-07): quem consulta pode lançar com origem nesta carteira (depósito, saque, transferência).
+    /// </summary>
+    [JsonPropertyName("canCreateTransactions")]
+    public bool CanCreateTransactions { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 }

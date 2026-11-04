@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -26,6 +27,16 @@ export interface ConfirmModalProps {
   loading?: boolean;
   /** Texto visível no botão de confirmar durante `loading` (ex.: "Desconectando…") */
   loadingLabel?: string;
+  /**
+   * Bloco extra entre a descrição e os botões (ex.: "O que acontece" do estorno, feature 008).
+   * Entra na descrição acessível do `alertdialog`, junto com `description`.
+   */
+  details?: ReactNode;
+  /**
+   * Foco ao fechar (Radix `onCloseAutoFocus`). Padrão: volta ao gatilho. Use `event.preventDefault()` e
+   * foque outro elemento quando o gatilho vai sumir (ex.: "Estornar" depois de um erro definitivo).
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /**
@@ -43,6 +54,8 @@ export const ConfirmModal = ({
   tone = ConfirmTone.Default,
   loading = false,
   loadingLabel,
+  details,
+  onCloseAutoFocus,
 }: ConfirmModalProps) => {
   const { t } = useTranslation();
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -75,7 +88,8 @@ export const ConfirmModal = ({
     <Modal open={open} onOpenChange={(next) => (loading ? undefined : onOpenChange(next))}>
       <ModalContent
         role="alertdialog"
-        {...(description ? {} : { "aria-describedby": undefined })}
+        {...(description || details ? {} : { "aria-describedby": undefined })}
+        onCloseAutoFocus={onCloseAutoFocus}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           cancelRef.current?.focus();
@@ -88,7 +102,17 @@ export const ConfirmModal = ({
             ) : null}
             {title}
           </ModalTitle>
-          {description ? <ModalDescription>{description}</ModalDescription> : null}
+          {details ? (
+            // Descrição + bloco extra no mesmo elemento de descrição do Radix: o leitor lê os dois ao abrir
+            <ModalDescription asChild>
+              <div>
+                {description ? <p className="m-0">{description}</p> : null}
+                {details}
+              </div>
+            </ModalDescription>
+          ) : description ? (
+            <ModalDescription>{description}</ModalDescription>
+          ) : null}
         </ModalHeader>
         <ModalFooter>
           <Button

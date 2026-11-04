@@ -16,6 +16,10 @@ public class LedgerTestContext
     public Mock<IUserRepository<User>> Users { get; } = new();
     public Mock<IUnitOfWork> UnitOfWork { get; } = new();
     public Mock<IAccessPolicy> AccessPolicy { get; } = new();
+    public Mock<INotificationRepository<Notification>> Notifications { get; } = new();
+
+    /// <summary>Notificações gravadas (feature 008: estorno feito por outra pessoa).</summary>
+    public List<Notification> NotificationsInserted { get; } = new();
 
     public Dictionary<long, Account> AccountStore { get; } = new();
     public Dictionary<long, decimal> Balances { get; } = new();
@@ -80,6 +84,32 @@ public class LedgerTestContext
                 : throw new Finami.Domain.Exceptions.ForbiddenException());
         AccessPolicy.Setup(p => p.AreFamilyAsync(It.IsAny<long>(), It.IsAny<long>()))
             .ReturnsAsync((long owner, long other) => owner == other || Families.Contains((owner, other)));
+
+        // Feature 008: sem famílias, as regras novas equivalem às de controle do titular (o responsável e as
+        // permissões da família são testados com a política real em AccessPolicyPermissionsTests).
+        AccessPolicy.Setup(p => p.CanCreateTransactionsAsync(It.IsAny<long>(), It.IsAny<Account>()))
+            .ReturnsAsync((long userId, Account a) => a.IsWallet && a.UserId == userId);
+        AccessPolicy.Setup(p => p.EnsureCanCreateTransactionsAsync(It.IsAny<long>(), It.IsAny<Account>()))
+            .Returns((long userId, Account a) => AccessPolicy.Object.EnsureCanControlWalletAsync(userId, a));
+        AccessPolicy.Setup(p => p.CanViewTransactionAsync(It.IsAny<long>(), It.IsAny<IEnumerable<Account>>()))
+            .ReturnsAsync((long userId, IEnumerable<Account> accounts) =>
+                accounts.Any(a => a.IsWallet && a.UserId == userId));
+        AccessPolicy.Setup(p => p.CanReverseAsync(It.IsAny<long>(), It.IsAny<Transaction>(),
+                It.IsAny<IEnumerable<Account>>(), It.IsAny<bool>()))
+            .ReturnsAsync((long userId, Transaction t, IEnumerable<Account> accounts, bool reversed) =>
+                t.Type != TransactionType.Reversal && !reversed && accounts.Any(a => a.IsWallet && a.UserId == userId));
+        AccessPolicy.Setup(p => p.EnsureCanReverseAsync(It.IsAny<long>(), It.IsAny<IEnumerable<Account>>()))
+            .Returns((long userId, IEnumerable<Account> accounts) => accounts.Any(a => a.IsWallet && a.UserId == userId)
+                ? Task.CompletedTask
+                : throw new Finami.Domain.Exceptions.ForbiddenException("Você não tem permissão sobre esta transação."));
+
+        Notifications.Setup(r => r.InsertAsync(It.IsAny<Notification>()))
+            .ReturnsAsync((Notification n) =>
+            {
+                n.NotificationId = NotificationsInserted.Count + 1;
+                NotificationsInserted.Add(n);
+                return n;
+            });
     }
 
     public Dictionary<long, User> UserStore { get; } = new();
@@ -125,7 +155,51 @@ public class LedgerTestContext
         return quote;
     }
 
+    // ---------------- Feature 008: política real com famílias em memória ----------------
+
+    public Mock<IGroupRepository<Group>> Groups { get; } = new();
+    public Dictionary<long, Group> GroupStore { get; } = new();
+
+    /// <summary>
+    /// Cria a família (o responsável entra como membro, como no app) e devolve o grupo para ajustar permissões e
+    /// visibilidade. Os membros entram com os padrões da migration (pode lançar, não pode estornar).
+    /// </summary>
+    public Group Family(long groupId, string name, long responsibleId, params long[] memberIds)
+    {
+        var group = new Group { GroupId = groupId, Name = name, UserId = responsibleId };
+        group.Members.Add(new GroupMember { GroupId = groupId, UserId = responsibleId });
+        foreach (var memberId in memberIds)
+            group.Members.Add(new GroupMember { GroupId = groupId, UserId = memberId });
+        GroupStore[groupId] = group;
+        return group;
+    }
+
+    /// <summary>Carteira vinculada a uma família.</summary>
+    public Account FamilyWallet(long id, long ownerId, long groupId, Currency currency = Currency.Brl,
+        decimal balance = 0m)
+    {
+        var wallet = Wallet(id, ownerId, currency, balance);
+        wallet.GroupId = groupId;
+        return wallet;
+    }
+
+    /// <summary>LedgerService com o <see cref="Finami.Domain.Services.AccessPolicy"/> real sobre <see cref="GroupStore"/>.</summary>
+    public LedgerService CreateServiceWithRealPolicy()
+    {
+        Groups.Setup(g => g.GetByIdAsync(It.IsAny<long>()))
+            .ReturnsAsync((long groupId) => GroupStore.GetValueOrDefault(groupId));
+        Groups.Setup(g => g.GetResponsibleUserIdAsync(It.IsAny<long>()))
+            .ReturnsAsync((long groupId) => GroupStore.TryGetValue(groupId, out var g) ? g.UserId : null);
+        Groups.Setup(g => g.ShareGroupAsync(It.IsAny<long>(), It.IsAny<long>()))
+            .ReturnsAsync((long a, long b) => Families.Contains((a, b))
+                || GroupStore.Values.Any(g => g.IsMember(a) && g.IsMember(b)));
+        var policy = new Finami.Domain.Services.AccessPolicy(Groups.Object);
+        return new LedgerService(Accounts.Object, Transactions.Object, Users.Object, UnitOfWork.Object, policy,
+            new AmountInfoValidator(), new TransferInfoValidator(), Quotes.Object, QuoteRepository.Object,
+            Notifications.Object);
+    }
+
     public LedgerService CreateService() => new(Accounts.Object, Transactions.Object, Users.Object,
         UnitOfWork.Object, AccessPolicy.Object, new AmountInfoValidator(), new TransferInfoValidator(),
-        Quotes.Object, QuoteRepository.Object);
+        Quotes.Object, QuoteRepository.Object, Notifications.Object);
 }

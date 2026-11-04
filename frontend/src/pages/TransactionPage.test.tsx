@@ -8,10 +8,10 @@ import type { PersonDebt } from "../types/debt";
 import { TransactionKind, TransactionType, TransferKind } from "../types/transaction";
 import type { TransactionInfo } from "../types/transaction";
 import type { TransferDestination, TransferDestinationsResult } from "../types/wallet";
-import { makeWallet, storeSession } from "../test/fixtures";
+import { makeGroup, makeWallet, storeSession } from "../test/fixtures";
 import { apiError, axe, mockFetch, renderWithProviders, requestsTo } from "../test/utils";
 import type { MockHandler, MockResponse } from "../test/utils";
-import { notifySuccess, notifyWarning } from "../utils/notify";
+import { notifyError, notifySuccess, notifyWarning } from "../utils/notify";
 import { reportOffline } from "../utils/connectivity";
 
 vi.mock("../utils/notify", async (importOriginal) => {
@@ -83,6 +83,7 @@ const makeTransaction = (overrides: Partial<TransactionInfo> = {}): TransactionI
   createdByUserId: 7,
   reversedTransactionId: null,
   reversedByTransactionId: null,
+  canReverse: true,
   ...overrides,
 });
 
@@ -1426,5 +1427,110 @@ describe("TransactionPage — quitação em outra moeda (US3)", () => {
     expect(requestsTo(fetchMock, "POST /api/transactions/transfer/preview")).toEqual([
       { sourceWalletId: 2, destinationWalletId: 14, amount: "0.0001", kind: "settlement", debtCurrency: "BRL", description: null },
     ]);
+  });
+});
+
+describe("TransactionPage — permissão \"Pode lançar\" (feature 008, T024)", () => {
+  const SILVA = makeGroup({ groupId: 5, name: "Silva", isResponsible: false, responsibleUserId: 1 });
+  const PRAIA = makeGroup({ groupId: 6, name: "Casa de praia", isResponsible: false, responsibleUserId: 1 });
+  /** Carteira da família em que a pessoa não pode lançar (controla, mas sem a permissão) */
+  const readOnlyWallet = (walletId: number, name: string, groupId: number) =>
+    makeWallet({ walletId, name, groupId, canControl: true, canCreateTransactions: false, balance: 85 });
+
+  it("carteiras sem canCreateTransactions não aparecem na origem", async () => {
+    const { user } = setup(TransactionKind.Transfer, {
+      "GET /api/groups": { body: [SILVA] },
+      "GET /api/wallets": { body: [...WALLETS, readOnlyWallet(7, "Mesada da família", 5)] },
+    });
+
+    await ready();
+    await user.click(screen.getByRole("button", { name: /^De/ }));
+    const listbox = await screen.findByRole("listbox");
+    expect(within(listbox).getByRole("option", { name: /Nubank/ })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: /Reserva BTC/ })).toBeInTheDocument();
+    expect(within(listbox).queryByRole("option", { name: /Mesada da família/ })).not.toBeInTheDocument();
+  });
+
+  it("sem carteira permitida numa família: estado vazio com o nome dela e botão aria-disabled", async () => {
+    const { container, fetchMock, user } = setup(TransactionKind.Income, {
+      "GET /api/groups": { body: [SILVA] },
+      "GET /api/wallets": { body: [readOnlyWallet(1, "Mesada", 5), readOnlyWallet(3, "Poupança", 5)] },
+    });
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Você só pode consultar a família Silva." }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("O responsável pela família decide quem pode lançar.")).toBeInTheDocument();
+    // Sem formulário desabilitado: os campos não são renderizados
+    expect(screen.queryByLabelText("Valor")).not.toBeInTheDocument();
+
+    const submit = screen.getByRole("button", { name: "Registrar depósito" });
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    expect(submit).toHaveAccessibleDescription(/Você só pode consultar a família Silva\./);
+    await user.click(submit);
+    expect(requestsTo(fetchMock, "POST /api/transactions/income")).toHaveLength(0);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("famílias chegando depois das carteiras: espera o nome em vez de trocar o título (REVIEW-008 M-6)", async () => {
+    let releaseGroups: () => void = () => undefined;
+    setup(TransactionKind.Income, {
+      "GET /api/groups": () =>
+        new Promise<MockResponse>((resolve) => {
+          releaseGroups = () => resolve({ body: [SILVA] });
+        }),
+      "GET /api/wallets": { body: [readOnlyWallet(1, "Mesada", 5)] },
+    });
+
+    const submit = await screen.findByRole("button", { name: "Registrar depósito" });
+    await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "true"));
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(submit).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByText("Você não tem carteiras em que possa lançar.")).not.toBeInTheDocument();
+
+    act(() => releaseGroups());
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Você só pode consultar a família Silva." }),
+    ).toBeInTheDocument();
+    expect(submit).toHaveAccessibleDescription(/Você só pode consultar a família Silva\./);
+  });
+
+  it("sem carteira permitida em mais de uma família: \"Você não tem carteiras em que possa lançar.\"", async () => {
+    setup(TransactionKind.Transfer, {
+      "GET /api/groups": { body: [SILVA, PRAIA] },
+      "GET /api/wallets": { body: [readOnlyWallet(1, "Mesada", 5), readOnlyWallet(3, "Quarto", 6)] },
+    });
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Você não tem carteiras em que possa lançar." }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registrar transferência" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("403 no envio: toast com a mensagem da API e recarrega as carteiras", async () => {
+    const message = "Você não tem permissão para criar lançamentos na família Silva.";
+    let rejected = false;
+    const { fetchMock, user } = setup(TransactionKind.Income, {
+      "GET /api/groups": { body: [SILVA] },
+      // A permissão mudou durante o preenchimento: depois da recusa, a carteira vem sem a permissão
+      "GET /api/wallets": () => ({
+        body: [rejected ? readOnlyWallet(1, "Nubank", 5) : makeWallet({ walletId: 1, name: "Nubank", groupId: 5 })],
+      }),
+      "POST /api/transactions/income": () => {
+        rejected = true;
+        return apiError(403, message);
+      },
+    });
+
+    await ready(/^Carteira Ana, Nubank,/);
+    await user.type(screen.getByLabelText("Valor"), "100,00");
+    await user.click(screen.getByRole("button", { name: "Registrar depósito" }));
+
+    await waitFor(() => expect(notifyError).toHaveBeenCalledWith(expect.objectContaining({ mensagem: message })));
+    await waitFor(() => expect(requestsTo(fetchMock, "GET /api/wallets").length).toBeGreaterThan(1));
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Você só pode consultar a família Silva." }),
+    ).toBeInTheDocument();
+    expect(requestsTo(fetchMock, "POST /api/transactions/income")).toHaveLength(1);
   });
 });

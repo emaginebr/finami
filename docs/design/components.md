@@ -1449,3 +1449,419 @@ O contrato prevalece; as decisões abaixo preenchem lacunas e não contradizem n
    nova).
 7. **Ajuda "Pagamento"**: "Não gera dívida." é curta e fica correta para qualquer par de pessoas;
    não há variação com nomes.
+
+## 12. Feature 008 — Estorno e permissões dos membros na família
+
+Mockup: [`family-permissions.html`](./mockups/family-permissions.html). Contrato (fonte da
+verdade de comportamento e textos): `specs/008-reversal-family-permissions/contracts/ui.md`;
+decisões de acesso em `research.md` R-05 (visibilidade limita o estorno), R-06 (notificações),
+R-07 (campos novos) e R-09.
+
+**Direção visual**: a mesma "Noite Roxa" — lista agrupada estilo Ajustes, interruptor iOS que já
+existe (`SwitchRow`, §3). **Nenhum token novo.** Ícones lucide novos no app: `ShieldCheck`
+(notificação de permissões) e `Eye` (estado vazio "só consultar") — ambos já usados nos
+mockups; `Undo2`, `Loader2`, `CircleAlert`, `Info`, `ChevronRight`, `WifiOff` já existem no app.
+Permissão é sempre dita **por texto** ("Pode lançar", "Somente leitura"); o verde do
+interruptor ligado nunca é a única pista (o papel `switch` + `aria-checked` anunciam, e o
+resumo em texto aparece na lista da família).
+
+| Combinação usada aqui | Contraste | Onde |
+|---|---|---|
+| `bg-accent` (trilho ligado) sobre `bg-surface` | 10,91:1 | interruptor ligado (componente ≥ 3:1) |
+| `border-border` (trilho desligado) sobre `bg-surface` | 3,93:1 | contorno do interruptor desligado |
+| `text-brand` (spinner) sobre `logo-white` (botão do interruptor) | 14,96:1 | estado ocupado |
+| `text-text-muted` sobre `bg-surface` | 8,81:1 | ajuda dos interruptores, resumo de permissões, "Todas as permissões" |
+| `text-negative` sobre `bg-surface` | 7,76:1 | erro ao salvar permissões (+ ícone `CircleAlert`) |
+| `text-text-muted` sobre `bg-surface-2` (fundo da folha) | 8,06:1 | notas "Sem conexão" e de alcance, rodapé |
+| `text-warning` sobre `bg-surface-2` | 11,61:1 | ícone `WifiOff` da nota "Sem conexão" |
+| `text-info` sobre `bg-surface-2` / `bg-info-soft` | 7,62 / 6,94:1 | ícone da nota de alcance; tile da notificação de permissões |
+| `text-text-muted` sobre `bg-surface-3` | 7,05:1 | tile `Undo2` (notificação de estorno, ligações) |
+| `text-accent` sobre `bg-surface` | 10,91:1 | título das ligações "Estorno de #id" / "Estornado por #id" |
+| `text-text-disabled` / `opacity-60` | — (isento, 1.4.3) | interruptor offline ou aguardando o outro |
+| `focus` (anel) sobre `bg-surface` / `bg-surface-2` | 9,92 / 9,08:1 | foco de todos os controles |
+
+Arquivos previstos (nome final é do `frontend-react-developer`):
+`components/group/MemberPermissions.tsx` (os dois interruptores de um membro + erro),
+`components/group/permissionSummary.ts` (texto do resumo, usado pela lista e pela notificação),
+`components/statement/ReverseEffect.tsx` (bloco "O que acontece" da confirmação). Mudanças em
+`SwitchRow`, `ConfirmModal`, `MemberManager`, `MemberRow`, `GroupPage`,
+`TransactionDetailSheet`, `TransactionPage`/`FormStep`, `NotificationItem`.
+
+### Onde cada coisa aparece
+
+| Quem | Tela | O que vê |
+|---|---|---|
+| Responsável | Folha **"Gerenciar família"** (lápis da `/familias/:id`, `MemberManager`) | Um cartão por membro com "Retirar" e os interruptores **Pode lançar** / **Pode estornar**; o próprio cartão sem interruptores, com "Todas as permissões". |
+| Todos | Lista **Membros** da `/familias/:id` (`MemberRow`) | Resumo em texto em cada membro que não é o responsável: "Somente leitura", "Pode lançar", "Pode estornar" ou "Pode lançar · Pode estornar". O responsável continua só com o selo "Responsável". |
+| Membro | — | A folha "Gerenciar família" não existe para ele (o lápis só aparece ao responsável — já é assim). Nenhum controle novo. |
+
+Decisão: os interruptores ficam **na folha "Gerenciar família"**, junto de "Retirar", e não na
+lista de saldos da página. Motivos: (1) cada linha da lista de saldos é um link para a pessoa —
+um `switch` dentro de um link seria um controle aninhado (4.1.2); (2) a folha já reúne tudo o
+que só o responsável muda (nome, visibilidade, membros), e a nota de alcance do estorno precisa
+ficar perto de "Quem vê os extratos". Caminho do responsável: lápis → "Membros" → interruptor
+(SC-005).
+
+### SwitchRow — ajustes (sem quebrar "Carteira virtual")
+
+Props novas, todas opcionais:
+
+| Prop | Uso |
+|---|---|
+| `busy?: boolean` | Envio em curso: `aria-busy="true"` no `<button role="switch">`, spinner no botão branco, cliques ignorados. |
+| `ariaDisabled?: boolean` | Offline ou o outro interruptor do mesmo membro enviando: `aria-disabled="true"` (continua focável, como as ações offline da §9), `opacity-60`, `cursor-not-allowed`. |
+| `describedBy?: string` | Ids extras para o `aria-describedby` (nota "Sem conexão", nota de alcance, erro), concatenados com o id da ajuda — só ids que existem. |
+| `onBlockedClick?: () => void` | Chamado no clique quando `ariaDisabled` (ex.: `onlineAction.blockIfOffline()` mostra o toast "Sem internet…"). |
+
+Mudanças de anatomia:
+
+- **Rótulo clicável**: trocar o `<span id={labelId}>` por `<label htmlFor={switchId}>` (o
+  `<button>` é "labelable"): tocar no texto também alterna. O nome acessível vem do `<label>`;
+  remover o `aria-labelledby`. A ajuda **não** fica dentro do `<label>` (senão entra no nome).
+- **Alvo de toque ≥ 44 px**: o trilho tem 51×31 px. Área transparente com o pseudo-elemento
+  livre (o `after:` é o botão branco):
+  `before:absolute before:-inset-x-1 before:-inset-y-2 before:content-['']` → 59×47 px. Com o
+  rótulo clicável, a linha inteira (≥ 44 px) responde.
+- **Linha com ajuda**: `items-start py-3` (a ajuda quebra em 2–3 linhas em 320 px); o
+  interruptor com `mt-0.5` alinha com a 1ª linha do rótulo.
+- **Ocupado**: dentro do botão branco, `Loader2` 14 px `text-brand motion-safe:animate-spin`
+  (`aria-hidden`), centralizado. O trilho já mostra o **novo** estado (atualização otimista).
+  Com `prefers-reduced-motion` o ícone fica parado; `aria-busy` e o status "Salvando…" seguem
+  informando.
+- **Foco**: `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`
+  no `<button>` (o anel contorna o trilho, não a área de toque).
+
+### MemberPermissions — interruptores de um membro (só responsável)
+
+Na `MemberManager`, a lista única de membros vira **um cartão por membro** (`flex flex-col
+gap-3`): cada membro passa a ter 3 linhas de controle, e a separação deixa claro de quem é cada
+interruptor.
+
+```
+MEMBROS (3)
+⚠ Sem conexão. As permissões podem ser mudadas…     ← só offline
+┌───────────────────────────────────────────────────────┐
+│ (AS) Ana Silva                                        │  ← responsável: sem interruptores
+│      [♛ Responsável] · você · Todas as permissões     │
+└───────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│ (BS) Bruno Silva                          [ Retirar ] │
+│      membro                                           │
+├───────────────────────────────────────────────────────┤
+│ Pode lançar                                     (━━●) │
+│ Receitas, despesas e transferências nas carteiras     │
+│ da família.                                           │
+├───────────────────────────────────────────────────────┤
+│ Pode estornar                                   (○━━) │
+│ Desfazer qualquer lançamento das carteiras da família.│
+└───────────────────────────────────────────────────────┘
+ⓘ Os extratos desta família não estão visíveis a todos: com "Pode
+  estornar", o membro só estorna lançamentos das carteiras dele.   ← visibilidade ≠ AllMembers
+Para incluir pessoas, use "Adicionar membro" na tela da família.
+```
+
+| Parte | Classes / componente |
+|---|---|
+| Cartão | `<div role="group" aria-labelledby={nameId} className="overflow-hidden rounded-lg bg-surface">`. O leitor anuncia "Bruno Silva, grupo" ao entrar, e cada interruptor herda o contexto. |
+| Cabeçalho | A linha atual (`listRowClasses({ twoLines: true, withIcon: true })`): `Avatar`, nome `<span id={nameId} className="block truncate text-headline">`, subtítulo ("membro"), "Retirar" (`Button destructiveGhost sm`, inalterado). |
+| Separadores | `border-t-[0.5px] border-separator` entre o cabeçalho e os interruptores e entre os dois, recuo de 16 px (sem ícone à esquerda). |
+| "Pode lançar" | `SwitchRow label=t("groups.permissions.create") description=t("groups.permissions.createHelp") checked={member.canCreateTransactions}`. |
+| "Pode estornar" | `SwitchRow label=t("groups.permissions.reverse") description=t("groups.permissions.reverseHelp") checked={member.canReverse} describedBy={scopeNoteId}` (quando a nota de alcance existir). |
+| Erro | Dentro do cartão, depois dos interruptores: `<p id={errorId} role="alert" className="m-0 flex items-start gap-1.5 border-t-[0.5px] border-separator px-4 py-3 text-footnote text-negative">` + `CircleAlert` `mt-px size-4 shrink-0` + mensagem (`errorMessage(err)`). Os dois interruptores ganham `describedBy={errorId}` enquanto ele existir. |
+| Status | Um `<span className="sr-only" role="status">` por cartão: "Salvando…" (`actions.saving`) durante o envio, vazio depois. |
+
+**Linha do responsável**: o cartão do responsável **não** tem interruptores nem "Retirar"; o
+subtítulo vira `[Badge responsible] · você · Todas as permissões` (`groups.permissions.all`).
+É um `div` estático, sem foco.
+
+**Nota de alcance do estorno** (R-05): quando a visibilidade **salva** da família não é
+"Todos os membros" (`AllMembers`), mostrar **uma vez**, abaixo dos cartões e antes do rodapé
+"Para incluir pessoas…":
+`<p id={scopeNoteId} className="m-0 flex items-start gap-1.5 px-4 pt-2 text-footnote text-text-muted">`
++ `Info` `mt-px size-4 shrink-0 text-info` `aria-hidden` + "Os extratos desta família não estão
+visíveis a todos: com "Pode estornar", o membro só estorna lançamentos das carteiras dele."
+(`groups.permissions.reverseScopeNote`). Ligada a **todos** os "Pode estornar" pelo
+`aria-describedby` (um id, vários usos). Com `AllMembers` a nota não é renderizada (o membro
+estorna qualquer carteira da família, como a ajuda já diz). Usar a visibilidade **salva** do
+`group`, não o rascunho do `VisibilityPicker` da mesma folha; atualizar quando "Salvar
+visibilidade" der certo.
+
+**Estados de cada interruptor**
+
+| Estado | Visual | A11y / comportamento |
+|---|---|---|
+| Ligado | Trilho `bg-accent border-accent`, botão à direita. | `aria-checked="true"`. |
+| Desligado | Trilho `bg-surface-3 border-border`, botão à esquerda. | `aria-checked="false"`. |
+| Foco | Anel `outline-focus` 2 px + 2 px. | — |
+| Ocupado (este) | Já no **novo** estado + spinner no botão branco. | `aria-busy="true"`; status "Salvando…". Cliques ignorados. O foco **fica** no interruptor. |
+| Ocupado (o outro do mesmo membro) | `opacity-60`. | `aria-disabled="true"` — o PUT manda os dois valores, então não pode haver dois envios do mesmo membro ao mesmo tempo. Interruptores de **outros** membros seguem livres. |
+| Sucesso | Spinner some; o estado novo fica. | Toast `notifySuccess(t("groups.permissions.updated", { name: member.firstName }))` — "Permissões de Caio atualizadas.". Atualizar o `group` com o `GroupInfo` devolvido pelo PUT. |
+| Erro | Volta ao estado **anterior**; linha de erro no cartão. | `role="alert"` lê a mensagem; o erro fica no `aria-describedby` dos dois interruptores até o próximo envio bem-sucedido do membro (ou até fechar a folha). O foco continua no interruptor. Sem toast de erro (evita leitura dupla). Erro "não confirmado" de rede (§9): mensagem `pwa.offline.writeUnconfirmed` e **recarregar** o grupo em vez de reverter às cegas. |
+| Offline | `opacity-60`, `cursor-not-allowed`, estado atual preservado + nota "Sem conexão" no topo da seção. | `aria-disabled="true"` + `describedBy={offlineNoteId}`. Clique → toast "Sem internet. Conecte-se para fazer alterações." (§9). |
+| 403/422 (ex.: deixou de ser responsável) | Como "Erro", com a mensagem da API. | Recarregar o grupo depois. |
+
+**Nota "Sem conexão"** (offline): logo abaixo do cabeçalho "MEMBROS (n)":
+`<p id={offlineNoteId} className="m-0 flex items-start gap-1.5 px-4 pb-2 text-footnote text-text-muted">`
++ `WifiOff` `mt-px size-4 shrink-0 text-warning` `aria-hidden` + "Sem conexão. As permissões
+podem ser mudadas quando a internet voltar." (`groups.permissions.offline`). Some quando a
+conexão volta (`useOnlineAction().offline`). O `OfflineBanner` global continua; a nota explica
+**por que** os interruptores estão apagados ali. O "Retirar" segue o padrão offline que já tem.
+
+**320 px / zoom 200 %**: rótulo e ajuda quebram; o interruptor fica `shrink-0` no topo
+(`items-start`). O nome trunca antes de "Retirar". Nada rola na horizontal (1.4.10).
+**Desktop**: a folha vira modal de 480 px (§2) — mesmo layout.
+
+### Resumo de permissões — `MemberRow` (lista Membros da página da família)
+
+Para cada membro que **não** é o responsável, uma linha a mais, **entre o nome e a linha
+"você · saldo"** — o mesmo lugar do selo "Responsável" (linha 2 = papel/permissões; linha 3 =
+você/saldo):
+
+```
+(AS) Ana Silva                         R$ 8.420,15 ›
+     [♛ Responsável]
+     você · R$ 8.420,15
+(BS) Bruno Silva                       R$ 3.150,00 ›
+     Pode lançar · Pode estornar
+     R$ 2.900,00 · ₿ 0,00048796
+(CS) Caio Silva                           R$ 85,00 ›
+     Somente leitura
+```
+
+| Permissões | Texto (`permissionSummary`) |
+|---|---|
+| lançar ✓ · estornar ✓ | "Pode lançar · Pode estornar" (`create` + " · " + `reverse`) |
+| lançar ✓ · estornar ✗ | "Pode lançar" |
+| lançar ✗ · estornar ✓ | "Pode estornar" |
+| lançar ✗ · estornar ✗ | "Somente leitura" (`groups.permissions.readOnly`) |
+
+- Classes: `<span className="mt-0.5 block truncate text-footnote text-text-muted">`. Só texto,
+  sem cor nem ícone (o texto é a informação).
+- **Dados**: `MemberRow` recebe `MemberBalanceInfo`, que não tem permissões. O `GroupPage`
+  junta pelo `userId` com `group.members` e passa a prop nova
+  `permissions?: { canCreateTransactions: boolean; canReverse: boolean }`. Sem o dado (grupo
+  ainda carregando), não renderizar a linha (sem esqueleto: é texto secundário).
+- Aparece para **todos** que veem a lista (responsável e membros), inclusive em `Hidden`
+  (permissão não é valor). Junto ao **próprio nome** ela cumpre a US5.
+- `aria-label` do link: o resumo logo depois do nome — "Caio Silva, somente leitura, você,
+  total R$ 85,00" (o texto visível fica contido no nome, 2.5.3).
+- Rodapé para quem não é responsável: `groups.members.onlyResponsible` passa a "Só o
+  responsável pode incluir ou retirar pessoas, mudar permissões, renomear a família e definir
+  quem vê os extratos.".
+
+### Lançar sem carteira permitida — `/depositar`, `/sacar`, `/transferir`
+
+As carteiras de origem passam a ser `isActive && canCreateTransactions` (no lugar de
+`canControl`). Quando a lista **fica vazia por causa da permissão** (a pessoa controla
+carteiras, mas nenhuma permite lançar), o formulário é substituído por um estado vazio. Se a
+pessoa não controla carteira nenhuma, vale o comportamento atual.
+
+```
+‹ Home
+Depositar
+               ( 👁 )
+   Você só pode consultar a família Silva.
+   O responsável pela família decide quem
+   pode lançar.
+[                 Depositar                  ]   ← aria-disabled + aria-describedby
+```
+
+| Parte | Especificação |
+|---|---|
+| Bloco | `<div id={readOnlyId}>` com `EmptyState icon={Eye} className="pt-8 pb-6"`, título = mensagem, `description = t("transaction.readOnlyHint")` — "O responsável pela família decide quem pode lançar.". Sem ação dentro do bloco ("‹ Home" já volta). |
+| Mensagem | Todas as carteiras controladas (sem permissão) são de **uma** família → `transaction.readOnlyFamily` { name } "Você só pode consultar a família Silva."; de **mais de uma** → `transaction.noWritableWallet` "Você não tem carteiras em que possa lançar.". Carteiras pessoais sempre permitem lançar, então nunca caem aqui. |
+| Campos | De, Para, Tipo, Valor e Descrição **não** são renderizados (um formulário inteiro desabilitado é ruído). |
+| Botão principal | Continua no lugar, com o rótulo de sempre ("Depositar", "Sacar", "Transferir"), `aria-disabled="true"` + `aria-describedby={readOnlyId}` — mesmo padrão do "sem destinos" (§10): fica na ordem de Tab e o motivo é lido. Clique não faz nada. |
+| Atalhos | Home e extrato: Depositar/Sacar/Transferir **somem** nas carteiras sem `canCreateTransactions` (contrato). O FAB continua. |
+| 403 no envio | Toast `notifyError` com a mensagem da API e recarregar as carteiras; se a origem escolhida sumir, limpar o De; se nenhuma sobrar, cair neste estado vazio. |
+
+### Confirmação do estorno — `ConfirmModal` com o efeito
+
+Prop nova no `ConfirmModal`: `details?: ReactNode`, renderizada **entre** a descrição e os
+botões e incluída no `aria-describedby` do `alertdialog` junto com a descrição
+(`aria-describedby="{descriptionId} {detailsId}"`) — o leitor lê o efeito ao abrir. O foco
+inicial continua em "Cancelar".
+
+```
+⚠ Estornar lançamento?
+Será registrado um estorno de R$ 80,00 que desfaz o lançamento (despesa)
+de 03/11/2026. O lançamento original fica marcado como estornado.
+┌ O QUE ACONTECE ────────────────────────────────────┐
+│ R$ 80,00 voltam para Mesada.                       │
+└────────────────────────────────────────────────────┘
+[ Estornar ]  [ Cancelar ]
+```
+
+`ReverseEffect` (o `details`): o mesmo bloco "Efeito na dívida" da §11 —
+`<section id={detailsId} aria-labelledby={effectTitleId} className="mt-4 rounded-lg bg-surface px-4 py-3">`,
+título `<h3 className="m-0 mb-1 text-footnote font-semibold tracking-wide text-text-muted uppercase">`
+"O que acontece" (`statement.reverseEffect.title`) e **uma frase por parágrafo**
+(`<p className="m-0 text-body text-text">`, `flex flex-col gap-1`). Valores em `font-semibold
+tabular-nums whitespace-nowrap`; bitcoin sempre com 8 casas (`formatMoneyFull`), real com 2.
+
+Frases (calculadas no app a partir do `TransactionInfo`, R-07; carteiras = `source.name` /
+`destination.name`):
+
+| Lançamento original | Frase(s) | Chave |
+|---|---|---|
+| Despesa (carteira → fora) | "R$ 80,00 voltam para Mesada." | `statement.reverseEffect.returnTo` { amount, wallet } |
+| Receita (fora → carteira) | "R$ 80,00 saem de Mesada." | `statement.reverseEffect.leaveFrom` { amount, wallet } |
+| Transferência, compra/venda de bitcoin, entre pessoas | "R$ 500,00 voltam para Nubank e ₿ 0,00100000 saem de Ledger." (`returned` = `sourceAmount` na moeda da origem; `left` = `destinationAmount` na moeda do destino) | `statement.reverseEffect.transfer` { returned, source, left, destination } |
+| Empréstimo (+ 2ª frase) | "Dívida de Bruno com Ana: R$ 100,00 → R$ 0,00." + selo "quitada" quando chega a zero | `statement.reverseEffect.debt` { debtor, creditor, before, after } |
+| Quitação (+ 2ª frase) | "Dívida de Bruno com Ana: R$ 70,00 → R$ 100,00." | idem |
+| Pagamento | Só a frase da transferência (não mexe em dívida). | — |
+
+- **Devedor/credor**: empréstimo → devedor = titular do **Para**, credor = titular do **De**;
+  quitação → devedor = titular do **De**, credor = titular do **Para** (`ownerName`, primeiro
+  nome). Valor do efeito = `debtAmount` na `debtCurrency`.
+- **Antes/depois**: `before` = dívida **atual** entre os dois na `debtCurrency`; `after` =
+  `before − debtAmount` (estorno de empréstimo) ou `before + debtAmount` (estorno de quitação).
+  O `TransactionInfo` não traz a dívida atual: buscar no endpoint da feature 006
+  (`GET /api/users/{devedor}/debts`, linha do credor) ao abrir a confirmação. `before` em
+  `text-text-muted` sem negrito, `after` em negrito (igual à §11).
+- **Sem a dívida atual** (carregando, erro, 403 ou `after` negativo): frase sem antes/depois —
+  "A dívida de Bruno com Ana diminui R$ 100,00." / "A dívida de Bruno com Ana aumenta R$ 30,00."
+  (`statement.reverseEffect.debtDown` / `debtUp` { debtor, creditor, amount }). Enquanto
+  carrega, mostrar essa mesma frase (sem esqueleto que mude a altura da modal); quando o dado
+  chegar, trocar pela frase com antes → depois. "Estornar" fica **ativo** o tempo todo: o
+  servidor é a autoridade.
+- **"→"**: mesmo tratamento da §11 (pode virar `<span aria-hidden>→</span><span
+  className="sr-only">para</span>`).
+- **Descrição**: mantém `statement.reverseBody` (tipo em minúsculas, §11).
+- **Enviando**: `loading` + `loadingLabel="Estornando…"` (`statement.reversing`); "Cancelar"
+  `disabled`; não fecha por Esc/scrim (já é assim).
+- **Erros definitivos** 403 (sem permissão), 409 (já estornado), 422 (é estorno): `notifyError`
+  com a mensagem da API, a modal **fecha** e a folha de detalhe **recarrega** o lançamento (o
+  "Estornar" some, porque `canReverse` vira `false`). Erro de rede/500: comportamento atual
+  (modal aberta, foco volta ao "Estornar").
+
+### TransactionDetailSheet — "Estornar" e ligações
+
+- **"Estornar lançamento"** aparece se `transaction.canReverse` (R-07); sai a regra
+  `canControl`. Antes do `TransactionInfo` chegar, **não** renderizar o botão (evita aparecer e
+  sumir).
+- **Ligações** (FR-005): uma lista de uma linha logo **abaixo do cabeçalho** (valor + tipo), no
+  lugar do `Banner` "Este lançamento foi estornado (lançamento #id)." de hoje:
+
+```
+              ↶  −R$ 80,00 (riscado)
+              Despesa · [estornado]
+┌──────────────────────────────────────────────┐
+│ (↶) Estornado por #61250                   › │   ← original estornado
+│     Abrir o estorno                          │
+└──────────────────────────────────────────────┘
+
+              ↶  +R$ 80,00
+              Estorno
+┌──────────────────────────────────────────────┐
+│ (↶) Estorno de #61204                      › │   ← o estorno
+│     Abrir o lançamento original              │
+└──────────────────────────────────────────────┘
+```
+
+| Parte | Especificação |
+|---|---|
+| Contêiner | `<div className="mb-3 overflow-hidden rounded-lg bg-surface">` com um `<button type="button">` `listRowClasses({ twoLines: true, withIcon: true, interactive: true })`. |
+| Ícone | Tile 32 px `Undo2` `bg-surface-3 text-text-muted` (o mesmo do estorno no extrato), `aria-hidden`. |
+| Título | `text-headline text-accent` — "Estornado por #61250" (`statement.reversedByLink` { id: `reversedByTransactionId` }) ou "Estorno de #61204" (`statement.reversalOf` { id: `reversedTransactionId` }). |
+| Subtítulo | `text-footnote text-text-muted` — "Abrir o estorno" (`statement.openReversal`) / "Abrir o lançamento original" (`statement.openOriginal`). |
+| Fim | `ChevronRight` 18 px `text-text-subtle`. |
+| Nome acessível | O conteúdo ("Estornado por #61250, Abrir o estorno"); papel botão. |
+| Ação | Troca o conteúdo da **mesma** folha pelo lançamento ligado (`GET /api/transactions/{id}`), com o esqueleto atual enquanto carrega. O cabeçalho ganha à esquerda `‹ Voltar` (`SheetHeaderButton`, `actions.back`), que volta ao anterior (pilha de 1 nível: original ↔ estorno). Foco: título da folha depois da troca; o botão de ligação ao voltar. |
+| Sinal do valor | No lançamento ligado, o valor grande usa o lado da **carteira do extrato** aberto: saída se ela é a origem, entrada se é o destino; se não for nenhuma, sem sinal. |
+| 403 ao abrir | `Banner tone="error"` com a mensagem; "‹ Voltar" continua. |
+
+- O selo `estornado` e o valor riscado continuam no original. O estorno **não** mostra
+  "Estornar". A linha "Código #id" do `<dl>` continua.
+
+### Notificações novas — `NotificationItem`
+
+Tipos novos em `NotificationType`: `MemberPermissionsChanged`, `TransactionReversed`. Mesmo
+item da §7 (tile 36 px, frase `text-subhead` com nomes em `font-semibold`, linha meta com
+`<time>`, ponto de não lida).
+
+| Tipo | Tile | Frase (`<Trans>` com `<b>`) | Toque |
+|---|---|---|---|
+| `MemberPermissionsChanged` | `ShieldCheck` `bg-info-soft text-info` | "**Ana Silva** mudou suas permissões na família **Silva**: pode lançar · não pode estornar." | `<Link>` para `/familias/{group.groupId}` (+ `ChevronRight`), como o "aceito" da §7. Sem `group` → item estático. |
+| `TransactionReversed` | `Undo2` `bg-surface-3 text-text-muted` | "**Bruno Silva** estornou um lançamento da sua carteira **Mesada**." | `<Link>` para o extrato da carteira (`/carteiras/{walletId}`), com `linkState` de volta para Notificações. Sem `walletId` → item estático. |
+
+- **Resumo na notificação** (`notification.permissions`, estado **depois** da mudança): sempre
+  os dois lados, para quem perdeu algo saber o quê — "pode lançar · pode estornar", "pode
+  lançar · não pode estornar", "não pode lançar · pode estornar"; os dois desligados =
+  "somente leitura". Minúsculas (está no meio da frase). Chaves
+  `notifications.permissionSummary.*`, unidas por " · ". `permissions` nulo → frase curta sem o
+  resumo (`notifications.memberPermissionsChangedShort`).
+- **Ator ausente**: `notifications.someone` ("Alguém"), como hoje. Sem nome de carteira →
+  `notifications.transactionReversedNoWallet` ("…estornou um lançamento de uma carteira sua.").
+- Sem ações nem selos; não precisam de internet (só navegação).
+- **Vazio**: `notifications.emptyBody` passa a "Convites, mudanças de permissão e estornos
+  aparecem aqui.".
+
+### Chaves i18n sugeridas (`pt-BR.json`)
+
+O contrato usa o prefixo `group.`; o arquivo já usa **`groups.`** (`groups.members.*`). Usar
+`groups.permissions.*` (divergência 1).
+
+| Chave | Texto |
+|---|---|
+| `groups.permissions.create` | Pode lançar |
+| `groups.permissions.reverse` | Pode estornar |
+| `groups.permissions.createHelp` | Receitas, despesas e transferências nas carteiras da família. |
+| `groups.permissions.reverseHelp` | Desfazer qualquer lançamento das carteiras da família. |
+| `groups.permissions.reverseScopeNote` | Os extratos desta família não estão visíveis a todos: com "Pode estornar", o membro só estorna lançamentos das carteiras dele. |
+| `groups.permissions.readOnly` | Somente leitura |
+| `groups.permissions.all` | Todas as permissões |
+| `groups.permissions.updated` | Permissões de {{name}} atualizadas. |
+| `groups.permissions.offline` | Sem conexão. As permissões podem ser mudadas quando a internet voltar. |
+| `groups.members.onlyResponsible` (alterada) | Só o responsável pode incluir ou retirar pessoas, mudar permissões, renomear a família e definir quem vê os extratos. |
+| `transaction.readOnlyFamily` | Você só pode consultar a família {{name}}. |
+| `transaction.noWritableWallet` | Você não tem carteiras em que possa lançar. |
+| `transaction.readOnlyHint` | O responsável pela família decide quem pode lançar. |
+| `statement.reverseEffect.title` | O que acontece |
+| `statement.reverseEffect.returnTo` | {{amount}} voltam para {{wallet}}. |
+| `statement.reverseEffect.leaveFrom` | {{amount}} saem de {{wallet}}. |
+| `statement.reverseEffect.transfer` | {{returned}} voltam para {{source}} e {{left}} saem de {{destination}}. |
+| `statement.reverseEffect.debt` | Dívida de {{debtor}} com {{creditor}}: {{before}} → {{after}}. |
+| `statement.reverseEffect.debtDown` | A dívida de {{debtor}} com {{creditor}} diminui {{amount}}. |
+| `statement.reverseEffect.debtUp` | A dívida de {{debtor}} com {{creditor}} aumenta {{amount}}. |
+| `statement.reversing` | Estornando… |
+| `statement.reversalOf` | Estorno de #{{id}} |
+| `statement.reversedByLink` | Estornado por #{{id}} |
+| `statement.openOriginal` | Abrir o lançamento original |
+| `statement.openReversal` | Abrir o estorno |
+| `notifications.memberPermissionsChanged` | `<b>{{actor}}</b> mudou suas permissões na família <b>{{family}}</b>: {{summary}}.` |
+| `notifications.memberPermissionsChangedShort` | `<b>{{actor}}</b> mudou suas permissões na família <b>{{family}}</b>.` |
+| `notifications.transactionReversed` | `<b>{{actor}}</b> estornou um lançamento da sua carteira <b>{{wallet}}</b>.` |
+| `notifications.transactionReversedNoWallet` | `<b>{{actor}}</b> estornou um lançamento de uma carteira sua.` |
+| `notifications.permissionSummary.canCreate` / `cannotCreate` | pode lançar / não pode lançar |
+| `notifications.permissionSummary.canReverse` / `cannotReverse` | pode estornar / não pode estornar |
+| `notifications.permissionSummary.readOnly` | somente leitura |
+| `notifications.emptyBody` (alterada) | Convites, mudanças de permissão e estornos aparecem aqui. |
+
+`statement.reversedBy` (banner antigo) deixa de ser usada. "quitada" reaproveita
+`transaction.preview.settled`; "Salvando…" reaproveita `actions.saving`.
+
+### Divergências e notas para o contrato
+
+O contrato prevalece; as decisões abaixo preenchem lacunas:
+
+1. **Prefixo i18n**: `group.permissions.*` no contrato × `groups.*` no arquivo. Decisão:
+   `groups.permissions.*`.
+2. **`walletId` na notificação `TransactionReversed`** (bloqueante para "toque abre a
+   carteira"): o `NotificationInfo` do data-model traz `transactionId` e `walletName`, mas não o
+   id da carteira, e a rota do extrato precisa dele. Pedir ao backend `walletId` (long | null,
+   carteira do destinatário). Sem ele, o item fica estático.
+3. **Dívida atual na confirmação**: o contrato pede "R$ 70,00 → R$ 100,00", mas o
+   `TransactionInfo` só tem o valor do efeito. Decisão: buscar a dívida atual no endpoint da
+   feature 006; sem ela, usar a frase "diminui/aumenta" (nunca bloquear o estorno).
+4. **Onde ficam os interruptores**: na folha "Gerenciar família" (`MemberManager`), não na
+   lista de saldos — ver "Onde cada coisa aparece".
+5. **"Sem conexão" × "Sem internet"**: o contrato pede "Sem conexão"; a feature 005 usa "Sem
+   internet" no banner e nos toasts. Mantido "Sem conexão" na nota da seção (pedido explícito);
+   o toast do toque continua o da §9. Para uniformizar, basta trocar o texto da chave.
+6. **Resumo na notificação**: o contrato diz `{resumo}`; R-06 mostra "pode lançar · não pode
+   estornar". Decisão: na notificação, sempre os dois lados; na página, o resumo curto.
+7. **Ligação nos dois sentidos**: o contrato só pede link no estorno → original; o FR-005 pede
+   ligação nos dois sentidos. As duas são botões que abrem o ligado na mesma folha.
+8. **Erros definitivos no estorno** (403/409/422): fecham a modal e recarregam o detalhe, em vez
+   de deixá-la aberta para uma nova tentativa que não pode dar certo.

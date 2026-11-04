@@ -22,6 +22,8 @@ public class GroupService : IGroupService
     private readonly IValidator<GroupUpdateInfo> _updateValidator;
     private readonly IValidator<MemberLookupInfo> _lookupValidator;
     private readonly IValidator<NewMemberInfo> _newMemberValidator;
+    private readonly IValidator<MemberPermissionsInfo> _permissionsValidator;
+    private readonly INotificationRepository<Notification> _notificationRepository;
 
     public const string INVITATION_REQUIRED_MESSAGE = "Essa pessoa precisa ser convidada e aceitar o convite.";
     public const string EMAIL_IN_USE_MESSAGE = "Este email já está em uso.";
@@ -35,7 +37,9 @@ public class GroupService : IGroupService
         IValidator<GroupInsertInfo> insertValidator,
         IValidator<GroupUpdateInfo> updateValidator,
         IValidator<MemberLookupInfo> lookupValidator,
-        IValidator<NewMemberInfo> newMemberValidator)
+        IValidator<NewMemberInfo> newMemberValidator,
+        IValidator<MemberPermissionsInfo> permissionsValidator,
+        INotificationRepository<Notification> notificationRepository)
     {
         _groupRepository = groupRepository;
         _userRepository = userRepository;
@@ -46,6 +50,8 @@ public class GroupService : IGroupService
         _updateValidator = updateValidator;
         _lookupValidator = lookupValidator;
         _newMemberValidator = newMemberValidator;
+        _permissionsValidator = permissionsValidator;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<GroupInfo> CreateAsync(long userId, GroupInsertInfo info)
@@ -202,6 +208,48 @@ public class GroupService : IGroupService
         return await ToInfoAsync(userId, group);
     }
 
+    /// <summary>
+    /// Feature 008: o responsável muda as permissões de um membro. Com mudança, grava o histórico e notifica o membro
+    /// (MemberPermissionsChanged) na mesma transação; sem mudança, só devolve a família.
+    /// </summary>
+    public async Task<GroupInfo> SetMemberPermissionsAsync(long userId, long groupId, long memberUserId,
+        MemberPermissionsInfo info)
+    {
+        if (info == null || !(await _permissionsValidator.ValidateAsync(info)).IsValid)
+            throw new Exceptions.ValidationException(MemberPermissionsInfoValidator.REQUIRED_MESSAGE,
+                new[] { MemberPermissionsInfoValidator.REQUIRED_MESSAGE });
+
+        var group = await LoadAsync(groupId);
+        var change = group.SetMemberPermissions(userId, memberUserId,
+            info.CanCreateTransactions!.Value, info.CanReverse!.Value);
+        if (change == null)
+            return await ToInfoAsync(userId, group);
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _groupRepository.UpdateAsync(group);
+            await _groupRepository.InsertPermissionChangeAsync(change);
+            await _notificationRepository.InsertAsync(new Notification
+            {
+                UserId = memberUserId,
+                Type = NotificationType.MemberPermissionsChanged,
+                GroupId = groupId,
+                ActorUserId = userId,
+                PermissionChangeId = change.GroupMemberPermissionChangeId,
+                CreatedAt = change.ChangedAt
+            });
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
+
+        return await ToInfoAsync(userId, group);
+    }
+
     private async Task<Group> LoadAsync(long groupId) =>
         await _groupRepository.GetByIdAsync(groupId) ?? throw new NotFoundException("Grupo não encontrado.");
 
@@ -217,6 +265,11 @@ public class GroupService : IGroupService
             IsResponsible = group.IsResponsible(userId),
             StatementVisibility = group.StatementVisibility.ToString(),
             CreatedAt = group.CreatedAt,
+            MyPermissions = new MemberPermissionsResult
+            {
+                CanCreateTransactions = group.CanCreateTransactions(userId),
+                CanReverse = group.CanReverse(userId)
+            },
             Members = group.Members
                 .OrderBy(m => m.JoinedAt)
                 .Select(m =>
@@ -228,7 +281,10 @@ public class GroupService : IGroupService
                         FirstName = user?.FirstName ?? string.Empty,
                         LastName = user?.LastName ?? string.Empty,
                         CanLogin = user?.CanLogin ?? false,
-                        JoinedAt = m.JoinedAt
+                        JoinedAt = m.JoinedAt,
+                        // O responsável tem sempre todas as permissões; a linha dele é ignorada (R-01).
+                        CanCreateTransactions = group.CanCreateTransactions(m.UserId),
+                        CanReverse = group.CanReverse(m.UserId)
                     };
                 })
                 .ToList()

@@ -385,7 +385,7 @@ const WalletStatementPage = () => {
         </>
       ) : null}
 
-      <TransactionDetailSheet entry={openEntry} canControl={canControl} onClose={() => setOpenEntry(null)} />
+      <TransactionDetailSheet entry={openEntry} onClose={() => setOpenEntry(null)} />
 
       {wallet && canControl ? (
         <>

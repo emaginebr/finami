@@ -27,6 +27,7 @@ public class FinamiContext : DbContext
     public DbSet<BtcQuote> BtcQuotes => Set<BtcQuote>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<GroupMemberPermissionChange> GroupMemberPermissionChanges => Set<GroupMemberPermissionChange>();
     public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<OAuthClient> OAuthClients => Set<OAuthClient>();
@@ -269,6 +270,8 @@ public class FinamiContext : DbContext
             entity.Property(e => e.GroupId).HasColumnName("group_id");
             entity.Property(e => e.GroupInvitationId).HasColumnName("group_invitation_id");
             entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.PermissionChangeId).HasColumnName("permission_change_id");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')");
             entity.Property(e => e.ReadAt).HasColumnName("read_at");
             entity.Ignore(e => e.IsRead);
@@ -281,6 +284,11 @@ public class FinamiContext : DbContext
                 .HasConstraintName("fk_group_invitation_notification").OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(e => e.Actor).WithMany().HasForeignKey(e => e.ActorUserId)
                 .HasConstraintName("fk_user_notification_actor").OnDelete(DeleteBehavior.ClientSetNull);
+            // Feature 008 (R-06): apagar o alvo não apaga a notificação.
+            entity.HasOne(e => e.PermissionChange).WithMany().HasForeignKey(e => e.PermissionChangeId)
+                .HasConstraintName("fk_group_member_permission_change_notification").OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Transaction).WithMany().HasForeignKey(e => e.TransactionId)
+                .HasConstraintName("fk_transaction_notification").OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => new { e.UserId, e.NotificationId }).IsDescending(false, true)
                 .HasDatabaseName("ix_notifications_user_id_notification_id");
@@ -288,6 +296,8 @@ public class FinamiContext : DbContext
             entity.HasIndex(e => e.GroupId).HasDatabaseName("ix_notifications_group_id");
             entity.HasIndex(e => e.GroupInvitationId).HasDatabaseName("ix_notifications_group_invitation_id");
             entity.HasIndex(e => e.ActorUserId).HasDatabaseName("ix_notifications_actor_user_id");
+            entity.HasIndex(e => e.PermissionChangeId).HasDatabaseName("ix_notifications_permission_change_id");
+            entity.HasIndex(e => e.TransactionId).HasDatabaseName("ix_notifications_transaction_id");
         });
     }
 
@@ -319,11 +329,45 @@ public class FinamiContext : DbContext
             entity.Property(e => e.GroupId).HasColumnName("group_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.JoinedAt).HasColumnName("joined_at").HasDefaultValueSql("(now() at time zone 'utc')");
+            // Feature 008 (R-01): os padrões do banco valem para os membros atuais (Q2) e para os novos.
+            entity.Property(e => e.CanCreateTransactions).HasColumnName("can_create_transactions")
+                .HasDefaultValue(true).HasSentinel(true);
+            entity.Property(e => e.CanReverse).HasColumnName("can_reverse").HasDefaultValue(false);
 
             entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId)
                 .HasConstraintName("fk_user_group_member").OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasIndex(e => new { e.GroupId, e.UserId }).IsUnique().HasDatabaseName("ix_group_members_group_user");
             entity.HasIndex(e => e.UserId).HasDatabaseName("ix_group_members_user_id");
+        });
+
+        // Feature 008 (R-02): histórico imutável das mudanças de permissão.
+        modelBuilder.Entity<GroupMemberPermissionChange>(entity =>
+        {
+            entity.ToTable("group_member_permission_changes");
+            entity.HasKey(e => e.GroupMemberPermissionChangeId).HasName("group_member_permission_changes_pkey");
+            entity.Property(e => e.GroupMemberPermissionChangeId).HasColumnName("group_member_permission_change_id")
+                .UseIdentityByDefaultColumn();
+            entity.Property(e => e.GroupId).HasColumnName("group_id");
+            entity.Property(e => e.MemberUserId).HasColumnName("member_user_id");
+            entity.Property(e => e.ChangedByUserId).HasColumnName("changed_by_user_id");
+            entity.Property(e => e.ChangedAt).HasColumnName("changed_at");
+            entity.Property(e => e.BeforeCanCreateTransactions).HasColumnName("before_can_create_transactions");
+            entity.Property(e => e.BeforeCanReverse).HasColumnName("before_can_reverse");
+            entity.Property(e => e.AfterCanCreateTransactions).HasColumnName("after_can_create_transactions");
+            entity.Property(e => e.AfterCanReverse).HasColumnName("after_can_reverse");
+
+            entity.HasOne<Group>().WithMany().HasForeignKey(e => e.GroupId)
+                .HasConstraintName("fk_group_member_permission_changes_group").OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.MemberUserId)
+                .HasConstraintName("fk_group_member_permission_changes_member").OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.ChangedByUserId)
+                .HasConstraintName("fk_group_member_permission_changes_changed_by").OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.GroupId, e.MemberUserId, e.ChangedAt })
+                .HasDatabaseName("ix_group_member_permission_changes_group_member");
+            entity.HasIndex(e => e.MemberUserId).HasDatabaseName("ix_group_member_permission_changes_member_user_id");
+            entity.HasIndex(e => e.ChangedByUserId)
+                .HasDatabaseName("ix_group_member_permission_changes_changed_by_user_id");
         });
 
         modelBuilder.Entity<Account>()

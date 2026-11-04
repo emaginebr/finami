@@ -57,6 +57,23 @@ public class GroupsController : FinamiControllerBase
         Execute(async () => Ok(await _groupService.RemoveMemberAsync(CurrentUserId, id, userId)));
 
     /// <summary>
+    /// Feature 008: muda as permissões de um membro na família (apenas o responsável): "Pode lançar"
+    /// (canCreateTransactions) e "Pode estornar" (canReverse). Com mudança, grava o histórico e notifica o
+    /// membro (MemberPermissionsChanged); sem mudança, devolve 200 sem histórico nem notificação.
+    /// </summary>
+    /// <param name="groupId">Identificador do grupo.</param>
+    /// <param name="userId">Membro cujas permissões mudam.</param>
+    /// <param name="info">As duas permissões (obrigatórias).</param>
+    /// <response code="200">Grupo atualizado, com as permissões dos membros.</response>
+    /// <response code="400">"Informe as duas permissões."</response>
+    /// <response code="403">Você não é o responsável pelo grupo.</response>
+    /// <response code="404">Grupo não encontrado ou "Membro não encontrado."</response>
+    /// <response code="422">"As permissões do responsável não podem ser alteradas."</response>
+    [HttpPut("{groupId:long}/members/{userId:long}/permissions")]
+    public Task<IActionResult> SetMemberPermissions(long groupId, long userId, [FromBody] MemberPermissionsInfo info) =>
+        Execute(async () => Ok(await _groupService.SetMemberPermissionsAsync(CurrentUserId, groupId, userId, info)));
+
+    /// <summary>
     /// Saldo por membro do grupo (FR-029). O nível de detalhe (Full, Summary ou Hidden) depende de quem
     /// pergunta e da visibilidade do extrato; não membro recebe 404. Detalhes em
     /// specs/002-finami-frontend-mobile/contracts/api-additions.md §2.

@@ -58,6 +58,15 @@ Content-Type: application/json
 
 { "userId": {{pedroId}} }
 
+### 3. Permissões de um membro (feature 008) — só o responsável; responsável → 422, não membro → 404
+# canCreateTransactions = "Pode lançar" (padrão true); canReverse = "Pode estornar" (padrão false).
+# Com mudança: histórico + notificação MemberPermissionsChanged ao membro; sem mudança: 200 sem efeitos.
+PUT {{baseUrl}}/api/groups/{{groupId}}/members/{{pedroId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "canCreateTransactions": false, "canReverse": true }
+
 ### 4. Carteira em Real (US2)
 POST {{baseUrl}}/api/wallets
 Authorization: Bearer {{token}}

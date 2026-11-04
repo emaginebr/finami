@@ -6,8 +6,8 @@ const SILVA = makeGroup({
   groupId: 1,
   name: "Silva",
   members: [
-    { userId: 9, firstName: "Pedro", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
-    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z" },
+    { userId: 9, firstName: "Pedro", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
+    { userId: USER_ID, firstName: "Ana", lastName: "Silva", joinedAt: "2026-01-01T00:00:00Z", canCreateTransactions: true, canReverse: false },
   ],
 });
 const ALVES = makeGroup({ groupId: 2, name: "Alves", members: [] });

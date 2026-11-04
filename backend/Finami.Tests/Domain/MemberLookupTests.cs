@@ -57,7 +57,8 @@ public class MemberLookupTests
 
         _service = new GroupService(_groups.Object, _users.Object, new Mock<IAccountRepository<Account>>().Object,
             _invitations.Object, new Mock<IUnitOfWork>().Object, new GroupInsertInfoValidator(),
-            new GroupUpdateInfoValidator(), new MemberLookupInfoValidator(), new NewMemberInfoValidator());
+            new GroupUpdateInfoValidator(), new MemberLookupInfoValidator(), new NewMemberInfoValidator(),
+            new MemberPermissionsInfoValidator(), new Mock<INotificationRepository<Notification>>().Object);
     }
 
     private void AddUser(long id, string first, string last, string email) =>

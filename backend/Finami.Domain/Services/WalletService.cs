@@ -299,6 +299,8 @@ public class WalletService : IWalletService
                     ? Money.Truncate(balances.GetValueOrDefault(wallet.AccountId) * quote.PriceBrl, Currency.Brl)
                     : null,
                 CanControl = await _accessPolicy.CanControlWalletAsync(userId, wallet),
+                // Feature 008 (R-07): o app filtra as carteiras de origem por este campo.
+                CanCreateTransactions = await _accessPolicy.CanCreateTransactionsAsync(userId, wallet),
                 CreatedAt = wallet.CreatedAt
             });
         }

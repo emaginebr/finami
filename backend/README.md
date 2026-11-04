@@ -133,6 +133,39 @@ backend/
     entradas do extrato ganharam `transferKind`, `debtCurrency` e `debtAmount`.
   - Índices `ix_transactions_source_account_id` e `ix_transactions_destination_account_id` (migration
     `AddTransactionAccountIndexes`, que renomeia os índices de FK criados pelo EF em `AddWalletsAndLedger`).
+- **Estorno e permissões dos membros na família** (feature 008, contrato em
+  `specs/008-reversal-family-permissions/contracts/api.md`). As regras ficam no `AccessPolicy` e valem
+  para o app, a API e o MCP:
+  - **Permissões por membro e por família**: colunas `can_create_transactions` (padrão `true`) e
+    `can_reverse` (padrão `false`) em `group_members` (migration `AddMemberPermissions`; os membros atuais
+    ficaram com "Pode lançar" ligada e "Pode estornar" desligada). O responsável tem sempre as duas (a
+    linha dele é ignorada).
+  - **Mudar permissões**: `PUT /api/groups/{groupId}/members/{userId}/permissions` com
+    `{ "canCreateTransactions": bool, "canReverse": bool }` → 200 `GroupInfo`. Campo ausente → 400
+    "Informe as duas permissões."; quem chama não é o responsável → 403 "Apenas o responsável pelo grupo
+    pode realizar esta operação."; grupo inexistente → 404 "Grupo não encontrado."; alvo fora da família →
+    404 "Membro não encontrado."; alvo é o responsável → 422 "As permissões do responsável não podem ser
+    alteradas.". Com mudança, grava uma linha em `group_member_permission_changes` (histórico só de
+    inserção) e notifica o membro (`MemberPermissionsChanged`), na mesma transação; sem mudança, 200 sem
+    histórico nem notificação.
+  - **Lançar**: receita, despesa e a origem de toda transferência (inclusive prévia, conversão,
+    empréstimo, quitação e pagamento) exigem controlar a carteira e, se ela é de família, ser o responsável
+    ou ter "Pode lançar" → senão 403 "Você não tem permissão para criar lançamentos na família {nome}.".
+    Receber numa carteira nunca depende de permissão; consultas não mudam.
+  - **Estornar** (`POST /api/transactions/{id}/reverse`): basta uma carteira do lançamento em que a pessoa
+    seja titular de carteira pessoal, responsável pela família da carteira ou membro com "Pode estornar"
+    que vê o extrato dela (visibilidade `AllMembers` para carteiras de outros membros) → senão 403 "Você
+    não tem permissão para estornar lançamentos na família {nome}." (ou "Você não tem permissão sobre esta
+    transação." sem carteira de família). Cada titular de carteira do lançamento, exceto quem estornou,
+    recebe `TransactionReversed` (com o id do estorno), na mesma transação do estorno.
+  - **Detalhe do lançamento** (`GET /api/transactions/{id}`): abre também para quem pode ver o extrato de
+    uma das carteiras.
+  - **Respostas**: `GroupInfo.members[]` ganhou `canCreateTransactions`/`canReverse` e `GroupInfo` ganhou
+    `myPermissions`; `WalletInfo` ganhou `canCreateTransactions` (o app filtra as carteiras de origem por
+    ele); `TransactionInfo` ganhou `canReverse` (para quem consulta; `false` se já estornado ou se é
+    estorno); `NotificationInfo` ganhou `permissions` (estado depois da mudança registrada no histórico),
+    `transactionId`, `walletId` e `walletName`.
+  - Notificações: colunas `permission_change_id` e `transaction_id` em `notifications` (FK com SET NULL).
 
 ## Servidor MCP (feature 004)
 
@@ -162,7 +195,7 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
 - **MCP Inspector** (dev): `npx @modelcontextprotocol/inspector` → Streamable HTTP →
   `http://localhost:5145/mcp` → *Quick OAuth Flow*.
 
-### Ferramentas (40), recursos e prompts
+### Ferramentas (41), recursos e prompts
 
 | Área | Leitura (`finami:read`) | Escrita (`finami:write`) |
 |---|---|---|
@@ -170,7 +203,7 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
 | Saldos e dívidas | `saldo_total`, `saldos_da_familia`, `saldos_da_pessoa`, `dividas_da_pessoa`, `cotacao_bitcoin` | — |
 | Carteiras | `listar_carteiras`, `obter_carteira`, `destinos_de_transferencia` | `criar_carteira`⟲, `atualizar_carteira`, `mover_carteira_de_familia`, `desativar_carteira`, `excluir_carteira` |
 | Extratos e lançamentos | `extrato_carteira`, `extrato_pessoa`, `extrato_familia`, `obter_lancamento`, `previa_transferencia` | `registrar_receita`⟲, `registrar_despesa`⟲, `registrar_transferencia`⟲, `estornar_lancamento` |
-| Famílias | `listar_familias`, `obter_familia`, `listar_pessoas_criadas_por_mim`, `verificar_email_para_familia`, `listar_convites_da_familia` | `criar_familia`⟲, `renomear_familia`, `criar_pessoa_na_familia`⟲, `retirar_membro`, `convidar_para_familia`⟲, `cancelar_convite`, `aceitar_convite`, `recusar_convite` |
+| Famílias | `listar_familias`, `obter_familia`, `listar_pessoas_criadas_por_mim`, `verificar_email_para_familia`, `listar_convites_da_familia` | `criar_familia`⟲, `renomear_familia`, `criar_pessoa_na_familia`⟲, `retirar_membro`, `alterar_permissoes_membro`, `convidar_para_familia`⟲, `cancelar_convite`, `aceitar_convite`, `recusar_convite` |
 | Notificações | `listar_notificacoes`, `contar_notificacoes_nao_lidas` | `marcar_notificacoes_como_lidas` |
 
 - Valores em número decimal na moeda da carteira (BRL até 2 casas, BTC até 8); datas `AAAA-MM-DD` no
@@ -192,6 +225,10 @@ mesmas regras e mensagens do app. Contratos: `specs/004-mcp-oauth-server/contrac
   para R$ 0,00), pela cotação ₿ 1 = R$ 500.000,00."). `dividas_da_pessoa` (sem `pessoa_id` = a pessoa
   conectada) mostra quem deve a quem, por moeda: empréstimos menos quitações, sem pagamentos. As
   instruções do servidor e o prompt `resumo_do_mes` explicam essas regras.
+- Permissões (feature 008): `obter_familia` traz `minhas_permissoes` e `permissoes_membros`
+  (`pode_lancar`, `pode_estornar`); `alterar_permissoes_membro` (`familia_id`, `pessoa_id`, `pode_lancar`,
+  `pode_estornar`; só o responsável) liga e desliga as permissões. `registrar_*`, `previa_transferencia` e
+  `estornar_lancamento` devolvem `sem_permissao` com as mensagens da API.
 - Fora do MCP (FR-020): senha, cadastro, login, exclusão de conta e gestão de conexões.
 
 ### Proteções

@@ -68,4 +68,10 @@ public class GroupRepository : IGroupRepository<Group>
                      .Where(e => e.Entity.GroupId == groupId && e.Entity.UserId == userId).ToList())
             tracked.State = EntityState.Detached;
     }
+
+    public async Task InsertPermissionChangeAsync<TChange>(TChange change) where TChange : class
+    {
+        _context.Set<TChange>().Add(change);
+        await _context.SaveChangesAsync();
+    }
 }
