@@ -30,7 +30,7 @@ Esse kubeconfig nunca vai para o GitHub nem para o repositório.
    - revogar qualquer token da DigitalOcean que tenha sido exposto e baixar um kubeconfig de admin
      novo (`doctl kubernetes cluster kubeconfig save do-nyc2-emagine-k8s`);
    - liberar o cluster no firewall do PostgreSQL (Managed DB: *Trusted sources*);
-   - **anotar o IP do servidor antigo** nos registros A/AAAA de `finami.site` e `www` (para a
+   - **anotar o IP do servidor antigo** no registro A/AAAA de `finami.site` (para a
      reversão);
    - Cloudflare Zero Trust → Networks → Tunnels → criar o túnel `emagine-k8s` (tipo
      *Cloudflared*), se ainda não existir, e copiar o token do conector (só para o passo 2);
@@ -72,12 +72,11 @@ kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
 # em outro terminal:
 curl -s -H 'Host: finami.site' http://localhost:8080/healthz
 curl -s -H 'Host: finami.site' http://localhost:8080/.well-known/oauth-authorization-server
-curl -sI -H 'Host: www.finami.site' -H 'X-Forwarded-Proto: https' http://localhost:8080/   # 308 → https://finami.site/
 ```
 
 Troca (quickstart §5) — alguns segundos fora do ar entre os passos 1 e 2:
 
-1. Cloudflare → DNS da zona `finami.site`: apagar os registros A/AAAA de `finami.site` e `www`.
+1. Cloudflare → DNS da zona `finami.site`: apagar o registro A/AAAA de `finami.site` (o `www` continua no registro DNS proxied atual: a regra de redirect da Cloudflare (301 www → finami.site) responde na borda, antes de qualquer origem).
 2. Zero Trust → Tunnels → `emagine-k8s` → *Public Hostnames*: adicionar `finami.site` e
    `www.finami.site` → Service `HTTP` `ingress-nginx-controller.ingress-nginx.svc.cluster.local:80`.
    O painel cria os CNAME `<id-do-túnel>.cfargotunnel.com` (proxied).

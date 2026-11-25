@@ -5,7 +5,7 @@ Cadeia: **navegador/cliente MCP → Cloudflare (TLS público, proxy) → Cloudfl
 `ingress-nginx-controller.ingress-nginx.svc.cluster.local:80` (ingress-nginx interno, sem TLS) →
 Service**.
 
-Public Hostnames do túnel (painel Zero Trust): `finami.site` e `www.finami.site` → `HTTP`
+Public Hostnames do túnel (painel Zero Trust): `finami.site` → `HTTP`
 `ingress-nginx-controller.ingress-nginx.svc.cluster.local:80`. Os Ingress do Finami usam
 `ssl-redirect: "false"` (o HTTPS é da Cloudflare; não há redirect para HTTPS dentro do cluster).
 
@@ -13,10 +13,10 @@ Public Hostnames do túnel (painel Zero Trust): `finami.site` e `www.finami.site
 |---|---|---|---|
 | `finami.site` | `/api/` | `finami-api:8080` | |
 | `finami.site` | `/oauth/` | `finami-api:8080` | rate limit por IP (IP real) |
-| `finami.site` | `/.well-known/oauth-` | `finami-api:8080` | metadados OAuth/MCP |
+| `finami.site` | `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource` (inclui `/mcp`) | `finami-api:8080` | metadados OAuth/MCP |
 | `finami.site` | `/mcp` | `finami-api:8080` | sem buffer; read/send timeout 3600 s; SSE |
 | `finami.site` | `/` (demais) | `finami-web:80` | SPA; fallback para `index.html` no nginx |
-| `www.finami.site` | qualquer | 308 → `https://finami.site$request_uri` | |
+| `www.finami.site` | qualquer | 301 → `https://finami.site/...` pela regra de redirect da Cloudflare, na borda (não passa pelo túnel nem pelo ingress) | |
 
 Os caminhos mantêm o prefixo ao chegar à API (sem rewrite), como no proxy atual.
 

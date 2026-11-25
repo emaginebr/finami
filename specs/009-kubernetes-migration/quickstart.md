@@ -12,7 +12,7 @@ no ambiente do agente (Princípio II: sem Docker/infra local).
 2. **PostgreSQL**: liberar o cluster no firewall (Managed DB: *Trusted sources* → cluster
    `do-nyc2-emagine-k8s`).
 3. **Cloudflare** (zona `finami.site`):
-   - DNS → **anotar o IP do servidor antigo** nos registros A/AAAA de `finami.site` e `www`
+   - DNS → **anotar o IP do servidor antigo** no registro A/AAAA de `finami.site`
      (necessário para a reversão do §5).
    - Zero Trust → Networks → Tunnels → *Create a tunnel* → tipo *Cloudflared*, nome `emagine-k8s`
      (só se ainda não existir: o túnel é do cluster, compartilhado com os outros projetos). Na tela
@@ -77,7 +77,6 @@ Em outro terminal:
 curl -s -H 'Host: finami.site' http://localhost:8080/healthz                                   # ok
 curl -s -H 'Host: finami.site' http://localhost:8080/api/... -o /dev/null -w '%{http_code}\n'
 curl -s -H 'Host: finami.site' http://localhost:8080/.well-known/oauth-authorization-server
-curl -sI -H 'Host: www.finami.site' -H 'X-Forwarded-Proto: https' http://localhost:8080/       # 308 → https://finami.site/
 ```
 
 (O `X-Forwarded-Proto: https` simula o que a Cloudflare envia pelo túnel; sem ele o `Location` do
@@ -88,15 +87,14 @@ redirect sai com `http://`.)
 Entre os passos 1 e 2 o site fica **alguns segundos fora do ar** (os nomes não podem ter registro
 A/AAAA e CNAME ao mesmo tempo). Faça os dois em sequência.
 
-1. Cloudflare → DNS da zona `finami.site`: apagar os registros A/AAAA de `finami.site` e `www`.
+1. Cloudflare → DNS da zona `finami.site`: apagar o registro A/AAAA de `finami.site` (o `www` continua no registro DNS proxied atual: a regra de redirect da Cloudflare (301 www → finami.site) responde na borda, antes de qualquer origem).
 2. Zero Trust → Networks → Tunnels → `emagine-k8s` → *Public Hostnames* → adicionar:
    - `finami.site` → Service `HTTP` `ingress-nginx-controller.ingress-nginx.svc.cluster.local:80`;
-   - `www.finami.site` → o mesmo Service.
 
    O painel cria os registros CNAME `<id-do-túnel>.cfargotunnel.com` (proxied) na zona.
 3. Roteiro de validação (SC-001): abrir `https://finami.site`, login e-mail e Google, listar e criar
    transação, transferência, estorno, convite de família, conectar um cliente MCP (OAuth) e uma
-   chamada `/mcp`, abrir o PWA instalado; `https://www.finami.site/` redireciona (308) para
+   chamada `/mcp`, abrir o PWA instalado; `https://www.finami.site/` redireciona (301, regra da Cloudflare) para
    `https://finami.site/`.
 4. Contagem de usuários/grupos/transações igual à de antes (SC-002).
 5. Conferir no log da API (`kubectl -n finami logs deploy/finami-api`) que o IP dos clientes é o
@@ -104,8 +102,8 @@ A/AAAA e CNAME ao mesmo tempo). Faça os dois em sequência.
    `deploy/k8s/infra/ingress-nginx-values.yaml` (comando para reconferir a faixa de pods no
    comentário).
 
-**Reverter a troca** (se algo falhar nos minutos seguintes): remover os Public Hostnames
-`finami.site` e `www.finami.site` do túnel (o painel apaga os CNAME) e recriar os registros A/AAAA
+**Reverter a troca** (se algo falhar nos minutos seguintes): remover o Public Hostname
+`finami.site` do túnel (o painel apaga o CNAME) e recriar o registro A/AAAA
 (proxied) com o IP do servidor antigo anotado no passo 0.3 — efeito quase imediato.
 
 ## 6. Desligar o ambiente antigo

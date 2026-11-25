@@ -85,7 +85,7 @@ deploy/k8s/
     ├── api-service.yaml
     ├── web-deployment.yaml
     ├── web-service.yaml
-    ├── ingress.yaml                # finami.site + www (redirect) → web / api; sem tls
+    ├── ingress.yaml                # finami.site → web / api; sem tls (www: redirect na Cloudflare)
     └── ingress-mcp.yaml            # /mcp sem buffer, timeout 3600 s; sem tls
 
 .github/workflows/deploy-prod.yml   # REESCRITO: test → images (GHCR) → deploy (kubectl)

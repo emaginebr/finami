@@ -162,7 +162,7 @@ servidor não foram afetados.
 
 **Transição e documentação**
 
-- **FR-019**: A troca da origem de `finami.site` e `www.finami.site` na Cloudflare (dos registros que apontam para o servidor antigo para os hostnames do túnel do cluster) DEVE ocorrer só após a aplicação estar validada no cluster (acesso direto ao ingress interno, com o túnel saudável); o procedimento de troca e de reversão (voltar os registros para o IP do servidor antigo) DEVE estar documentado.
+- **FR-019**: A troca da origem de `finami.site` na Cloudflare (dos registros que apontam para o servidor antigo para os hostnames do túnel do cluster) DEVE ocorrer só após a aplicação estar validada no cluster (acesso direto ao ingress interno, com o túnel saudável); o procedimento de troca e de reversão (voltar os registros para o IP do servidor antigo) DEVE estar documentado.
 - **FR-020**: A entrega DEVE remover o deploy antigo por SSH (pipeline `deploy-prod.yml` por SSH, `docker-compose-prod.yml` e `.env.prod.example`), substituindo-o pelo deploy no cluster. O retorno ao ambiente antigo, se necessário, DEVE ser feito a partir do branch `backup/sem-k8s`, com o procedimento documentado.
 - **FR-021**: A documentação do projeto DEVE descrever a arquitetura no cluster, os segredos necessários, como fazer deploy, rollback e consultar logs.
 - **FR-022**: O ambiente de desenvolvimento local (`docker-compose.yml`) DEVE continuar funcionando como hoje.

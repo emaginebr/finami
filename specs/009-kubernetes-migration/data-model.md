@@ -17,7 +17,7 @@ Contém tudo do Finami. Criado no bootstrap (pelo admin), não pela pipeline.
 | `finami-api` | Service (ClusterIP, 8080) | `deploy/k8s/finami/` | Só o ingress acessa |
 | `finami-web` | Deployment | `deploy/k8s/finami/` | 1 réplica, imagem `ghcr.io/emaginebr/finami-web:sha-<commit>` |
 | `finami-web` | Service (ClusterIP, 80) | `deploy/k8s/finami/` | |
-| `finami` | Ingress (class `nginx`) | `deploy/k8s/finami/` | `finami.site` + `www` → rotas web/API |
+| `finami` | Ingress (class `nginx`) | `deploy/k8s/finami/` | `finami.site` → rotas web/API |
 | `finami-mcp` | Ingress (class `nginx`) | `deploy/k8s/finami/` | `/mcp` sem buffer, timeout 1 h |
 | `finami-api-env` | ConfigMap | `deploy/k8s/finami/` | `ASPNETCORE_ENVIRONMENT=Production` |
 | `finami-api-secrets` | Secret (Opaque) | pipeline | `ConnectionStrings__FinamiContext`, `Jwt__Secret`, `Google__ClientId` |
@@ -36,7 +36,7 @@ Contém tudo do Finami. Criado no bootstrap (pelo admin), não pela pipeline.
 | `cloudflared` | Deployment | `deploy/k8s/infra/cloudflared.yaml` (admin) | Conector do túnel `emagine-k8s`; 2 réplicas, antiafinidade preferida por nó; `cloudflare/cloudflared:2026.11.2`; probes `/ready` (porta 2000); `10m/32Mi` → `200m/128Mi`; não-root (65532), FS somente-leitura; sem Service |
 | `cloudflared-token` | Secret (Opaque, chave `token`) | `deploy/k8s/infra/install-cloudflared.sh` (admin) | Token do túnel; credencial do cluster, fora do GitHub e da pipeline do Finami |
 
-Os *Public Hostnames* do túnel (`finami.site`, `www.finami.site` →
+Os *Public Hostnames* do túnel (`finami.site` →
 `http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80`) ficam no painel Cloudflare
 Zero Trust, não no cluster.
 

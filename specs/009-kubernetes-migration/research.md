@@ -37,7 +37,7 @@ respostas da sessão de clarificação de 2026-11-25.
   - A pipeline do Finami **não** instala nem altera a infra comum (FR-002a).
 - **Rationale**: elimina o custo do LB e não expõe IP público nem porta no cluster (o `cloudflared`
   só abre conexões de saída). O ingress-nginx continua sendo o ponto comum de roteamento, com tudo o
-  que o Finami precisa (`proxy-buffering off` por rota, timeouts longos, redirect do `www`). Ficar
+  que o Finami precisa (`proxy-buffering off` por rota, timeouts longos). Ficar
   fora da pipeline do Finami evita que um deploy do Finami derrube a entrada dos outros projetos e
   evita dar à pipeline permissões de cluster inteiro.
 - **Consequências**: deixam de existir o PROXY protocol, o problema de *hairpin* (chamadas de dentro
@@ -98,10 +98,11 @@ respostas da sessão de clarificação de 2026-11-25.
 
 ## R-05 — Roteamento: Ingress do Finami chama a API diretamente
 
-- **Decision**: dois objetos Ingress no namespace `finami`, hosts `finami.site` e `www.finami.site`:
+- **Decision**: dois objetos Ingress no namespace `finami`, host `finami.site`:
   - `finami` — `/api`, `/oauth`, `/.well-known/oauth-` → Service `finami-api:8080`;
-    `/` → Service `finami-web:80`. `www` redireciona para o domínio sem `www`
-    (`nginx.ingress.kubernetes.io/from-to-www-redirect: "true"`).
+    `/` → Service `finami-web:80`. O `www` NÃO passa pelo ingress: a Cloudflare já redireciona (301) `www` → `finami.site` na
+    borda (confirmado em 2026-11-25). O `from-to-www-redirect` do ingress foi descartado: atrás do
+    túnel ele gerava `https://finami.site:80/...` (porta do listener interno).
   - `finami-mcp` — `/mcp` → `finami-api:8080`, com `proxy-buffering: "off"`,
     `proxy-read-timeout`/`proxy-send-timeout: "3600"` (mesmo comportamento do nginx atual).
   - Os dois sem seção `tls` e com `nginx.ingress.kubernetes.io/ssl-redirect: "false"` (R-04).
@@ -113,9 +114,9 @@ respostas da sessão de clarificação de 2026-11-25.
   interno do nginx para o Kubernetes.
 - **Alternatives considered**: manter o nginx do frontend como proxy da API (exigiria template com
   `resolver` do CoreDNS e nome do Service); um Ingress único (anotações de buffer valem por objeto).
-- **Observação**: `www.finami.site` já resolve na Cloudflare (proxied) e também ganha um Public
-  Hostname no túnel; o redirecionamento passa a ser feito no ingress, a não ser que já exista uma
-  regra de redirect na Cloudflare. O `Location` usa o esquema de `X-Forwarded-Proto` (`https`).
+- **Observação**: `www.finami.site` fica fora do túnel e do ingress; a regra de redirect que já
+  existe na Cloudflare responde 301 na borda. O registro DNS do `www` precisa continuar proxied
+  (pode apontar para o IP antigo ou um IP fictício como `100::`, já que a origem nunca é usada).
 
 ## R-06 — Migrations com 1 réplica e rolling update
 
