@@ -1,0 +1,96 @@
+# Cloudflare Tunnel COMPARTILHADO do cluster do-nyc2-emagine-k8s (túnel `emagine-k8s`).
+# Infra do cluster: aplicado pelo admin com deploy/k8s/infra/install-cloudflared.sh, nunca pela
+# pipeline do Finami (FR-002a).
+#
+# O túnel é "remotely-managed": criado no painel Cloudflare Zero Trust (Networks → Tunnels) e com
+# os Public Hostnames configurados lá, por projeto. Para o Finami:
+#   finami.site → HTTP ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+#   (www.finami.site não entra no túnel: uma Redirect Rule da Cloudflare faz 301 www → finami.site)
+# Outros projetos adicionam os próprios hostnames no mesmo túnel, apontando para o mesmo ingress.
+#
+# Os pods abrem conexões de SAÍDA para a Cloudflare: não há IP público, porta aberta nem Service.
+# O token do túnel fica só no Secret `cloudflared-token` (criado pelo script, nunca versionado).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudflared
+  labels:
+    app.kubernetes.io/name: cloudflared
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflared
+  labels:
+    app: cloudflared
+spec:
+  # 2 réplicas (de preferência em nós diferentes): o túnel continua no ar se um pod/nó cair.
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      automountServiceAccountToken: false
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: cloudflared
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.11.2
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --metrics
+            - 0.0.0.0:2000
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-token
+                  key: token
+          ports:
+            - name: metrics
+              containerPort: 2000
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

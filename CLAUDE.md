@@ -1,6 +1,6 @@
 # finami Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-11-03
+Auto-generated from all feature plans. Last updated: 2026-11-25
 
 ## Active Technologies
 - TypeScript 5.x, React 18.3, Node 22 (build); backend C# 12 / .NET 8 (ajustes) + Vite 6, Tailwind CSS 4 (`@tailwindcss/vite`), React Router 6, i18next 25 + react-i18next 15, sonner, @radix-ui/react-dialog, lucide-react; dev: ESLint (template do Vite), sharp (ícones), Vitest 3, @testing-library/react 16, @testing-library/user-event, jsdom, vitest-axe (002-finami-frontend-mobile)
@@ -15,6 +15,8 @@ Auto-generated from all feature plans. Last updated: 2026-11-03
 - PostgreSQL — sem tabelas novas; migration `AddTransactionAccountIndexes` (índices em `transactions.source_account_id`/`destination_account_id`) (006-family-debts-transfers)
 - PostgreSQL. Sem tabelas novas; a migration `AddTransferKindAndDebt` traz 3 colunas (007-loan-transfer-types)
 - PostgreSQL. Migration `AddMemberPermissions`: colunas `can_create_transactions`/`can_reverse` em `group_members`, tabela `group_member_permission_changes` e colunas `permission_change_id`/`transaction_id` em `notifications` (008-reversal-family-permissions)
+- YAML (Kubernetes 1.3x do DOKS, Kustomize embutido no `kubectl`), Bash (scripts de bootstrap/infra), GitHub Actions. Aplicação inalterada: C# 12 / .NET 8 e TypeScript 5.8 / React 18.3 + ingress-nginx (chart Helm oficial, infra compartilhada), GHCR, `docker/build-push-action`, `docker/login-action`, `azure/setup-kubectl`; Cloudflare (proxy + Origin CA). Sem dependências novas na aplicação (009-kubernetes-migration)
+- PostgreSQL externo, inalterado (sem migrations novas) (009-kubernetes-migration)
 
 - C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado) + ASP.NET Core 8 Web API, EF Core 9.x + Npgsql.EntityFrameworkCore.PostgreSQL 9.x, Swashbuckle 8.x, Microsoft.AspNetCore.Authentication.JwtBearer 8.x, Google.Apis.Auth, Microsoft.Extensions.Identity.Core (PasswordHasher), FluentValidation (001-finami-backend-core)
 
@@ -35,9 +37,9 @@ tests/
 C# 12 / .NET 8 (`net8.0`; build com SDK 9.0.309 instalado): Follow standard conventions
 
 ## Recent Changes
+- 009-kubernetes-migration: Added YAML (Kubernetes 1.3x do DOKS, Kustomize embutido no `kubectl`), Bash (scripts de bootstrap/infra), GitHub Actions. Aplicação inalterada: C# 12 / .NET 8 e TypeScript 5.8 / React 18.3 + ingress-nginx (chart Helm oficial, infra compartilhada), GHCR, `docker/build-push-action`, `docker/login-action`, `azure/setup-kubectl`; Cloudflare (proxy + Origin CA). Sem dependências novas na aplicação
 - 008-reversal-family-permissions: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
 - 007-loan-transfer-types: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
-- 006-family-debts-transfers: Added C# 12 / .NET 8 (backend) · TypeScript 5.8 / React 18.3 (frontend) + as já existentes, sem dependências novas.
 
 
 <!-- MANUAL ADDITIONS START -->

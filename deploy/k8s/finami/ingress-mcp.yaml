@@ -1,0 +1,26 @@
+# MCP (Streamable HTTP / SSE): respostas text/event-stream sem buffer e conexões longas (R-05).
+# A Cloudflare ainda corta requisições sem resposta por mais de ~100 s (erro 524).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: finami-mcp
+  annotations:
+    # Sem TLS no ingress: o HTTPS termina na Cloudflare e o túnel chega aqui por HTTP.
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: finami.site
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: finami-api
+                port:
+                  number: 8080

@@ -1,0 +1,29 @@
+# Recursos do Finami no namespace finami, aplicados pela pipeline Deploy Production com
+# `kubectl apply -k deploy/k8s/finami`. Os Secrets (finami-api-secrets e ghcr-pull) NÃO ficam
+# aqui: a pipeline os cria a partir dos secrets do GitHub.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: finami
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: finami
+    includeSelectors: false
+    includeTemplates: true
+
+resources:
+  - api-configmap.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - web-deployment.yaml
+  - web-service.yaml
+  - ingress.yaml
+  - ingress-mcp.yaml
+
+# `latest` é só um marcador: a pipeline troca as tags por `sha-<commit>` antes do apply.
+images:
+  - name: ghcr.io/emaginebr/finami-api
+    newTag: latest
+  - name: ghcr.io/emaginebr/finami-web
+    newTag: latest

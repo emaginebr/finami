@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: finami-web
+  labels:
+    app: finami-web
+spec:
+  type: ClusterIP
+  selector:
+    app: finami-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
