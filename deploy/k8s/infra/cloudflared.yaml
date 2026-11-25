@@ -5,7 +5,7 @@
 # O túnel é "remotely-managed": criado no painel Cloudflare Zero Trust (Networks → Tunnels) e com
 # os Public Hostnames configurados lá, por projeto. Para o Finami:
 #   finami.site → HTTP ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
-#   (www.finami.site não entra no túnel: a Cloudflare já redireciona www → finami.site na borda)
+#   (www.finami.site não entra no túnel: uma Redirect Rule da Cloudflare faz 301 www → finami.site)
 # Outros projetos adicionam os próprios hostnames no mesmo túnel, apontando para o mesmo ingress.
 #
 # Os pods abrem conexões de SAÍDA para a Cloudflare: não há IP público, porta aberta nem Service.

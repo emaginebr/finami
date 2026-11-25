@@ -16,7 +16,7 @@ Public Hostnames do túnel (painel Zero Trust): `finami.site` → `HTTP`
 | `finami.site` | `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource` (inclui `/mcp`) | `finami-api:8080` | metadados OAuth/MCP |
 | `finami.site` | `/mcp` | `finami-api:8080` | sem buffer; read/send timeout 3600 s; SSE |
 | `finami.site` | `/` (demais) | `finami-web:80` | SPA; fallback para `index.html` no nginx |
-| `www.finami.site` | qualquer | 301 → `https://finami.site/...` pela regra de redirect da Cloudflare, na borda (não passa pelo túnel nem pelo ingress) | |
+| `www.finami.site` | qualquer | 301 → `https://finami.site/...` pela Redirect Rule da Cloudflare, na borda (não passa pelo túnel nem pelo ingress); `http://` → `https://` pelo Always Use HTTPS | |
 
 Os caminhos mantêm o prefixo ao chegar à API (sem rewrite), como no proxy atual.
 

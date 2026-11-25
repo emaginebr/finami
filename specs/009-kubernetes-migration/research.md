@@ -100,8 +100,9 @@ respostas da sessão de clarificação de 2026-11-25.
 
 - **Decision**: dois objetos Ingress no namespace `finami`, host `finami.site`:
   - `finami` — `/api`, `/oauth`, `/.well-known/oauth-` → Service `finami-api:8080`;
-    `/` → Service `finami-web:80`. O `www` NÃO passa pelo ingress: a Cloudflare já redireciona (301) `www` → `finami.site` na
-    borda (confirmado em 2026-11-25). O `from-to-www-redirect` do ingress foi descartado: atrás do
+    `/` → Service `finami-web:80`. O `www` NÃO passa pelo ingress: o redirect (301) `www` → `finami.site` é uma Redirect Rule
+    da Cloudflare, criada na migração (antes era o servidor antigo que redirecionava, o que só se
+    descobriu na troca). O `from-to-www-redirect` do ingress foi descartado: atrás do
     túnel ele gerava `https://finami.site:80/...` (porta do listener interno).
   - `finami-mcp` — `/mcp` → `finami-api:8080`, com `proxy-buffering: "off"`,
     `proxy-read-timeout`/`proxy-send-timeout: "3600"` (mesmo comportamento do nginx atual).
@@ -114,8 +115,8 @@ respostas da sessão de clarificação de 2026-11-25.
   interno do nginx para o Kubernetes.
 - **Alternatives considered**: manter o nginx do frontend como proxy da API (exigiria template com
   `resolver` do CoreDNS e nome do Service); um Ingress único (anotações de buffer valem por objeto).
-- **Observação**: `www.finami.site` fica fora do túnel e do ingress; a regra de redirect que já
-  existe na Cloudflare responde 301 na borda. O registro DNS do `www` precisa continuar proxied
+- **Observação**: `www.finami.site` fica fora do túnel e do ingress; a Redirect Rule da
+  Cloudflare responde 301 na borda, e o Always Use HTTPS cobre o `http://`. O registro DNS do `www` precisa continuar proxied
   (pode apontar para o IP antigo ou um IP fictício como `100::`, já que a origem nunca é usada).
 
 ## R-06 — Migrations com 1 réplica e rolling update

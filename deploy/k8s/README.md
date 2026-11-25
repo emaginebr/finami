@@ -76,7 +76,7 @@ curl -s -H 'Host: finami.site' http://localhost:8080/.well-known/oauth-authoriza
 
 Troca (quickstart §5) — alguns segundos fora do ar entre os passos 1 e 2:
 
-1. Cloudflare → DNS da zona `finami.site`: apagar o registro A/AAAA de `finami.site` (o `www` continua no registro DNS proxied atual: a regra de redirect da Cloudflare (301 www → finami.site) responde na borda, antes de qualquer origem).
+1. Cloudflare → DNS da zona `finami.site`: apagar o registro A/AAAA de `finami.site` (o `www` **não** vai para o túnel: o servidor antigo fazia o redirect, então antes da troca crie a Redirect Rule da Cloudflare (Rules → Redirect Rules: `https://www.finami.site/*` → `https://finami.site/${1}`, 301, preservando a query string) + **Always Use HTTPS** (SSL/TLS → Edge Certificates) para o `http://`; o registro do `www` precisa estar proxied).
 2. Zero Trust → Tunnels → `emagine-k8s` → *Public Hostnames*: adicionar `finami.site` e
    `www.finami.site` → Service `HTTP` `ingress-nginx-controller.ingress-nginx.svc.cluster.local:80`.
    O painel cria os CNAME `<id-do-túnel>.cfargotunnel.com` (proxied).

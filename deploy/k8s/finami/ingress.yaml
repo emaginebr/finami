@@ -1,6 +1,7 @@
 # Roteamento público de finami.site (contracts/routing.md). Os caminhos chegam à API com o
-# prefixo original (sem rewrite). www.finami.site NÃO passa por aqui: a Cloudflare já redireciona
-# (301) www → finami.site na borda, e o www não é Public Hostname do túnel.
+# prefixo original (sem rewrite). www.finami.site NÃO passa por aqui: uma Redirect Rule da
+# Cloudflare (301 www → finami.site, criada na migração) responde na borda; o www não é Public
+# Hostname do túnel. O from-to-www-redirect do ingress gerava https://finami.site:80/ atrás do túnel.
 # O /mcp fica em ingress-mcp.yaml, porque as anotações de buffer/timeout valem por objeto.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
