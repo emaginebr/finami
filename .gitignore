@@ -4,12 +4,15 @@
 .env.local
 .env.*.local
 !.env.example
-!.env.prod.example
 
 # Certificados
 *.pem
 *.key
 certs/
+
+# Kubeconfig (ex.: o gerado por deploy/k8s/bootstrap/make-kubeconfig.sh) — contém token
+*.kubeconfig
+kubeconfig*
 
 # Sistema / editores
 .DS_Store

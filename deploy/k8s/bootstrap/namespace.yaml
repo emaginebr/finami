@@ -1,0 +1,8 @@
+# Namespace do Finami. Criado uma única vez pelo admin (kubectl apply -f deploy/k8s/bootstrap/);
+# a pipeline não cria nem apaga namespaces.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finami
+  labels:
+    app.kubernetes.io/part-of: finami

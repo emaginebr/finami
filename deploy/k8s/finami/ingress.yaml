@@ -1,0 +1,48 @@
+# Roteamento público de finami.site (contracts/routing.md). Os caminhos chegam à API com o
+# prefixo original (sem rewrite). www.finami.site redireciona (308) para finami.site.
+# O /mcp fica em ingress-mcp.yaml, porque as anotações de buffer/timeout valem por objeto.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: finami
+  annotations:
+    # Sem TLS no ingress: o HTTPS termina na Cloudflare e o túnel chega aqui por HTTP.
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: finami.site
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: finami-api
+                port:
+                  number: 8080
+          - path: /oauth
+            pathType: Prefix
+            backend:
+              service:
+                name: finami-api
+                port:
+                  number: 8080
+          # Prefixo de texto (não de segmento): cobre /.well-known/oauth-authorization-server e
+          # /.well-known/oauth-protected-resource[...]. `Prefix` exigiria o segmento inteiro.
+          - path: /.well-known/oauth-
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: finami-api
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: finami-web
+                port:
+                  number: 80

@@ -1,5 +1,15 @@
 name: Deploy Production
 
+# Publica o Finami no cluster Kubernetes da DigitalOcean (do-nyc2-emagine-k8s, namespace finami):
+#   test → images (GHCR, tag sha-<commit>) → deploy (kubectl apply -k + rollout status)
+# A entrada pública (Cloudflare Tunnel + ingress-nginx compartilhados) é infra do cluster, aplicada
+# pelo admin (deploy/k8s/infra/); esta pipeline só toca no namespace finami.
+# O job `manifests` valida os manifestos de deploy/k8s/ (roda mesmo com skip_tests).
+# Contrato: specs/009-kubernetes-migration/contracts/deploy-pipeline.md
+#
+# Segurança: secrets entram nos passos só por `env:` (nunca interpolados em `run:`), nenhum passo
+# usa `set -x` nem imprime valores, e arquivos temporários ficam em $RUNNER_TEMP com umask 077.
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,6 +17,11 @@ on:
         description: "Branch ou tag a publicar (ex.: main ou v1.2.0)"
         required: true
         default: main
+      skip_tests:
+        description: "Pular os testes (só para rollback de uma ref já testada)"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: deploy-production
@@ -14,10 +29,17 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/emaginebr/finami-api
+  WEB_IMAGE: ghcr.io/emaginebr/finami-web
 
 jobs:
   test:
-    name: Testes do backend
+    name: Testes (backend e frontend)
+    if: ${{ !inputs.skip_tests }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,104 +61,325 @@ jobs:
           dotnet build Finami.sln --configuration Release --no-restore
           dotnet test Finami.sln --configuration Release --no-build
 
-  deploy:
-    name: Deploy via SSH
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend — testes e build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+  manifests:
+    name: Validação dos manifestos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Renderizar o Kustomize
+        run: kubectl kustomize deploy/k8s/finami > /dev/null
+
+      - name: Sintaxe dos scripts
+        run: |
+          for script in deploy/k8s/infra/*.sh deploy/k8s/bootstrap/*.sh; do
+            bash -n "$script"
+          done
+
+      - name: Nenhuma credencial em deploy/k8s/
+        run: |
+          set -euo pipefail
+          failed=0
+
+          # Padrões de credenciais conhecidos (token da DigitalOcean, chave privada, senha em
+          # connection string). Só os nomes dos arquivos/linhas são mostrados.
+          if grep -rnE 'dop_v1_|BEGIN .*PRIVATE KEY|Password=' deploy/k8s/; then
+            echo "::error::deploy/k8s/ contém um padrão de credencial (dop_v1_, chave privada ou Password=)."
+            failed=1
+          fi
+
+          # Nenhum Secret com dados versionado. O token da ServiceAccount em
+          # bootstrap/deployer-rbac.yaml não tem `data`/`stringData` (o cluster preenche).
+          while IFS= read -r -d '' file; do
+            if awk '
+              /^---/ { if (secret && hasdata) bad = 1; secret = 0; hasdata = 0; next }
+              /^kind:[[:space:]]*Secret[[:space:]]*$/ { secret = 1 }
+              /^(data|stringData):/ { hasdata = 1 }
+              END { if (secret && hasdata) bad = 1; exit (bad ? 1 : 0) }
+            ' "$file"; then
+              :
+            else
+              echo "::error file=$file::Secret com data/stringData versionado em $file."
+              failed=1
+            fi
+          done < <(find deploy/k8s -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+
+          exit "$failed"
+
+  images:
+    name: Imagens (GHCR)
     needs: test
+    # Roda também quando `test` foi pulado (skip_tests), mas não quando falhou.
+    if: ${{ !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    # Environment só para ler FINAMI_GOOGLE_CLIENT_ID (build arg do frontend), que fica no
+    # environment `production`. Se houver revisores obrigatórios, a aprovação é pedida aqui também.
+    environment:
+      name: production
+    outputs:
+      sha: ${{ steps.meta.outputs.sha }}
+      reftag: ${{ steps.meta.outputs.reftag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Commit e tags
+        id: meta
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse --short=7 HEAD)"
+          # Tag a partir da ref: '/' vira '-', só [A-Za-z0-9._-], sem começar com '.' ou '-',
+          # no máximo 128 caracteres (regras de tag do registro).
+          reftag="$(printf '%s' "$INPUT_REF" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')"
+          reftag="${reftag#"${reftag%%[!.-]*}"}"
+          reftag="${reftag:0:128}"
+          [[ -n "$reftag" ]] || reftag="ref-$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "reftag=$reftag" >> "$GITHUB_OUTPUT"
+          echo "Commit: $sha · tag da ref: $reftag"
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Imagens já publicadas?
+        id: exists
+        env:
+          SHA: ${{ steps.meta.outputs.sha }}
+        run: |
+          set -euo pipefail
+          for name in api web; do
+            if [[ "$name" == "api" ]]; then image="$API_IMAGE"; else image="$WEB_IMAGE"; fi
+            if docker manifest inspect "$image:sha-$SHA" > /dev/null 2>&1; then
+              echo "$image:sha-$SHA já existe — build pulado."
+              echo "$name=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$name=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+      - name: Setup Buildx
+        if: ${{ steps.exists.outputs.api != 'true' || steps.exists.outputs.web != 'true' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build e push — API
+        if: ${{ steps.exists.outputs.api != 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:sha-${{ steps.meta.outputs.sha }}
+            ${{ env.API_IMAGE }}:${{ steps.meta.outputs.reftag }}
+          cache-from: type=gha,scope=finami-api
+          cache-to: type=gha,mode=max,scope=finami-api
+
+      - name: Build e push — frontend
+        if: ${{ steps.exists.outputs.web != 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          # VITE_API_URL vazio = mesma origem (o ingress encaminha /api, /oauth, /mcp…).
+          # O Client ID do Google é público (vai para o navegador).
+          build-args: |
+            VITE_API_URL=
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.FINAMI_GOOGLE_CLIENT_ID || vars.FINAMI_GOOGLE_CLIENT_ID }}
+          tags: |
+            ${{ env.WEB_IMAGE }}:sha-${{ steps.meta.outputs.sha }}
+            ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.reftag }}
+          cache-from: type=gha,scope=finami-web
+          cache-to: type=gha,mode=max,scope=finami-web
+
+  deploy:
+    name: Deploy no Kubernetes
+    needs: [images, manifests]
+    if: ${{ !cancelled() && needs.images.result == 'success' && needs.manifests.result == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: production
       url: https://finami.site
+    env:
+      SHA: ${{ needs.images.outputs.sha }}
+      REFTAG: ${{ needs.images.outputs.reftag }}
     steps:
-      - name: Deploy no servidor
-        uses: appleboy/ssh-action@v1
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          password: ${{ secrets.PROD_SSH_PASSWORD }}
-          port: ${{ secrets.PROD_SSH_PORT || 22 }}
-          command_timeout: 30m
-          script: |
-            set -e
+          ref: ${{ inputs.ref }}
 
-            DEPLOY_DIR="/opt/finami"
-            REF="${{ inputs.ref }}"
-            GIT_TOKEN="${{ secrets.PROD_GIT_TOKEN }}"
-            # Repositório privado: PROD_GIT_TOKEN (fine-grained, só leitura de conteúdo)
-            if [ -n "$GIT_TOKEN" ]; then
-              REPO_URL="https://x-access-token:${GIT_TOKEN}@github.com/${{ github.repository }}.git"
-            else
-              REPO_URL="https://github.com/${{ github.repository }}.git"
-            fi
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
 
-            # Clona ou atualiza o repositório na ref pedida
-            if [ -d "$DEPLOY_DIR/.git" ]; then
-              echo "Atualizando repositório..."
-              cd "$DEPLOY_DIR"
-              git remote set-url origin "$REPO_URL"
-              git fetch --tags --force origin
-            else
-              echo "Clonando repositório..."
-              git clone "$REPO_URL" "$DEPLOY_DIR"
-              cd "$DEPLOY_DIR"
-            fi
-            if git show-ref --verify --quiet "refs/remotes/origin/$REF"; then
-              git checkout --force -B "$REF" "origin/$REF"
-            else
-              git checkout --force "$REF"
-            fi
-            git clean -fd
-            echo "Commit publicado: $(git rev-parse --short HEAD)"
-
-            # Gera o .env.prod a partir dos Secrets/Variables do GitHub
-            umask 077
-            cat > .env.prod <<'ENVEOF'
-            FINAMI_CONNECTION_STRING=${{ secrets.FINAMI_CONNECTION_STRING }}
-            FINAMI_JWT_SECRET=${{ secrets.FINAMI_JWT_SECRET }}
-            FINAMI_GOOGLE_CLIENT_ID=${{ secrets.FINAMI_GOOGLE_CLIENT_ID || vars.FINAMI_GOOGLE_CLIENT_ID }}
-            ENVEOF
-            sed -i 's/^[[:space:]]*//' .env.prod
-            for KEY in FINAMI_CONNECTION_STRING FINAMI_JWT_SECRET; do
-              if ! grep -q "^$KEY=..*" .env.prod; then
-                echo "Secret/Variable $KEY não definido."
-                exit 1
-              fi
-            done
-
-            # Rede compartilhada entre os projetos do servidor
-            docker network inspect emagine-network >/dev/null 2>&1 || docker network create emagine-network
-
-            COMPOSE="docker compose --env-file .env.prod -f docker-compose-prod.yml"
-
-            # Build antes de derrubar, para reduzir o tempo fora do ar
-            $COMPOSE build
-            $COMPOSE up -d --remove-orphans
-
-            # Aguarda a API ficar saudável (migrations rodam na subida)
-            echo "Aguardando a API..."
-            for i in $(seq 1 30); do
-              STATUS=$(docker inspect --format '{{.State.Health.Status}}' finami-api 2>/dev/null || echo "starting")
-              if [ "$STATUS" = "healthy" ]; then
-                echo "API saudável."
-                break
-              fi
-              if [ "$i" = "30" ]; then
-                echo "A API não ficou saudável a tempo."
-                $COMPOSE ps
-                $COMPOSE logs --tail=100 api
-                exit 1
-              fi
-              sleep 5
-            done
-
-            $COMPOSE ps
-            docker image prune -f
-            echo "Deploy concluído."
-
-      - name: Resumo
+      # Antes de qualquer kubectl: falha cedo, com o nome do que falta, sem imprimir valores.
+      - name: Validar secrets
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          FINAMI_CONNECTION_STRING: ${{ secrets.FINAMI_CONNECTION_STRING }}
+          FINAMI_JWT_SECRET: ${{ secrets.FINAMI_JWT_SECRET }}
+          GHCR_PULL_USER: ${{ secrets.GHCR_PULL_USER || vars.GHCR_PULL_USER }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
-          echo "## Deploy de produção" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- URL: https://finami.site" >> $GITHUB_STEP_SUMMARY
-          echo "- Ref: \`${{ inputs.ref }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Disparado por: \`${{ github.actor }}\`" >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
+          missing=0
+          # "NOME_NO_GITHUB:VARIÁVEL_DE_AMBIENTE" (o KUBECONFIG usa outro nome no env para não
+          # ser lido pelo kubectl como caminho de arquivo)
+          for pair in \
+            KUBECONFIG:KUBECONFIG_CONTENT \
+            FINAMI_CONNECTION_STRING:FINAMI_CONNECTION_STRING \
+            FINAMI_JWT_SECRET:FINAMI_JWT_SECRET \
+            GHCR_PULL_USER:GHCR_PULL_USER \
+            GHCR_PULL_TOKEN:GHCR_PULL_TOKEN; do
+            name="${pair%%:*}"
+            var="${pair#*:}"
+            if [[ -z "${!var:-}" ]]; then
+              echo "::error::Secret/Variable $name não definido no environment production."
+              missing=1
+            fi
+          done
+          if [[ -n "${FINAMI_JWT_SECRET:-}" ]]; then
+            jwt_bytes="$(printf '%s' "$FINAMI_JWT_SECRET" | wc -c)"
+            if (( jwt_bytes < 32 )); then
+              echo "::error::Secret FINAMI_JWT_SECRET precisa ter pelo menos 32 bytes."
+              missing=1
+            fi
+          fi
+          exit "$missing"
+
+      - name: Kubeconfig
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+
+      # Idempotente: create --dry-run=client -o yaml | apply. Valores só via env/arquivos
+      # temporários (umask 077), nunca impressos.
+      - name: Secrets do cluster
+        env:
+          FINAMI_CONNECTION_STRING: ${{ secrets.FINAMI_CONNECTION_STRING }}
+          FINAMI_JWT_SECRET: ${{ secrets.FINAMI_JWT_SECRET }}
+          FINAMI_GOOGLE_CLIENT_ID: ${{ secrets.FINAMI_GOOGLE_CLIENT_ID || vars.FINAMI_GOOGLE_CLIENT_ID }}
+          GHCR_PULL_USER: ${{ secrets.GHCR_PULL_USER || vars.GHCR_PULL_USER }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          tmp="$RUNNER_TEMP/finami-secrets"
+          mkdir -p "$tmp"
+          printf '%s' "$FINAMI_CONNECTION_STRING" > "$tmp/connection-string"
+          printf '%s' "$FINAMI_JWT_SECRET" > "$tmp/jwt-secret"
+          printf '%s' "$FINAMI_GOOGLE_CLIENT_ID" > "$tmp/google-client-id"
+
+          kubectl -n finami create secret generic finami-api-secrets \
+            --from-file=ConnectionStrings__FinamiContext="$tmp/connection-string" \
+            --from-file=Jwt__Secret="$tmp/jwt-secret" \
+            --from-file=Google__ClientId="$tmp/google-client-id" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl -n finami create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_PULL_USER" \
+            --docker-password="$GHCR_PULL_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          rm -rf "$tmp"
+
+      # `kustomize edit set image` quando o kustomize está no runner (vem nas imagens
+      # ubuntu-latest do GitHub). Como isso não é garantido, há um fallback com sed sobre o bloco
+      # `images` do kustomization.yaml (formato fixo, controlado por este repositório). Em ambos
+      # os casos o resultado é conferido no YAML renderizado antes do apply.
+      - name: Definir as imagens (sha-${{ needs.images.outputs.sha }})
+        working-directory: deploy/k8s/finami
+        run: |
+          set -euo pipefail
+          if command -v kustomize > /dev/null 2>&1; then
+            kustomize edit set image "$API_IMAGE=$API_IMAGE:sha-$SHA"
+            kustomize edit set image "$WEB_IMAGE=$WEB_IMAGE:sha-$SHA"
+          else
+            echo "kustomize não encontrado no runner; usando sed no kustomization.yaml."
+            for image in "$API_IMAGE" "$WEB_IMAGE"; do
+              sed -i "\#- name: ${image}\$#{n;s#newTag: .*#newTag: sha-${SHA}#}" kustomization.yaml
+            done
+          fi
+          rendered="$(kubectl kustomize .)"
+          for image in "$API_IMAGE" "$WEB_IMAGE"; do
+            if ! grep -qF "image: $image:sha-$SHA" <<< "$rendered"; then
+              echo "::error::A imagem $image:sha-$SHA não aparece nos manifestos renderizados."
+              exit 1
+            fi
+          done
+          grep -E '^\s+image:' <<< "$rendered"
+
+      - name: Aplicar os manifestos
+        run: kubectl apply -k deploy/k8s/finami
+
+      - name: Rollout — API
+        run: kubectl -n finami rollout status deployment/finami-api --timeout=10m
+
+      - name: Rollout — frontend
+        run: kubectl -n finami rollout status deployment/finami-web --timeout=10m
+
+      # Diagnóstico do pod novo; o anterior segue atendendo (maxUnavailable: 0). Sem Secrets.
+      - name: Diagnóstico da falha
+        if: ${{ failure() }}
+        run: |
+          if [[ -z "${KUBECONFIG:-}" || ! -f "${KUBECONFIG}" ]]; then
+            echo "Sem kubeconfig (a falha ocorreu antes do acesso ao cluster)."
+            exit 0
+          fi
+          kubectl -n finami get pods -o wide || true
+          kubectl -n finami describe deploy finami-api finami-web || true
+          kubectl -n finami describe pods -l 'app in (finami-api,finami-web)' || true
+          kubectl -n finami logs -l app=finami-api --tail=100 --all-containers --prefix || true
+          kubectl -n finami logs -l app=finami-web --tail=100 --all-containers --prefix || true
+
+      - name: Resumo e limpeza
+        if: ${{ always() }}
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          JOB_STATUS: ${{ job.status }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          rm -f "$RUNNER_TEMP/kubeconfig"
+          rm -rf "$RUNNER_TEMP/finami-secrets"
+          {
+            echo "## Deploy de produção (Kubernetes)"
+            echo ""
+            echo "- Resultado: \`$JOB_STATUS\`"
+            echo "- URL: https://finami.site"
+            echo "- Ref: \`$INPUT_REF\`"
+            echo "- Commit: \`$SHA\`"
+            echo "- Imagens: \`$API_IMAGE:sha-$SHA\`, \`$WEB_IMAGE:sha-$SHA\`"
+            echo "- Tag da ref (aplicada quando a imagem foi gerada nesta execução): \`$REFTAG\`"
+            echo "- Disparado por: \`$ACTOR\`"
+          } >> "$GITHUB_STEP_SUMMARY"

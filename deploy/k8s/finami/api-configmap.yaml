@@ -1,0 +1,9 @@
+# Configuração não secreta da API. Domínio, CORS e endereços do MCP/OAuth continuam no
+# backend/Finami.API/appsettings.Production.json. Segredos ficam no Secret finami-api-secrets,
+# criado pela pipeline.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finami-api-env
+data:
+  ASPNETCORE_ENVIRONMENT: Production

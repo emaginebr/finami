@@ -57,7 +57,7 @@ npm run dev                  # http://localhost:5173 (usa .env.development)
 |---|---|---|---|
 | **dev** | `npm run dev` (Vite, porta 5173) | `.env.development` (versionado) + `.env.development.local` (opcional, ignorado) | `http://localhost:5145` |
 | **homolog** | `docker compose` local (arquivos da raiz do repositório) | `--build-arg` da imagem | URL da API do compose (ex.: `http://localhost:5145`) ou vazio se houver proxy na mesma origem |
-| **prod** | publicado pelo deploy de outro projeto (fora do `docker-compose-prod.yml` deste repositório) | `--build-arg` da imagem | **vazio** = mesma origem: o proxy do servidor encaminha `/api/*`, `/mcp*`, `/oauth/*` e `/.well-known/oauth-*` para a API |
+| **prod** | imagem `ghcr.io/emaginebr/finami-web` publicada pelo próprio Finami no Kubernetes (pipeline **Deploy Production**, ver [`deploy/k8s/`](../deploy/k8s/README.md)) | `--build-arg` da imagem na pipeline; `VITE_GOOGLE_CLIENT_ID` vem de `FINAMI_GOOGLE_CLIENT_ID` do environment `production` do GitHub | **vazio** = mesma origem: o ingress do cluster encaminha `/api/*`, `/mcp*`, `/oauth/*` e `/.well-known/oauth-*` direto para a API |
 
 ### Imagem Docker (homolog e prod)
 
@@ -88,7 +88,11 @@ O `nginx.conf` faz:
 - cache de 1 ano (`immutable`) em `/assets/`, cujos nomes levam hash;
 - gzip para js/css/json/svg;
 - cabeçalhos `X-Content-Type-Options`, `Referrer-Policy` e `X-Frame-Options`;
-- `GET /healthz` → `200 ok`, usado pelo `HEALTHCHECK` da imagem e pelo compose.
+- `GET /healthz` → `200 ok`, usado pelo `HEALTHCHECK` da imagem, pelo compose e pelas probes do
+  Kubernetes;
+- proxy de `/api/`, `/mcp`, `/oauth/` e `/.well-known/oauth-` para `finami-api:8080`, que só vale
+  no `docker-compose.yml` local. Em produção (Kubernetes) essas rotas vão do ingress direto para a
+  API e nunca chegam a este nginx, que só serve a SPA.
 
 **`VITE_SITE_BASENAME` com Docker:** o nginx e o Vite assumem a raiz (`/`). Para servir em
 um subcaminho (ex.: `/finami`), é preciso:

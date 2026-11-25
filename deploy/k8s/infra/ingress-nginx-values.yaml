@@ -1,0 +1,44 @@
+# Valores do chart ingress-nginx/ingress-nginx — infra de entrada COMPARTILHADA do cluster
+# do-nyc2-emagine-k8s. Aplicado pelo admin com deploy/k8s/infra/install-ingress.sh, nunca pela
+# pipeline do Finami (FR-002a). Mudanças aqui afetam todos os projetos atrás deste ingress.
+#
+# Cloudflare Tunnel na frente (research R-02/R-03). Cadeia:
+#   cliente --HTTPS--> Cloudflare --túnel emagine-k8s--> pods cloudflared (namespace cloudflared)
+#           --HTTP--> ingress-nginx-controller.ingress-nginx.svc.cluster.local:80 --> Services
+#   - Sem Load Balancer: o Service do controller é ClusterIP. Só pods do cluster alcançam o
+#     ingress; a entrada pública é o túnel (conexão de SAÍDA do cloudflared, sem IP público nem
+#     porta aberta). Ver deploy/k8s/infra/cloudflared.yaml.
+#   - IP real: as conexões chegam ao nginx vindas dos pods do cloudflared, cujo IP está na faixa
+#     de pods do cluster (`proxy-real-ip-cidr`). Dessa origem o nginx confia em `CF-Connecting-IP`.
+#     A Cloudflare sobrescreve esse header na borda, então o cliente não consegue forjá-lo; e,
+#     como o ingress é ClusterIP, ninguém de fora do cluster fala direto com o nginx.
+#   - `use-forwarded-headers: "true"`: repassa o `X-Forwarded-Proto: https` que vem da Cloudflare
+#     pelo túnel (o trecho cloudflared → nginx é HTTP; sem isso a API veria `http`).
+#   - `compute-full-forwarded-for: "false"`: a API recebe X-Forwarded-For = só o IP real.
+#   - TLS: o túnel é criptografado até a Cloudflare; não há certificado no ingress.
+#   Conferir o IP real no log da API após a troca (quickstart §5).
+
+controller:
+  ingressClassResource:
+    name: nginx
+    # Não vira a classe padrão do cluster: cada Ingress declara `ingressClassName: nginx`.
+    default: false
+
+  service:
+    # Interno: a entrada pública é o Cloudflare Tunnel (sem LB da DigitalOcean).
+    type: ClusterIP
+
+  config:
+    use-forwarded-headers: "true"
+    enable-real-ip: "true"
+    forwarded-for-header: "CF-Connecting-IP"
+    compute-full-forwarded-for: "false"
+    # Faixa de pods do cluster (de onde vêm as conexões do cloudflared). Conferida em 2026-11-25
+    # pelos CiliumNodes (10.109.0.0/25 e 10.109.0.128/25). Para reconferir (ex.: novos nós):
+    #   kubectl get ciliumnodes -o jsonpath='{range .items[*]}{.spec.ipam.podCIDRs}{"\n"}{end}'
+    proxy-real-ip-cidr: "10.109.0.0/16"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi

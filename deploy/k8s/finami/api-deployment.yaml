@@ -1,0 +1,71 @@
+# API do Finami (.NET 8). As migrations rodam no startup (Database:MigrateOnStartup), por isso a
+# startupProbe dá até 5 min para o Kestrel abrir a porta. Rolling update sem queda: o pod novo só
+# recebe tráfego quando /health (que inclui o PostgreSQL) responde; o antigo segue atendendo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finami-api
+  labels:
+    app: finami-api
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: finami-api
+  template:
+    metadata:
+      labels:
+        app: finami-api
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: api
+          # Tag definida pela pipeline (kustomization.yaml → images)
+          image: ghcr.io/emaginebr/finami-api
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: finami-api-env
+            - secretRef:
+                name: finami-api-secrets
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          # Sem banco na liveness: uma oscilação do PostgreSQL não deve reiniciar o pod (R-07)
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            # A imagem declara `USER app` (nome); com runAsNonRoot o kubelet exige UID numérico para
+            # conferir que não é root. 1654 é o UID do usuário `app` nas imagens oficiais do .NET 8.
+            runAsUser: 1654
+            allowPrivilegeEscalation: false
